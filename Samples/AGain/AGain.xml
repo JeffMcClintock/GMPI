@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<PluginList>
+	<Plugin id="JM Gain" name="AGain" category="SDK Examples" vendor="Jeff McClintock" helpUrl="AGain.htm">
+    <Parameters>
+      <Parameter id="0" name="Gain" datatype="float" default="0.8"/>
+    </Parameters>
+    <Audio>
+      <Pin name="Input1" datatype="float" rate="audio" />
+      <Pin name="Input2" datatype="float" rate="audio" />
+      <Pin name="Output1" datatype="float" rate="audio" direction="out" />
+      <Pin name="Output2" datatype="float" rate="audio" direction="out" />
+      <Pin name="Gain" datatype="float" private="true" parameterId="0" />
+    </Audio>
+	</Plugin>
+</PluginList>
+
+
