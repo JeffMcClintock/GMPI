@@ -153,7 +153,7 @@ class IMpPluginFactory : public IMpUnknown
 {
 public:
 	// Instantiate a plugin.
-	virtual int32_t createInstance2(
+	virtual int32_t createInstance2( // !!! remove '2'
 		const char* id,
 		int32_t subType,
 		void** returnInterface

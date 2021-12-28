@@ -11,6 +11,7 @@ ${sdk_folder}/mp_sdk_audio.cpp
 set(srcs
 plugin.rc
 ${PROJECT_NAME}.cpp
+AGain.c
 )
 include_directories(
 ${sdk_folder}
