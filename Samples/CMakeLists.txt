@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
-project(CommunityModules)
+project(GMPI_Samples)
 
 enable_testing()
 
@@ -24,4 +24,4 @@ if (MSVC)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /fp:fast /GS-")
 endif()
 
-add_subdirectory(AGain)
+add_subdirectory(Gain)
