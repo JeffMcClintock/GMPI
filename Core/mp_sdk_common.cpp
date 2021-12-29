@@ -125,6 +125,10 @@ int32_t MpFactory::RegisterPlugin( const char* uniqueId, int32_t subType, MP_Cre
 	return gmpi::MP_OK;
 }
 
+extern "C"
+struct GMPI_AudioPlugin* createCGain();
+
+
 int32_t MpFactory::createInstance2( const char* uniqueId, int32_t subType,
 	void** returnInterface )
 {
@@ -146,7 +150,8 @@ int32_t MpFactory::createInstance2( const char* uniqueId, int32_t subType,
 
 	try
 	{
-		auto m = create();
+		auto m = reinterpret_cast<gmpi::IMpUnknown*>(createCGain());
+// testing		auto m = create();
 		*returnInterface = m;
 #ifdef _DEBUG
 		{
