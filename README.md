@@ -1,7 +1,11 @@
 # GMPI
 Generalized Music Plugin Interface
 
-In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Software Instruments and Effects. GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort to create an open standard for audio plugins as an alternative to the proprietary standards offered by Steinberg, Apple, and other vendors. This implementation of GMPI is not endorsed by the MMA, but we've endeavored to adhere to the specification as closely as is practical.
+In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Software Instruments and Effects.
+
+The GMPI project was started to gather the best parts existing specifications and bring them together into an easy to use, open, powerful, and cross-platform interfacealternative to the proprietary standards offered by Steinberg, Apple, and other vendors.
+
+GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavored to adhere to the specification as closely as is practical.
 
 # Features
 
