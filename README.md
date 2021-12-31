@@ -22,9 +22,9 @@ Other plugin APIs require a lot of confusing 'boilerplate' code just to build a 
  a simple gain plugin in various format. The GMPI plugin is simply easier to write.
  But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation of it's parameter.
 
- See the full source code of a GMPI plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
-
 <img src="Docs/plugin_api_complexity.png" width="260"/>
+
+See the full source code of a GMPI plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
 
 # Detailed GMPI Specification
 
