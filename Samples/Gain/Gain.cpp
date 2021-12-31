@@ -38,6 +38,11 @@ struct Gain final : public AudioPlugin
 			output[i] = gain * input[i];
 		}
 	}
+
+	void onSetPins() override
+	{
+		pinOutput.setStreaming(pinInput.isStreaming());
+	}
 };
 
 namespace

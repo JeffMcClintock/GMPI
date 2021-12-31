@@ -27,6 +27,25 @@ GMPI plugins are simply easier to write.  See the full source code of the GMPI g
 
 But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation.
 
+# Silence Detection
+
+Silence flags are a feature to allow plugins to communicate that an audio signal is silent.
+The advantage to a plugin is that when it's input signal is silent - it may not have to do any work. 
+
+Adding just two lines of code to the gain plugin will enable the silence-flag feature.
+
+```C
+	void onSetPins() override
+	{
+		pinOutput.setStreaming(pinInput.isStreaming());
+	}
+```
+What this does is communicate to the DAW, that if the plugins input signal is silent - then so is it's output.
+
+Notice how when it's input is silent the plugin can completely shut down, using absolutly no CPU at all.
+
+<img src="Docs/image/SilenceDetection.gif" width="654"/>
+
 # Detailed GMPI Specification
 
 [detailed-specs](Docs/GMPI_Specs.md)
