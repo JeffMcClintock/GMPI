@@ -36,11 +36,12 @@ But don't be fooled by the simplicity, even this basic GMPI plugin supports samp
 Silence flags are a feature to allow plugins to communicate that an audio signal is silent.
 The advantage to a plugin is that when it's input signal is silent - it may not have to do any work. 
 
-Adding just two lines of code to the gain plugin will enable the silence-flag feature.
+Adding only a few lines of code to our example plugin will enable the silence-flag feature.
 
 ```C
 	void onSetPins() override
 	{
+		// Pass through the silence-flag
 		pinOutput.setStreaming(pinInput.isStreaming());
 	}
 ```
