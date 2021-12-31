@@ -49,7 +49,7 @@ What this does is communicate to the DAW, that if the plugins input signal is si
 
 Notice how when it's input is silent the plugin can completely shut down, using absolutly no CPU at all.
 
-<img src="Docs/image/SilenceDetection.gif" width="654"/>
+<img src="Docs/images/SilenceDetection.gif" width="654"/>
 
 # Detailed GMPI Specification
 
