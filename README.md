@@ -24,7 +24,7 @@ Other plugin APIs require a lot of confusing 'boilerplate' code just to build a 
 
  See the full source code of a GMPI plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
 
-![image](Docs/plugin_api_complexity.png)
+![image](Docs/plugin_api_complexity.png =786x1037)
 
 # Detailed GMPI Specification
 
