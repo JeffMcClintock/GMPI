@@ -23,7 +23,7 @@ GMPI:
 # A clean, simple audio plugin API.
 
 Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin. Below are examples of
- how much of this overhead is required by other formats.
+ how much of this overhead is required by other formats compared to GMPI.
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
