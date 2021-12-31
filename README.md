@@ -18,8 +18,8 @@ GMPI:
 
 # A clean, simple audio plugin API.
 
-Other plugin APIs require a lot of confusing 'boilerplate' code just to build a simple plugin. Below you can see some examples of
- a simple gain plugin in various format.
+Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin. Below are some examples of
+ how much overhead it takes to write a simple gain plugin in various formats.
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
