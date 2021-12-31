@@ -23,9 +23,9 @@ Other plugin APIs require a lot of confusing 'boilerplate' code just to build a 
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
-GMPI plugins are simply easier to write.  See the full source code of a GMPI plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
+GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
 
-But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation of it's parameter.
+But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation.
 
 # Detailed GMPI Specification
 
