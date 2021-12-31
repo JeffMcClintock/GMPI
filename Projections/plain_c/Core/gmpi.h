@@ -86,7 +86,6 @@ typedef struct GMPI_IUnknownMethods
 static const GMPI_Guid GMPI_IID_UNKNOWN =
 { 0x00000000, 0x0000, 0xC000, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46} };
 
-
 // INTERFACE 'GMPI_IAudioPlugin'
 typedef struct GMPI_IAudioPlugin{
     struct GMPI_IAudioPluginMethods* methods;
@@ -108,7 +107,6 @@ typedef struct GMPI_IAudioPluginMethods
 // {23835D7E-DCEB-4B08-A9E7-B43F8465939E}
 static const GMPI_Guid GMPI_IID_AUDIO_PLUGIN =
 { 0x23835D7E, 0xDCEB, 0x4B08, { 0xA9, 0xE7, 0xB4, 0x3F, 0x84, 0x65, 0x93, 0x9E} };
-
 
 // INTERFACE 'GMPI_IAudioPluginHost'
 typedef struct GMPI_IAudioPluginHost{
@@ -135,7 +133,6 @@ typedef struct GMPI_IAudioPluginHostMethods
 static const GMPI_Guid GMPI_IID_AUDIO_PLUGIN_HOST =
 { 0x87CCD426, 0x71D7, 0x414E, { 0xA9, 0xA6, 0x5A, 0xDC, 0xA8, 0x1C, 0x74, 0x20} };
 
-
 // INTERFACE 'GMPI_IString'
 typedef struct GMPI_IString{
     struct GMPI_IStringMethods* methods;
@@ -143,6 +140,11 @@ typedef struct GMPI_IString{
 
 typedef struct GMPI_IStringMethods
 {
+    // Methods of unknown
+    int32_t (*queryInterface)(GMPI_IUnknown*, const GMPI_Guid* iid, void** returnInterface);
+    int32_t (*addRef)(GMPI_IUnknown*);
+    int32_t (*release)(GMPI_IUnknown*);
+
     int32_t (*setData)(GMPI_IString*, const char* data, int32_t size);
     int32_t (*getSize)(GMPI_IString*);
     const char* (*getData)(GMPI_IString*);
@@ -151,7 +153,6 @@ typedef struct GMPI_IStringMethods
 // {AB8FFB21-44FF-42B7-8885-29431399E7E4}
 static const GMPI_Guid GMPI_IID_STRING =
 { 0xAB8FFB21, 0x44FF, 0x42B7, { 0x88, 0x85, 0x29, 0x43, 0x13, 0x99, 0xE7, 0xE4} };
-
 
 // INTERFACE 'GMPI_IPluginFactory'
 typedef struct GMPI_IPluginFactory{
@@ -166,11 +167,11 @@ typedef struct GMPI_IPluginFactoryMethods
     int32_t (*release)(GMPI_IUnknown*);
 
     int32_t (*createInstance)(GMPI_IPluginFactory*, const char* id, int32_t subtype, void** returnInterface);
+    int32_t (*getPluginInformation)(GMPI_IPluginFactory*, int32_t index, GMPI_IString* returnXml);
 } GMPI_IPluginFactoryMethods;
 
 // {31DC1CD9-6BDF-412A-B758-B2E5CD1D8870}
 static const GMPI_Guid GMPI_IID_PLUGIN_FACTORY =
 { 0x31DC1CD9, 0x6BDF, 0x412A, { 0xB7, 0x58, 0xB2, 0xE5, 0xCD, 0x1D, 0x88, 0x70} };
-
 
 #endif

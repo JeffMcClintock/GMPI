@@ -42,19 +42,19 @@ namespace gmpi
 
 enum class ReturnCode : int32_t
 {
-	Ok = 0,  // Success.
-	Handled = 1,  // Success, no further handing required.
-	Fail = -1, // General failure.
-	Unhandled = -1, // Event not handled.
-	NoSupport = -2, // Interface not supported.
-	Cancel = -3, // Async operation cancelled.
+    Ok        = 0,  // Success.
+    Handled   = 1,  // Success, no further handing required.
+    Fail      = -1, // General failure.
+    Unhandled = -1, // Event not handled.
+    NoSupport = -2, // Interface not supported.
+    Cancel    = -3, // Async operation cancelled.
 };
 
 enum class PluginSubtype : int32_t
 {
-	Audio = 0, // An audio processor object.
-	Editor = 2, // A graphical editor object.
-	Controller = 4, // A controller object.
+    Audio      = 0, // An audio processor object.
+    Editor     = 2, // A graphical editor object.
+    Controller = 4, // A controller object.
 };
 
 enum class PinDirection : int32_t
