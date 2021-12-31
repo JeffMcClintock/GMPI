@@ -19,12 +19,12 @@ GMPI:
 # A clean, simple audio plugin API.
 
 Other plugin APIs require a lot of confusing 'boilerplate' code just to build a simple plugin. Below you can see some examples of
- a simple gain plugin in various format. The GMPI plugin is simply easier to write.
- But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation of it's parameter.
+ a simple gain plugin in various format.
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
-See the full source code of a GMPI plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
+GMPI plugins are simply easier to write.  See the full source code of a GMPI plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
+But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation of it's parameter.
 
 # Detailed GMPI Specification
 
