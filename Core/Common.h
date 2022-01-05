@@ -426,14 +426,7 @@ namespace gmpi_sdk
 		}
 	};
 
-// When building the plugin as part of a lib
-// we need to ensure linker does not discard the plugin from the static-library.
-// This macro provides a dummy 'entry point' into the compilation unit that causes the linker to 
-// retain the code.
-// See also INIT_STATIC_FILE
-#define SE_DECLARE_INIT_STATIC_FILE(filename) void se_static_library_init_##filename(){}
-
-// Handy macros to save typing.
+// macros to save typing the reference counting.
 #define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \
 	gmpi::ReturnCode queryInterface(const gmpi::Guid* iid, void** returnInterface) override{ \
 	*returnInterface = 0; \

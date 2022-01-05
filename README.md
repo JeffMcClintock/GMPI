@@ -14,15 +14,17 @@ GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborati
 GMPI:
 * Supports Instruments, Audio Effects, and MIDI plugins
 * Has a permissive open-source license
-* Provides all API's in both C++ and in plain 'C'.
+* Provides all API's in both C++ and in plain 'C'
+* No fees, contracts or NDAs
 * Has cross-platform support
-* Supports 'extensions'. Anyone can add their own new features. 
-* Supports sample-accurate automation
+* Supports 'extensions'. Anyone can add their own new features
+* Supports sample-accurate automation, tempo and song-position
 * Supports plugin latency compensation
 * Supports 'silent' buffer optimisations
 * Supports musical timing information 
 * Supports polyphonic parameters
 * Thread-safe by default
+* A clean and bloat-free API surface.
 * Plugin meta-data is plain XML
 
 # A clean, simple audio plugin API.
