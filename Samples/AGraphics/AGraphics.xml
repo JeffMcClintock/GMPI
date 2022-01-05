@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<PluginList>
+  <Plugin id="JM AGraphics" name="AGraphics" category="SDK Examples">
+    <GUI graphicsApi="GmpiGui"/>
+  </Plugin>
+</PluginList>
