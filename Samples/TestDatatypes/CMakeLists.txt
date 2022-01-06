@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.15)
 
 #add_subdirectory(tests)
 
-project(Gain)
+project(TestDatatypes)
 
 set(sdk_srcs
 ${sdk_folder}/Common.h

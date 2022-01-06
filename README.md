@@ -1,6 +1,5 @@
-<img src="Docs/images/GMPI_Icon.png" width="128"/>
+<img src="Docs/images/GMPI_Icon_full.png" width="128"/>
 
-# GMPI
 Generalized Music Plugin Interface
 
 In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Software Instruments and Effects.
@@ -14,7 +13,7 @@ GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborati
 GMPI:
 * Supports Instruments, Audio Effects, and MIDI plugins
 * Has a permissive open-source license
-* Provides all API's in both C++ and in plain 'C'
+* Provides all APIs in portable 'C'
 * No fees, contracts or NDAs
 * Has cross-platform support
 * Supports 'extensions'. Anyone can add their own new features
@@ -23,24 +22,25 @@ GMPI:
 * Supports 'silent' buffer optimisations
 * Supports musical timing information 
 * Supports polyphonic parameters
+* Supports MIDI 1.0 and MIDI 2.0 plugins
 * Thread-safe by default
 * A clean and bloat-free API surface.
 * Plugin meta-data is plain XML
 
 # A clean, simple audio plugin API.
 
-Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin. Below are plugin source-code examples which roughly illustrate
- how much overhead is required by other formats compared to GMPI.
+Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin. Below are source-code examples which roughly illustrate
+ how much overhead is required by other formats compared to GMPI. The plugins are all simple gain plugins. 
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
 GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
 
 But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation. This is because GMPI provides
-*sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. Yet you can easily override the defaults if you need to.
+*sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. And you can easily override the defaults when you need to.
 
 # Metadata in XML
-Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future-proof than the rigid fixed 'descriptors'
+Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future proof than the rigid fixed 'descriptors'
 of other plugin APIs, because you can add new features or flags without breaking any existing plugins or DAWs. Here's the decription of the example gain plugin...
 
 ```XML
@@ -55,13 +55,19 @@ of other plugin APIs, because you can add new features or flags without breaking
     </Audio>
   </Plugin>
 ```
-Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as in this example, the manufacturer and plugins names. Then the XML lists the plugins parameters, and then it's I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections, and any number of MIDI connections. The third pin provides access to the parameter.
+Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as in this example, the manufacturer and plugins names. Then the XML lists the plugins parameters, and then its I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections, and any number of MIDI connections. The third pin provides access to the parameter.
 
+# Thread safe by default
+
+With GMPI, all Processor and Editor methods are thread-safe. i.e. the DAW does not ever call GUI components from the real-time thread, or vica versa.
+GMPI plugins by default require no locks (e.g. `std::mutex`) and require no atomic values (e.g. `std::atomic`) when communicating between the various components.
+This is because the GMPI framework includes a wait-free, lock-free message-passing mechanism. This feature alone eliminates a large
+class of common bugs which are found in audio plugins.
 
 # Silence Detection
 
 Silence flags are a feature to allow plugins to communicate that an audio signal is silent.
-The advantage to a plugin is that when it's input signal is silent - it may not have to do any work. 
+The advantage to a plugin is that when its input signal is silent - it may not have to do any work. 
 
 Adding only a few lines of code to our example plugin will enable the silence-flag feature.
 
@@ -72,72 +78,15 @@ Adding only a few lines of code to our example plugin will enable the silence-fl
 		pinOutput.setStreaming(pinInput.isStreaming());
 	}
 ```
-What this does is communicate to the DAW, that if the plugins input signal is silent - then so is it's output.
+What this does is communicate to the DAW, that if the plugins input signal is silent - then so is its output.
 
-Notice how when it's input is silent the plugin can choose to completely shut down, using absolutely no CPU at all (see below).
+Notice how when its input is silent the plugin can choose to completely shut down, using absolutely no CPU at all (see below).
 This is just one example of how GMPI takes away the drudgery for you by providing *sensible default behaviour* out of the box (which can still be customized anytime you need to).
 
-<img src="Docs/images/SilenceDetection.gif" width="654"/>
-
-# Thread safe by default
-
-GMPI plugins by default require no locks (e.g. std::mutex) and require no atomic values (e.g. std::atomic) when communicating between the various components.
-This is because the GMPI framework provides a wait-free, lock-free message-passing mechanism as part of the framework. This feature alone eliminates a large
-class of common bugs which are found in audio plugins.
-
-Parameter automation and notification to/from the DAW is handled automatically by the framework. i.e. the audio processor class will be notified of parameter updates only on the real-time thread, and the Editor/GUI will be notified only on the 'message' (foreground) thread.
-
-How does it work?
-
-GMPI plugins communicate via 'pins'. A pin is just a class that contains parameter value and some methods to make it easy communicate with the DAW and the GUI.
-A pin can be hooked up to a parameter, and/or to the plugins Editor (GUI) (You specify the connection in the plugins XML).
-
-Let's take the example of a plugin with a VU Meter (volume meter). In GMPI the value of the meter would be held by a pin. e.g. 
-
-```C
-// This is the real-time component
-class MyPlugin: public AudioPlugin
-{
-	FloatOutPin pinVuOut;
-```
-
-and to pass the VU Meter value to a parameter, or to the GUI, you assign a value to the pin.
-
-```C
-// This is the real-time component
-void MyPlugin::OnMeterUpdate(float level)
-{
-	pinVuOut = level; // that's it from the real-time side. The framework handles the rest.
-```
-
-In the Editor (GUI) of you plugin, you would likewise have a similar pin to *receive** the value. e.g.
-
-```C
-// This is the GUI component
-void MyPluginEditor : public GuiBase
-{
-	FloatGuiPin pinMeterValueIn; // pin to hold the parameter value.
-	
-	MyPluginEditor::MyPluginEditor()
-	{
-		// You can assign an update-handler to the pin
-		initializePin(0, pinMeterValueIn, static_cast<GuiBaseMemberPtr>( &MyPluginEditor::onMeterValueChanged ) );
-
-```
-
-To read the pin value in the GUI:
-
-```C
-// This is the GUI component
-void MyPluginEditor::onMeterValueChanged()
-{
-	// recieve a value from the real-time thread.
-	float VuLevel = pinMeterValueIn;	// hands-off, no mutex.. no atomic.. no trash talk on the black-top.
-	
-	// now draw the update on the GUI...
-```
-There's not much more to it, the GMPI framework will even handle the notification to the DAW that a parameter changed.
+<img src="Docs/images/SilenceDetection.gif" width="500"/>
 
 # Detailed GMPI Specification
 
-[detailed-specs](Docs/GMPI_Specs.md)
+[detailed GMPI specs](Docs/GMPI_Specs.md)
+
+[full working group discussion](https://www.freelists.org/archive/gmpi)
