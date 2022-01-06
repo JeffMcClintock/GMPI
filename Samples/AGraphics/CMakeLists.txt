@@ -1,19 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
 project(AGraphics)
 # helpful post-build-step: copy "$(OutDir)$(TargetName)$(TargetExt)" "C:\Program Files\Common Files\SynthEdit\modules\"
-set(sdk_folder
-../../se_sdk3
-)
+
 set(sdk_srcs
-${sdk_folder}/mp_sdk_common.h
-${sdk_folder}/mp_sdk_common.cpp
-${sdk_folder}/mp_sdk_audio.h
-${sdk_folder}/mp_sdk_audio.cpp
+${sdk_folder}/Common.h
+${sdk_folder}/Common.cpp
 )
 set(srcs
-module.rc
 AGraphicsGui.cpp
-AGraphics.xml
 )
 
 include_directories(
@@ -21,7 +15,6 @@ ${sdk_folder}
 )
 
 source_group(se_sdk FILES ${sdk_srcs})
-source_group("Resource Files" FILES module.rc ${PROJECT_NAME}.xml)
 
 include (GenerateExportHeader)
 

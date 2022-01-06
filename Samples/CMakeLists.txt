@@ -25,3 +25,4 @@ if (MSVC)
 endif()
 
 add_subdirectory(Gain)
+add_subdirectory(AGraphics)
