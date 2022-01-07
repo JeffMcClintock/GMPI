@@ -13,7 +13,7 @@ GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborati
 GMPI:
 * Supports Instruments, Audio Effects, and MIDI plugins
 * Has a permissive open-source license
-* Provides all API's in both C++ and in plain 'C'
+* Provides all APIs in both C++ and in plain 'C'
 * No fees, contracts or NDAs
 * Has cross-platform support
 * Supports 'extensions'. Anyone can add their own new features
@@ -39,7 +39,7 @@ But don't be fooled by the simplicity, even this basic GMPI plugin supports samp
 *sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. And you can easily override the defaults when you need to.
 
 # Metadata in XML
-Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future-proof than the rigid fixed 'descriptors'
+Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future proof than the rigid fixed 'descriptors'
 of other plugin APIs, because you can add new features or flags without breaking any existing plugins or DAWs. Here's the decription of the example gain plugin...
 
 ```XML
@@ -54,7 +54,7 @@ of other plugin APIs, because you can add new features or flags without breaking
     </Audio>
   </Plugin>
 ```
-Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as in this example, the manufacturer and plugins names. Then the XML lists the plugins parameters, and then it's I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections, and any number of MIDI connections. The third pin provides access to the parameter.
+Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as in this example, the manufacturer and plugins names. Then the XML lists the plugins parameters, and then its I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections, and any number of MIDI connections. The third pin provides access to the parameter.
 
 # Thread safe by default
 
@@ -66,7 +66,7 @@ class of common bugs which are found in audio plugins.
 # Silence Detection
 
 Silence flags are a feature to allow plugins to communicate that an audio signal is silent.
-The advantage to a plugin is that when it's input signal is silent - it may not have to do any work. 
+The advantage to a plugin is that when its input signal is silent - it may not have to do any work. 
 
 Adding only a few lines of code to our example plugin will enable the silence-flag feature.
 
@@ -77,9 +77,9 @@ Adding only a few lines of code to our example plugin will enable the silence-fl
 		pinOutput.setStreaming(pinInput.isStreaming());
 	}
 ```
-What this does is communicate to the DAW, that if the plugins input signal is silent - then so is it's output.
+What this does is communicate to the DAW, that if the plugins input signal is silent - then so is its output.
 
-Notice how when it's input is silent the plugin can choose to completely shut down, using absolutely no CPU at all (see below).
+Notice how when its input is silent the plugin can choose to completely shut down, using absolutely no CPU at all (see below).
 This is just one example of how GMPI takes away the drudgery for you by providing *sensible default behaviour* out of the box (which can still be customized anytime you need to).
 
 <img src="Docs/images/SilenceDetection.gif" width="500"/>
