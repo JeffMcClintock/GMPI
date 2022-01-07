@@ -1,6 +1,5 @@
-<img src="Docs/images/GMPI_Icon.png" width="128"/>
+<img src="Docs/images/GMPI_Icon_full.png" width="128"/>
 
-# GMPI
 Generalized Music Plugin Interface
 
 In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Software Instruments and Effects.
