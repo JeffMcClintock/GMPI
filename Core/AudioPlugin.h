@@ -425,7 +425,7 @@ public:
 	// overridables
 	virtual void onGraphStart();	// called on very first sample.
 	virtual void onSetPins() {}  // one or more pins_ updated.  Check pin update flags to determine which ones.
-	virtual void onMidiMessage(int pin, const unsigned char* midiMessage, int size) {}
+	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
 	gmpi_sdk::mp_shared_ptr<gmpi::IAudioPluginHost> host;
