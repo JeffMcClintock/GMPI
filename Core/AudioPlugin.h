@@ -103,7 +103,7 @@ public:
 	virtual void sendFirstUpdate() = 0;
 
 protected:
-	void sendPinUpdate( int32_t rawSize, void* rawData, int32_t blockPosition = - 1 );
+	void sendPinUpdate( int32_t rawSize, const void* rawData, int32_t blockPosition = - 1 );
 	int id_ = -1;
 	class AudioPlugin* plugin_ = {};
 	MpBaseMemberPtr eventHandler_ = {};
@@ -172,7 +172,7 @@ public:
 	{
 		return gmpi_sdk::variableRawSize<T>(value_);
 	}
-	virtual void* rawData()
+	virtual const void* rawData()
 	{
 		return gmpi_sdk::variableRawData<T>(value_);
 	}
@@ -349,26 +349,21 @@ public:
 	}
 };
 
-typedef MpControlPin<int, static_cast<int>(gmpi::PinDirection::In)>			IntInPin;
+typedef MpControlPin<int, static_cast<int>(gmpi::PinDirection::In)>				IntInPin;
 typedef MpControlPin<int, static_cast<int>(gmpi::PinDirection::Out)>			IntOutPin;
-typedef MpControlPin<float, static_cast<int>(gmpi::PinDirection::In)>		FloatInPin;
-typedef MpControlPin<float, static_cast<int>(gmpi::PinDirection::Out)>		FloatOutPin;
+typedef MpControlPin<float, static_cast<int>(gmpi::PinDirection::In)>			FloatInPin;
+typedef MpControlPin<float, static_cast<int>(gmpi::PinDirection::Out)>			FloatOutPin;
 typedef MpControlPin<gmpi::Blob, static_cast<int>(gmpi::PinDirection::In)>		BlobInPin;
 typedef MpControlPin<gmpi::Blob, static_cast<int>(gmpi::PinDirection::Out)>		BlobOutPin;
-typedef MpControlPin<std::wstring, static_cast<int>(gmpi::PinDirection::Out)>StringOutPin;
+typedef MpControlPin<std::string, static_cast<int>(gmpi::PinDirection::In)>		StringInPin;
+typedef MpControlPin<std::string, static_cast<int>(gmpi::PinDirection::Out)>	StringOutPin;
 
 typedef MpControlPin<bool, static_cast<int>(gmpi::PinDirection::In)>			BoolInPin;
-typedef MpControlPin<bool, static_cast<int>(gmpi::PinDirection::Out)>		BoolOutPin;
+typedef MpControlPin<bool, static_cast<int>(gmpi::PinDirection::Out)>			BoolOutPin;
 
 // enum (List) pin based on Int Pin
 typedef MpControlPin<int, static_cast<int>(gmpi::PinDirection::In), static_cast<int>(gmpi::PinDatatype::Enum)>	EnumInPin;
 typedef MpControlPin<int, static_cast<int>(gmpi::PinDirection::Out), static_cast<int>(gmpi::PinDatatype::Enum)>	EnumOutPin;
-
-class StringInPin : public MpControlPin<std::wstring, static_cast<int>(gmpi::PinDirection::In)>
-{
-public:
-	explicit operator std::string(); // convert to UTF8 encoded.
-};
 
 class MidiInPin : public MpPinBase
 {

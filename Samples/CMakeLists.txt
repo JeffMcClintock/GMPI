@@ -25,4 +25,5 @@ if (MSVC)
 endif()
 
 add_subdirectory(Gain)
-add_subdirectory(AGraphics)
+add_subdirectory(TestDatatypes)
+# TODO add_subdirectory(AGraphics)

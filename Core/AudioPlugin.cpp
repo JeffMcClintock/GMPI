@@ -21,8 +21,6 @@
 #endif
 
 #include <assert.h>
-#include <codecvt>
-#include <locale>
 #include "AudioPlugin.h"
 
 using namespace gmpi;
@@ -282,7 +280,7 @@ namespace gmpi
 	}
 
 	// Pins
-	void MpPinBase::sendPinUpdate(int32_t rawSize, void* rawData, int32_t blockPosition)
+	void MpPinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockPosition)
 	{
 		assert(plugin_ != nullptr && "err: Please don't forgot to call initializePin(pinWhatever) in contructor.");
 		assert(plugin_->debugIsOpen_ && "err: Please don't update output pins in constructor or open().");
@@ -298,12 +296,6 @@ namespace gmpi
 	MpBaseMemberPtr MidiInPin::getDefaultEventHandler()
 	{
 		return &AudioPlugin::midiHelper;
-	}
-
-	StringInPin::operator std::string()
-	{
-		std::wstring_convert<std::codecvt_utf8<wchar_t> > convert;
-		return convert.to_bytes(getValue());
 	}
 
 	void AudioPlugin::initializePin(int PinId, MpPinBase& pin, MpBaseMemberPtr handler)

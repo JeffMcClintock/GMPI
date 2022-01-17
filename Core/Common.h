@@ -243,7 +243,7 @@ namespace gmpi_sdk
 		{
 			enum { result = static_cast<int>(gmpi::PinDatatype::Float32) };
 		};
-		template<int N> struct PinDataTypeTraits<std::wstring, N>
+		template<int N> struct PinDataTypeTraits<std::string, N>
 		{
 			enum { result = static_cast<int>(gmpi::PinDatatype::String) };
 		};
@@ -265,9 +265,9 @@ namespace gmpi_sdk
 	}
 
 	template<>
-	inline int variableRawSize<std::wstring>(const std::wstring& value)
+	inline int variableRawSize<std::string>(const std::string& value)
 	{
-		return (int)sizeof(wchar_t) * (int)value.length();
+		return static_cast<int>(value.size());
 	}
 
 	template<>
@@ -278,21 +278,21 @@ namespace gmpi_sdk
 
 	// Serialize variable's value as bytes.
 	template <typename T>
-	inline void* variableRawData(const T& value)
+	inline const void* variableRawData(const T& value)
 	{
-		return (void*)&value;
+		return reinterpret_cast<const void*>(&value);
 	}
 
 	template<>
-	inline void* variableRawData<std::wstring>(const std::wstring& value)
+	inline const void* variableRawData<std::string>(const std::string& value)
 	{
-		return (void*)value.data();
+		return reinterpret_cast<const void*>(value.data());
 	}
 
 	template<>
-	inline void* variableRawData<gmpi::Blob>(const gmpi::Blob& value)
+	inline const void* variableRawData<gmpi::Blob>(const gmpi::Blob& value)
 	{
-		return (void*)value.data();
+		return reinterpret_cast<const void*>(value.data());
 	}
 
 	// De-serialize type.
@@ -325,9 +325,9 @@ namespace gmpi_sdk
 	}
 
 	template <>
-	inline void VariableFromRaw<std::wstring>(int size, const void* data, std::wstring& returnValue)
+	inline void VariableFromRaw<std::string>(int size, const void* data, std::string& returnValue)
 	{
-		returnValue.assign((wchar_t*)data, size / sizeof(wchar_t));
+		returnValue.assign((const char*)data, size);
 	}
 
 	// Helper for managing lifetime of reference-counted interface pointer
