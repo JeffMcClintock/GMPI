@@ -47,7 +47,7 @@ add_custom_command(TARGET ${PROJECT_NAME}
     # Run after all other rules within the target have been executed
     POST_BUILD
     COMMAND copy "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\"
-    COMMENT "This command will be executed after building bar"
+    COMMENT "Copy to system plugin folder"
     VERBATIM
 )
 endif()
