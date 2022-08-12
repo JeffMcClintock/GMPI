@@ -30,7 +30,7 @@ struct classToGuid
 {
 	inline static const Guid* guid(IAudioPluginHost*)
 	{
-		return &gmpi::IID_AUDIO_PLUGIN_HOST;
+		return &gmpi::IAudioPluginHost::guid;
 	}
 };
 
@@ -44,12 +44,13 @@ INTERFACE* as(gmpi::IUnknown* com_object)
 
 namespace gmpi
 {
-	ReturnCode AudioPlugin::open()
+	ReturnCode AudioPlugin::open(IUnknown* phost)
 	{
 #if defined(_DEBUG)
 		debugIsOpen_ = true;
 #endif
 
+		host = as<gmpi::IAudioPluginHost>(phost);
 		return ReturnCode::Ok;
 	}
 
@@ -236,12 +237,6 @@ namespace gmpi
 		, canSleepManualOverride_(SLEEP_AUTO)
 		, eventsComplete_(true)
 	{
-	}
-
-	ReturnCode AudioPlugin::setHost(gmpi::IUnknown* phost)
-	{
-		host = as<gmpi::IAudioPluginHost>(phost);
-		return ReturnCode::Ok;
 	}
 
 	// specialised for audio pins_

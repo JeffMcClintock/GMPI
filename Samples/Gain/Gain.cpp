@@ -15,12 +15,12 @@ struct Gain final : public AudioPlugin
 		initializePin(pinGain);
 	}
 
-	ReturnCode open() override
+	ReturnCode open(IUnknown* phost) override
 	{
 		// specify which member to process audio.
 		setSubProcess(&Gain::subProcess);
 
-		return AudioPlugin::open();
+		return AudioPlugin::open(phost);
 	}
 
 	void subProcess(int sampleFrames)

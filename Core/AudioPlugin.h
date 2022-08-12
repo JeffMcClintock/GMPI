@@ -1,3 +1,5 @@
+#pragma once
+
 /*
   GMPI - Generalized Music Plugin Interface specification.
   Copyright 2007-2022 Jeff McClintock.
@@ -14,7 +16,6 @@
   ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
-#pragma once
 
 #include <map>
 #include <assert.h>
@@ -22,7 +23,7 @@
 
 namespace gmpi
 {
-	
+
 enum class EventType : int32_t
 {
     PinSet            = 100, // A parameter has changed value.
@@ -47,16 +48,14 @@ struct Event
 // INTERFACE 'IAudioPlugin'
 struct DECLSPEC_NOVTABLE IAudioPlugin : public IUnknown
 {
-    virtual ReturnCode setHost(IUnknown* host) = 0;
-    virtual ReturnCode open() = 0;
+    virtual ReturnCode open(IUnknown* host) = 0;
     virtual ReturnCode setBuffer(int32_t pinId, float* buffer) = 0;
     virtual void process(int32_t count, const Event* events) = 0;
+
+    // {23835D7E-DCEB-4B08-A9E7-B43F8465939E}
+    inline static const Guid guid =
+    { 0x23835D7E, 0xDCEB, 0x4B08, { 0xA9, 0xE7, 0xB4, 0x3F, 0x84, 0x65, 0x93, 0x9E} };
 };
-
-// {23835D7E-DCEB-4B08-A9E7-B43F8465939E}
-static const Guid IID_AUDIO_PLUGIN =
-{ 0x23835D7E, 0xDCEB, 0x4B08, { 0xA9, 0xE7, 0xB4, 0x3F, 0x84, 0x65, 0x93, 0x9E} };
-
 
 // INTERFACE 'IAudioPluginHost'
 struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
@@ -68,12 +67,11 @@ struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
     virtual int32_t getBlockSize() = 0;
     virtual int32_t getSampleRate() = 0;
     virtual int32_t getHandle() = 0;
+
+    // {87CCD426-71D7-414E-A9A6-5ADCA81C7420}
+    inline static const Guid guid =
+    { 0x87CCD426, 0x71D7, 0x414E, { 0xA9, 0xA6, 0x5A, 0xDC, 0xA8, 0x1C, 0x74, 0x20} };
 };
-
-// {87CCD426-71D7-414E-A9A6-5ADCA81C7420}
-static const Guid IID_AUDIO_PLUGIN_HOST =
-{ 0x87CCD426, 0x71D7, 0x414E, { 0xA9, 0xA6, 0x5A, 0xDC, 0xA8, 0x1C, 0x74, 0x20} };
-
 
 // Pointer to sound processing member function.
 class AudioPlugin;
@@ -412,8 +410,7 @@ public:
 	virtual ~AudioPlugin() {}
 
 	// IAudioPlugin methods
-	gmpi::ReturnCode setHost(IUnknown* host) override;
-	gmpi::ReturnCode open() override;
+	gmpi::ReturnCode open(IUnknown* phost) override;
 	gmpi::ReturnCode setBuffer(int32_t pinId, float* buffer) override;
 	void process(int32_t count, const gmpi::Event* events) override;
 
@@ -489,7 +486,7 @@ protected:
 	void postProcessEvent( const gmpi::Event* e );
 
 	// identification and reference countin
-	GMPI_QUERYINTERFACE(gmpi::IID_AUDIO_PLUGIN, IAudioPlugin);
+	GMPI_QUERYINTERFACE(gmpi::IAudioPlugin::guid, IAudioPlugin);
 	GMPI_REFCOUNT;
 
 protected:

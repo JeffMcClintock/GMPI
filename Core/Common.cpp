@@ -79,7 +79,7 @@ extern "C"
 ReturnCode MP_GetFactory( void** returnInterface )
 {
 	// call queryInterface() to keep refcounting in sync
-	return Factory()->queryInterface( &gmpi::IID_UNKNOWN, returnInterface );
+	return Factory()->queryInterface( &gmpi::IUnknown::guid, returnInterface );
 }
 
 namespace gmpi
