@@ -6,48 +6,39 @@
 
 enum GMPI_ReturnCode
 {
-    GMPI_OK         = 0,  // Success.
-    GMPI_HANDLED    = 1,  // Success, no further handing required.
-    GMPI_FAIL       = -1, // General failure.
-    GMPI_UNHANDLED  = -1, // Event not handled.
-    GMPI_NO_SUPPORT = -2, // Interface not supported.
-    GMPI_CANCEL     = -3, // Async operation cancelled.
-};
-
-enum GMPI_EventType
-{
-    GMPI_PIN_SET             = 100, // A parameter has changed value.
-    GMPI_PIN_STREAMING_START = 101, // An input is not silent.
-    GMPI_PIN_STREAMING_STOP  = 102, // An input is silent.
-    GMPI_MIDI                = 103, // A MIDI message.
-    GMPI_GRAPH_START         = 104, // Plugin is about to process the very first sample.
+    GMPI_RETURN_CODE_OK         = 0,  // Success.
+    GMPI_RETURN_CODE_HANDLED    = 1,  // Success, no further handing required.
+    GMPI_RETURN_CODE_FAIL       = -1, // General failure.
+    GMPI_RETURN_CODE_UNHANDLED  = -1, // Event not handled.
+    GMPI_RETURN_CODE_NO_SUPPORT = -2, // Interface not supported.
+    GMPI_RETURN_CODE_CANCEL     = -3, // Async operation cancelled.
 };
 
 enum GMPI_PluginSubtype
 {
-    GMPI_AUDIO      = 0, // An audio processor object.
-    GMPI_EDITOR     = 2, // A graphical editor object.
-    GMPI_CONTROLLER = 4, // A controller object.
+    GMPI_PLUGIN_SUBTYPE_AUDIO      = 0, // An audio processor object.
+    GMPI_PLUGIN_SUBTYPE_EDITOR     = 2, // A graphical editor object.
+    GMPI_PLUGIN_SUBTYPE_CONTROLLER = 4, // A controller object.
 };
 
 enum GMPI_PinDirection
 {
-    GMPI_IN,
-    GMPI_OUT,
+    GMPI_PIN_DIRECTION_IN,
+    GMPI_PIN_DIRECTION_OUT,
 };
 
 enum GMPI_PinDatatype
 {
-    GMPI_ENUM,
-    GMPI_STRING,
-    GMPI_MIDI,
-    GMPI_FLOAT64,
-    GMPI_BOOL,
-    GMPI_AUDIO,
-    GMPI_FLOAT32,
-    GMPI_INT32 = 8,
-    GMPI_INT64,
-    GMPI_BLOB,
+    GMPI_PIN_DATATYPE_ENUM,
+    GMPI_PIN_DATATYPE_STRING,
+    GMPI_PIN_DATATYPE_MIDI,
+    GMPI_PIN_DATATYPE_FLOAT64,
+    GMPI_PIN_DATATYPE_BOOL,
+    GMPI_PIN_DATATYPE_AUDIO,
+    GMPI_PIN_DATATYPE_FLOAT32,
+    GMPI_PIN_DATATYPE_INT32 = 8,
+    GMPI_PIN_DATATYPE_INT64,
+    GMPI_PIN_DATATYPE_BLOB,
 };
 
 typedef struct GMPI_Guid
@@ -57,18 +48,6 @@ typedef struct GMPI_Guid
     uint16_t data3;
     uint8_t data4[8];
 } GMPI_Guid;
-
-typedef struct GMPI_Event
-{
-    int32_t timeDelta;
-    int32_t eventType;
-    int32_t parm1;
-    int32_t parm2;
-    int32_t parm3;
-    int32_t parm4;
-    char* extraData;
-    struct GMPI_Event* next;
-} GMPI_Event;
 
 // INTERFACE 'GMPI_IUnknown'
 typedef struct GMPI_IUnknown{
@@ -85,53 +64,6 @@ typedef struct GMPI_IUnknownMethods
 // {00000000-0000-C000-0000-000000000046}
 static const GMPI_Guid GMPI_IID_UNKNOWN =
 { 0x00000000, 0x0000, 0xC000, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x46} };
-
-// INTERFACE 'GMPI_IAudioPlugin'
-typedef struct GMPI_IAudioPlugin{
-    struct GMPI_IAudioPluginMethods* methods;
-} GMPI_IAudioPlugin;
-
-typedef struct GMPI_IAudioPluginMethods
-{
-    // Methods of unknown
-    int32_t (*queryInterface)(GMPI_IUnknown*, const GMPI_Guid* iid, void** returnInterface);
-    int32_t (*addRef)(GMPI_IUnknown*);
-    int32_t (*release)(GMPI_IUnknown*);
-
-    int32_t (*setHost)(GMPI_IAudioPlugin*, GMPI_IUnknown* host);
-    int32_t (*open)(GMPI_IAudioPlugin*);
-    int32_t (*setBuffer)(GMPI_IAudioPlugin*, int32_t pinId, float* buffer);
-    void (*process)(GMPI_IAudioPlugin*, int32_t count, const GMPI_Event* events);
-} GMPI_IAudioPluginMethods;
-
-// {23835D7E-DCEB-4B08-A9E7-B43F8465939E}
-static const GMPI_Guid GMPI_IID_AUDIO_PLUGIN =
-{ 0x23835D7E, 0xDCEB, 0x4B08, { 0xA9, 0xE7, 0xB4, 0x3F, 0x84, 0x65, 0x93, 0x9E} };
-
-// INTERFACE 'GMPI_IAudioPluginHost'
-typedef struct GMPI_IAudioPluginHost{
-    struct GMPI_IAudioPluginHostMethods* methods;
-} GMPI_IAudioPluginHost;
-
-typedef struct GMPI_IAudioPluginHostMethods
-{
-    // Methods of unknown
-    int32_t (*queryInterface)(GMPI_IUnknown*, const GMPI_Guid* iid, void** returnInterface);
-    int32_t (*addRef)(GMPI_IUnknown*);
-    int32_t (*release)(GMPI_IUnknown*);
-
-    int32_t (*setPin)(GMPI_IAudioPluginHost*, int32_t timestamp, int32_t pinId, int32_t size, const void* data);
-    int32_t (*setPinStreaming)(GMPI_IAudioPluginHost*, int32_t timestamp, int32_t pinId, bool isStreaming);
-    int32_t (*setLatency)(GMPI_IAudioPluginHost*, int32_t latency);
-    int32_t (*sleep)(GMPI_IAudioPluginHost*);
-    int32_t (*getBlockSize)(GMPI_IAudioPluginHost*);
-    int32_t (*getSampleRate)(GMPI_IAudioPluginHost*);
-    int32_t (*getHandle)(GMPI_IAudioPluginHost*);
-} GMPI_IAudioPluginHostMethods;
-
-// {87CCD426-71D7-414E-A9A6-5ADCA81C7420}
-static const GMPI_Guid GMPI_IID_AUDIO_PLUGIN_HOST =
-{ 0x87CCD426, 0x71D7, 0x414E, { 0xA9, 0xA6, 0x5A, 0xDC, 0xA8, 0x1C, 0x74, 0x20} };
 
 // INTERFACE 'GMPI_IString'
 typedef struct GMPI_IString{

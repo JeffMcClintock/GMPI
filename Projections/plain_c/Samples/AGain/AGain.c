@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include "gmpi.h"
+#include "gmpi_audio.h"
 
 typedef struct
 {
@@ -47,21 +47,14 @@ void CGain_Process_Events(CGain* ths, const GMPI_Event* events)
 	{
 		switch (e->eventType)
 		{
-		case GMPI_GRAPH_START:
+		case GMPI_EVENT_TYPE_GRAPH_START:
 			CGain_OnGraphStart(ths);
 			break;
 		}
 	}
 }
 
-int32_t CGain_open(GMPI_IAudioPlugin* ths)
-{
-	CGain* plugin = (CGain*)ths;
-
-	return GMPI_OK;
-}
-
-int32_t CGain_SetHost(GMPI_IAudioPlugin* ths, GMPI_IUnknown* host)
+int32_t CGain_open(GMPI_IAudioPlugin* ths, GMPI_IUnknown* host)
 {
 	CGain* plugin = (CGain*)ths;
 
@@ -87,7 +80,7 @@ int32_t CGain_Setbuffer(GMPI_IAudioPlugin* ths, int32_t pin, float* buffer)
 		plugin->out2 = buffer;
 		break;
 	}
-	return GMPI_OK;
+	return GMPI_RETURN_CODE_OK;
 }
 
 int32_t CGain_QueryInterface(GMPI_IUnknown* u, const GMPI_Guid* guid, void** ret)
@@ -101,7 +94,7 @@ int32_t CGain_QueryInterface(GMPI_IUnknown* u, const GMPI_Guid* guid, void** ret
 		u->methods->addRef(u);
 	}
 
-	return GMPI_OK;
+	return GMPI_RETURN_CODE_OK;
 }
 
 int32_t CGain_AddRef(GMPI_IUnknown* u)
@@ -128,7 +121,6 @@ static const GMPI_IAudioPluginMethods CGainMethods =
 	CGain_AddRef,
 	CGain_Release,
 
-	CGain_SetHost,
 	CGain_open,
 	CGain_Setbuffer,
 	CGain_Process

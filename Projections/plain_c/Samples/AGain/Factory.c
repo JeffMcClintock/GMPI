@@ -10,11 +10,11 @@ typedef struct
 
 int32_t Factory_createInstance(GMPI_IPluginFactory* ths, const char* id, int32_t subtype, void** returnInterface)
 {
-	if (subtype != GMPI_AUDIO)
-		return GMPI_NO_SUPPORT;
+	if (subtype != GMPI_PLUGIN_SUBTYPE_AUDIO)
+		return GMPI_RETURN_CODE_NO_SUPPORT;
 
 	*returnInterface = createCGain();
-	return GMPI_OK;
+	return GMPI_RETURN_CODE_OK;
 }
 
 int32_t Factory_queryInterface(GMPI_IUnknown* u, const GMPI_Guid* guid, void** ret)
@@ -26,10 +26,10 @@ int32_t Factory_queryInterface(GMPI_IUnknown* u, const GMPI_Guid* guid, void** r
 	{
 		*ret = u;
 		u->methods->addRef(u);
-		return GMPI_OK;
+		return GMPI_RETURN_CODE_OK;
 	}
 
-	return GMPI_NO_SUPPORT;
+	return GMPI_RETURN_CODE_NO_SUPPORT;
 }
 
 int32_t Factory_addRef(GMPI_IUnknown* u)

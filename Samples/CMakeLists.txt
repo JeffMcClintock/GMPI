@@ -26,4 +26,5 @@ endif()
 
 add_subdirectory(Gain)
 add_subdirectory(TestDatatypes)
+add_subdirectory(../Projections/plain_c/Samples/AGain)
 # TODO add_subdirectory(AGraphics)
