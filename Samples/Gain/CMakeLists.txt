@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.15)
 
-#add_subdirectory(tests)
-
 project(Gain)
+
+message(STATUS "foo include dir: ${sdk_folder}")
 
 set(sdk_srcs
 ${sdk_folder}/Common.h

@@ -18,8 +18,22 @@
 */
 
 #include <map>
-#include <assert.h>
 #include "Common.h"
+
+// Platform specific definitions.
+#if defined __BORLANDC__
+#pragma -a8
+#elif defined(_WIN32) || defined(__FLAT__) || defined (CBUILDER)
+#pragma pack(push,8)
+#endif
+
+#ifndef DECLSPEC_NOVTABLE
+#if defined(__cplusplus)
+#define DECLSPEC_NOVTABLE   __declspec(novtable)
+#else
+#define DECLSPEC_NOVTABLE
+#endif
+#endif
 
 namespace gmpi
 {
@@ -72,6 +86,14 @@ struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
     inline static const Guid guid =
     { 0x87CCD426, 0x71D7, 0x414E, { 0xA9, 0xA6, 0x5A, 0xDC, 0xA8, 0x1C, 0x74, 0x20} };
 };
+
+
+// Platform specific definitions.
+#if defined __BORLANDC__
+#pragma -a-
+#elif defined(_WIN32) || defined(__FLAT__) || defined (CBUILDER)
+#pragma pack(pop)
+#endif
 
 // Pointer to sound processing member function.
 class AudioPlugin;

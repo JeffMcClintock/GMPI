@@ -1,7 +1,5 @@
 cmake_minimum_required(VERSION 3.15)
 
-#add_subdirectory(tests)
-
 project(AGain)
 
 set(sdk_srcs

@@ -1,8 +1,6 @@
-#ifndef GMPI_AUDIO_H_INCLUDED
-#define GMPI_AUDIO_H_INCLUDED
+#ifndef GMPI_AUDIO_API_H_INCLUDED
+#define GMPI_AUDIO_API_H_INCLUDED
 
-#include <stdint.h>
-#include <stdbool.h>
 #include "gmpi.h"
 
 enum GMPI_EventType

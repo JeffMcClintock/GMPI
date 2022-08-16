@@ -121,6 +121,8 @@ struct DECLSPEC_NOVTABLE IPluginFactory : public IUnknown
 };
 } // namespace
 
+
+// Platform specific definitions.
 #if defined __BORLANDC__
 #pragma -a-
 #elif defined(_WIN32) || defined(__FLAT__) || defined (CBUILDER)
@@ -449,9 +451,4 @@ namespace gmpi_sdk
 	int32_t release() override {return 1;}
 }
 
-// back to default structure alignment.
-#if defined(_WIN32) || defined(__FLAT__)
-#pragma pack(pop)
-#elif defined __BORLANDC__
-#pragma -a-
-#endif
+
