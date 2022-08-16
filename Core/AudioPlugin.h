@@ -422,6 +422,7 @@ public:
 	virtual void send(const unsigned char* data, int size, int blockPosition = -1);
 };
 
+class TempBlockPositionSetter;
 
 class AudioPlugin : public gmpi::IAudioPlugin
 {
@@ -442,7 +443,7 @@ public:
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
-	gmpi_sdk::mp_shared_ptr<gmpi::IAudioPluginHost> host;
+	gmpi_sdk::shared_ptr<gmpi::IAudioPluginHost> host;
 
 	// Communication with pins.
 	int getBlockPosition() const

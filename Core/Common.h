@@ -152,17 +152,17 @@ namespace gmpi_gui_api
 	class IMpGraphics2;
 }
 
-namespace gmpi_sdk
-{
-// type of function to instantiate a plugin component.
-typedef struct gmpi::IUnknown* (*CreatePluginPtr)();
-}
-
 namespace gmpi
 {
 
-gmpi::ReturnCode RegisterPlugin(gmpi::PluginSubtype subType, const char* uniqueId, gmpi_sdk::CreatePluginPtr create);
-gmpi::ReturnCode RegisterPluginWithXml(gmpi::PluginSubtype subType, const char* xml, gmpi_sdk::CreatePluginPtr create);
+namespace gmpi_sdk
+{
+	// type of function to instantiate a plugin component.
+	typedef struct IUnknown* (*CreatePluginPtr)();
+}
+
+ReturnCode RegisterPlugin(PluginSubtype subType, const char* uniqueId, gmpi_sdk::CreatePluginPtr create);
+ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, gmpi_sdk::CreatePluginPtr create);
 
 
 template< class moduleClass >
@@ -182,9 +182,9 @@ class Register
 		return gmpi::MP_SUB_TYPE_CONTROLLER;
 	}
 #endif
-	inline static gmpi::PluginSubtype subType(gmpi::IAudioPlugin* /*unused*/)
+	inline static PluginSubtype subType(IAudioPlugin* /*unused*/)
 	{
-		return gmpi::PluginSubtype::Audio;
+		return PluginSubtype::Audio;
 	}
 #if 0 // temp disabled
 
@@ -199,16 +199,16 @@ class Register
 	}
 #endif
 
-	inline static gmpi::IUnknown* toUnknown(gmpi::IAudioPlugin* object) // Processor classes.
+	inline static IUnknown* toUnknown(IAudioPlugin* object) // Processor classes.
 	{
-		return static_cast<gmpi::IUnknown*>(object);
+		return static_cast<IUnknown*>(object);
 	}
 
 public:
 	static bool withId(const char* moduleIdentifier)
 	{
 		gmpi::RegisterPlugin(subType((moduleClass*) nullptr), moduleIdentifier,
-			[]() -> gmpi::IUnknown* { return toUnknown(new moduleClass()); }
+			[]() -> IUnknown* { return toUnknown(new moduleClass()); }
 		);
 
 		return false; // value not used, but required.
@@ -217,7 +217,7 @@ public:
 	static bool withXml(const char* xml)
 	{
 		gmpi::RegisterPluginWithXml(subType((moduleClass*) nullptr), xml,
-			[]() -> gmpi::IUnknown* { return toUnknown(new moduleClass()); }
+			[]() -> IUnknown* { return toUnknown(new moduleClass()); }
 		);
 
 		return false;
@@ -226,212 +226,211 @@ public:
 
 // BLOB - Binary datatype.
 typedef std::vector<uint8_t> Blob;
-} // namespace
 
 namespace gmpi_sdk
 {
-	template <typename T>
-	class PinTypeTraits
+template <typename T>
+class PinTypeTraits
+{
+private:
+	// convert type to int representing datatype. N is dummy to satisfy partial specialization rules enforced by GCC.
+	template <class U, int N> struct PinDataTypeTraits
 	{
-	private:
-		// convert type to int representing datatype. N is dummy to satisfy partial specialization rules enforced by GCC.
-		template <class U, int N> struct PinDataTypeTraits
-		{
-		};
-		template<int N> struct PinDataTypeTraits<int, N>
-		{
-			enum { result = static_cast<int>(gmpi::PinDatatype::Int32) };
-		};
-		template<int N> struct PinDataTypeTraits<bool, N>
-		{
-			enum { result = static_cast<int>(gmpi::PinDatatype::Bool) };
-		};
-		template<int N> struct PinDataTypeTraits<float, N>
-		{
-			enum { result = static_cast<int>(gmpi::PinDatatype::Float32) };
-		};
-		template<int N> struct PinDataTypeTraits<std::string, N>
-		{
-			enum { result = static_cast<int>(gmpi::PinDatatype::String) };
-		};
-		template<int N> struct PinDataTypeTraits<gmpi::Blob, N>
-		{
-			enum { result = static_cast<int>(gmpi::PinDatatype::Blob) };
-		};
-
-	public:
-		enum { PinDataType = PinDataTypeTraits<T, 0>::result };
+	};
+	template<int N> struct PinDataTypeTraits<int, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::Int32) };
+	};
+	template<int N> struct PinDataTypeTraits<bool, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::Bool) };
+	};
+	template<int N> struct PinDataTypeTraits<float, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::Float32) };
+	};
+	template<int N> struct PinDataTypeTraits<std::string, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::String) };
+	};
+	template<int N> struct PinDataTypeTraits<gmpi::Blob, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::Blob) };
 	};
 
+public:
+	enum { PinDataType = PinDataTypeTraits<T, 0>::result };
+};
 
-	// Get size of variable's data.
-	template <typename T>
-	inline int variableRawSize(const T& /*value*/)
+
+// Get size of variable's data.
+template <typename T>
+inline int variableRawSize(const T& /*value*/)
+{
+	return sizeof(T);
+}
+
+template<>
+inline int variableRawSize<std::string>(const std::string& value)
+{
+	return static_cast<int>(value.size());
+}
+
+template<>
+inline int variableRawSize<gmpi::Blob>(const gmpi::Blob& value)
+{
+	return static_cast<int>(value.size());
+}
+
+// Serialize variable's value as bytes.
+template <typename T>
+inline const void* variableRawData(const T& value)
+{
+	return reinterpret_cast<const void*>(&value);
+}
+
+template<>
+inline const void* variableRawData<std::string>(const std::string& value)
+{
+	return reinterpret_cast<const void*>(value.data());
+}
+
+template<>
+inline const void* variableRawData<gmpi::Blob>(const gmpi::Blob& value)
+{
+	return reinterpret_cast<const void*>(value.data());
+}
+
+// De-serialize type.
+template <typename T>
+inline void VariableFromRaw(int size, const void* data, T& returnValue)
+{
+	assert(size == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
+	memcpy(&returnValue, data, size);
+}
+
+template <>
+inline void VariableFromRaw<gmpi::Blob>(int size, const void* data, gmpi::Blob& returnValue)
+{
+	returnValue.assign((uint8_t*)data, (uint8_t*)data + size);
+}
+
+template <>
+inline void VariableFromRaw<bool>(int size, const void* data, bool& returnValue)
+{
+	// bool is pased as int.
+	if (size == 4) // DSP sends bool events as int.
 	{
-		return sizeof(T);
+		returnValue = *((int*)data) != 0;
+	}
+	else
+	{
+		assert(size == 1);
+		returnValue = *((bool*)data);
+	}
+}
+
+template <>
+inline void VariableFromRaw<std::string>(int size, const void* data, std::string& returnValue)
+{
+	returnValue.assign((const char*)data, size);
+}
+
+// Helper for managing lifetime of reference-counted interface pointer
+template<class wrappedObjT>
+class shared_ptr
+{
+	wrappedObjT* obj = {};
+
+public:
+	shared_ptr(){}
+
+	explicit shared_ptr(wrappedObjT* newobj) : obj(0)
+	{
+		Assign(newobj);
+	}
+	shared_ptr(const shared_ptr<wrappedObjT>& value) : obj(0)
+	{
+		Assign(value.obj);
+	}
+	// Attach object without incrementing ref count. For objects created with new.
+	void Attach(wrappedObjT* newobj)
+	{
+		wrappedObjT* old = obj;
+		obj = newobj;
+
+		if( old )
+		{
+			old->release();
+		}
 	}
 
-	template<>
-	inline int variableRawSize<std::string>(const std::string& value)
+	~shared_ptr()
 	{
-		return static_cast<int>(value.size());
-	}
-
-	template<>
-	inline int variableRawSize<gmpi::Blob>(const gmpi::Blob& value)
-	{
-		return value.size();
-	}
-
-	// Serialize variable's value as bytes.
-	template <typename T>
-	inline const void* variableRawData(const T& value)
-	{
-		return reinterpret_cast<const void*>(&value);
-	}
-
-	template<>
-	inline const void* variableRawData<std::string>(const std::string& value)
-	{
-		return reinterpret_cast<const void*>(value.data());
-	}
-
-	template<>
-	inline const void* variableRawData<gmpi::Blob>(const gmpi::Blob& value)
-	{
-		return reinterpret_cast<const void*>(value.data());
-	}
-
-	// De-serialize type.
-	template <typename T>
-	inline void VariableFromRaw(int size, const void* data, T& returnValue)
-	{
-		assert(size == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
-		memcpy(&returnValue, data, size);
-	}
-
-	template <>
-	inline void VariableFromRaw<gmpi::Blob>(int size, const void* data, gmpi::Blob& returnValue)
-	{
-		returnValue.assign((uint8_t*)data, (uint8_t*)data + size);
-	}
-
-	template <>
-	inline void VariableFromRaw<bool>(int size, const void* data, bool& returnValue)
-	{
-		// bool is pased as int.
-		if (size == 4) // DSP sends bool events as int.
+		if( obj )
 		{
-			returnValue = *((int*)data) != 0;
-		}
-		else
-		{
-			assert(size == 1);
-			returnValue = *((bool*)data);
+			obj->release();
 		}
 	}
-
-	template <>
-	inline void VariableFromRaw<std::string>(int size, const void* data, std::string& returnValue)
+	operator wrappedObjT*( )
 	{
-		returnValue.assign((const char*)data, size);
+		return obj;
+	}
+	const wrappedObjT* operator=( wrappedObjT* value )
+	{
+		Assign(value);
+		return value;
+	}
+	shared_ptr<wrappedObjT>& operator=( shared_ptr<wrappedObjT>& value )
+	{
+		Assign(value.get());
+		return *this;
+	}
+	bool operator==( const wrappedObjT* other ) const
+	{
+		return obj == other;
+	}
+	bool operator==( const shared_ptr<wrappedObjT>& other ) const
+	{
+		return obj == other.obj;
+	}
+	wrappedObjT* operator->( ) const
+	{
+		return obj;
 	}
 
-	// Helper for managing lifetime of reference-counted interface pointer
-	template<class wrappedObjT>
-	class mp_shared_ptr
+	wrappedObjT*& get()
 	{
-		wrappedObjT* obj = {};
+		return obj;
+	}
 
-	public:
-		mp_shared_ptr(){}
+	wrappedObjT** getAddressOf()
+	{
+		assert(obj == nullptr); // Free it before you re-use it!
+		return &obj;
+	}
+	void** asIMpUnknownPtr()
+	{
+		assert(obj == 0); // Free it before you re-use it!
+		return reinterpret_cast<void**>(&obj);
+	}
 
-		explicit mp_shared_ptr(wrappedObjT* newobj) : obj(0)
-		{
-			Assign(newobj);
-		}
-		mp_shared_ptr(const mp_shared_ptr<wrappedObjT>& value) : obj(0)
-		{
-			Assign(value.obj);
-		}
-		// Attach object without incrementing ref count. For objects created with new.
-		void Attach(wrappedObjT* newobj)
-		{
-			wrappedObjT* old = obj;
-			obj = newobj;
+	bool isNull()
+	{
+		return obj == nullptr;
+	}
 
-			if( old )
-			{
-				old->release();
-			}
-		}
-
-		~mp_shared_ptr()
+private:
+	// Attach object and increment ref count.
+	void Assign(wrappedObjT* newobj)
+	{
+		Attach(newobj);
+		if( newobj )
 		{
-			if( obj )
-			{
-				obj->release();
-			}
+			newobj->addRef();
 		}
-		operator wrappedObjT*( )
-		{
-			return obj;
-		}
-		const wrappedObjT* operator=( wrappedObjT* value )
-		{
-			Assign(value);
-			return value;
-		}
-		mp_shared_ptr<wrappedObjT>& operator=( mp_shared_ptr<wrappedObjT>& value )
-		{
-			Assign(value.get());
-			return *this;
-		}
-		bool operator==( const wrappedObjT* other ) const
-		{
-			return obj == other;
-		}
-		bool operator==( const mp_shared_ptr<wrappedObjT>& other ) const
-		{
-			return obj == other.obj;
-		}
-		wrappedObjT* operator->( ) const
-		{
-			return obj;
-		}
-
-		wrappedObjT*& get()
-		{
-			return obj;
-		}
-
-		wrappedObjT** getAddressOf()
-		{
-			assert(obj == nullptr); // Free it before you re-use it!
-			return &obj;
-		}
-		void** asIMpUnknownPtr()
-		{
-			assert(obj == 0); // Free it before you re-use it!
-			return reinterpret_cast<void**>(&obj);
-		}
-
-		bool isNull()
-		{
-			return obj == nullptr;
-		}
-
-	private:
-		// Attach object and increment ref count.
-		void Assign(wrappedObjT* newobj)
-		{
-			Attach(newobj);
-			if( newobj )
-			{
-				newobj->addRef();
-			}
-		}
-	};
+	}
+};
 
 // macros to save typing the reference counting.
 #define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \
@@ -450,5 +449,4 @@ namespace gmpi_sdk
 	int32_t addRef() override{return 1;} \
 	int32_t release() override {return 1;}
 }
-
-
+} // namespace gmpi
