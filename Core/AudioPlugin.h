@@ -31,7 +31,7 @@ class AudioPlugin;
 typedef void (AudioPlugin::* SubProcessPtr)(int sampleFrames);
 
 // Pointer to event handler member function.
-typedef void (AudioPlugin::* MpBaseMemberPtr)(const gmpi2::Event*);
+typedef void (AudioPlugin::* MpBaseMemberPtr)(const api::Event*);
 
 class MpPinBase
 {
@@ -42,14 +42,14 @@ public:
 
 	// overrides for audio pins_
 	virtual void setBuffer( float* buffer ) = 0;
-	virtual void preProcessEvent( const gmpi2::Event* ){}
+	virtual void preProcessEvent( const api::Event* ){}
 
-	virtual void processEvent( const gmpi2::Event* e );
-	virtual void postProcessEvent( const gmpi2::Event* ){}
+	virtual void processEvent( const api::Event* e );
+	virtual void postProcessEvent( const api::Event* ){}
 
 	int getId(){return id_;}
-	virtual gmpi2::PinDatatype getDatatype() const = 0;
-	virtual gmpi2::PinDirection getDirection() const = 0;
+	virtual PinDatatype getDatatype() const = 0;
+	virtual PinDirection getDirection() const = 0;
 	virtual MpBaseMemberPtr getDefaultEventHandler() = 0;
 	virtual void sendFirstUpdate() = 0;
 
@@ -127,13 +127,13 @@ public:
 	{
 		return variableRawData<T>(value_);
 	}
-	gmpi2::PinDatatype getDatatype() const override
+	PinDatatype getDatatype() const override
 	{
-		return (gmpi2::PinDatatype) pinDatatype;
+		return (PinDatatype) pinDatatype;
 	}
-	void preProcessEvent( const gmpi2::Event* e ) override
+	void preProcessEvent( const api::Event* e ) override
 	{
-		if(e->eventType == gmpi2::EventType::PinSet)
+		if(e->eventType == api::EventType::PinSet)
 		{
 			if(e->extraData != 0)
 			{
@@ -146,9 +146,9 @@ public:
 			freshValue_ = true;
 		};
 	}
-	void postProcessEvent( const gmpi2::Event* e ) override
+	void postProcessEvent( const api::Event* e ) override
 	{
-		if(e->eventType == gmpi2::EventType::PinSet)
+		if(e->eventType == api::EventType::PinSet)
 		{
 			freshValue_ = false;
 		};
@@ -182,9 +182,9 @@ public:
 	MpControlPin( T initialValue ) : MpControlPinBase< T, pinDatatype >( initialValue )
 	{
 	}
-	gmpi2::PinDirection getDirection() const override
+	PinDirection getDirection() const override
 	{
-		return (gmpi2::PinDirection) pinDirection_;
+		return (PinDirection) pinDirection_;
 	}
 	const T& operator=(const T &value)
 	{
@@ -193,12 +193,12 @@ public:
 	}
 	// todo: specialise for value_ vs ref types !!!
 
-	const T& operator=(const MpControlPin<T, static_cast<int>(gmpi2::PinDirection::In), pinDatatype> &other)
+	const T& operator=(const MpControlPin<T, static_cast<int>(PinDirection::In), pinDatatype> &other)
 	{
 		return operator=(other.getValue());
 	}
 
-	const T& operator=(const MpControlPin<T, static_cast<int>(gmpi2::PinDirection::Out), pinDatatype> &other)
+	const T& operator=(const MpControlPin<T, static_cast<int>(PinDirection::Out), pinDatatype> &other)
 	{
 		return operator=(other.getValue());
 	}
@@ -230,9 +230,9 @@ public:
 	{
 		assert(false && "Audio-rate pins_ don't support setValueRaw");
 	}
-	gmpi2::PinDatatype getDatatype() const override
+	PinDatatype getDatatype() const override
 	{
-		return gmpi2::PinDatatype::Audio;
+		return PinDatatype::Audio;
 	}
 	MpBaseMemberPtr getDefaultEventHandler() override
 	{
@@ -253,23 +253,23 @@ template
 class MpAudioPinBaseB : public MpAudioPinBase
 {
 public:
-	gmpi2::PinDirection getDirection() const override
+	PinDirection getDirection() const override
 	{
-		return (gmpi2::PinDirection) pinDirection_;
+		return (PinDirection) pinDirection_;
 	}
 };
 
-class AudioInPin final : public MpAudioPinBaseB<static_cast<int>(gmpi2::PinDirection::In)>
+class AudioInPin final : public MpAudioPinBaseB<static_cast<int>(PinDirection::In)>
 {
 public:
 	AudioInPin(){}
-	void preProcessEvent( const gmpi2::Event* e ) override;
-	void postProcessEvent( const gmpi2::Event* e ) override
+	void preProcessEvent( const api::Event* e ) override;
+	void postProcessEvent( const api::Event* e ) override
 	{
 		switch(e->eventType)
 		{
-			case gmpi2::EventType::PinStreamingStart:
-			case gmpi2::EventType::PinStreamingStop:
+			case api::EventType::PinStreamingStart:
+			case api::EventType::PinStreamingStop:
 				freshValue_ = false;
 				break;
 
@@ -288,7 +288,7 @@ private:
 	bool freshValue_ = true; // true = value_ has been updated on current sample_clock
 };
 
-class AudioOutPin final : public MpAudioPinBaseB<static_cast<int>(gmpi2::PinDirection::Out)>
+class AudioOutPin final : public MpAudioPinBaseB<static_cast<int>(PinDirection::Out)>
 {
 public:
 	// Indicate output pin's value changed, but it's not streaming (a 'one-off' change).
@@ -303,32 +303,32 @@ public:
 	}
 };
 
-typedef MpControlPin<int, static_cast<int>(gmpi2::PinDirection::In)>				IntInPin;
-typedef MpControlPin<int, static_cast<int>(gmpi2::PinDirection::Out)>			IntOutPin;
-typedef MpControlPin<float, static_cast<int>(gmpi2::PinDirection::In)>			FloatInPin;
-typedef MpControlPin<float, static_cast<int>(gmpi2::PinDirection::Out)>			FloatOutPin;
-typedef MpControlPin<Blob, static_cast<int>(gmpi2::PinDirection::In)>		BlobInPin;
-typedef MpControlPin<Blob, static_cast<int>(gmpi2::PinDirection::Out)>		BlobOutPin;
-typedef MpControlPin<std::string, static_cast<int>(gmpi2::PinDirection::In)>		StringInPin;
-typedef MpControlPin<std::string, static_cast<int>(gmpi2::PinDirection::Out)>	StringOutPin;
+typedef MpControlPin<int, static_cast<int>(PinDirection::In)>				IntInPin;
+typedef MpControlPin<int, static_cast<int>(PinDirection::Out)>			IntOutPin;
+typedef MpControlPin<float, static_cast<int>(PinDirection::In)>			FloatInPin;
+typedef MpControlPin<float, static_cast<int>(PinDirection::Out)>			FloatOutPin;
+typedef MpControlPin<Blob, static_cast<int>(PinDirection::In)>		BlobInPin;
+typedef MpControlPin<Blob, static_cast<int>(PinDirection::Out)>		BlobOutPin;
+typedef MpControlPin<std::string, static_cast<int>(PinDirection::In)>		StringInPin;
+typedef MpControlPin<std::string, static_cast<int>(PinDirection::Out)>	StringOutPin;
 
-typedef MpControlPin<bool, static_cast<int>(gmpi2::PinDirection::In)>			BoolInPin;
-typedef MpControlPin<bool, static_cast<int>(gmpi2::PinDirection::Out)>			BoolOutPin;
+typedef MpControlPin<bool, static_cast<int>(PinDirection::In)>			BoolInPin;
+typedef MpControlPin<bool, static_cast<int>(PinDirection::Out)>			BoolOutPin;
 
 // enum (List) pin based on Int Pin
-typedef MpControlPin<int, static_cast<int>(gmpi2::PinDirection::In), static_cast<int>(gmpi2::PinDatatype::Enum)>	EnumInPin;
-typedef MpControlPin<int, static_cast<int>(gmpi2::PinDirection::Out), static_cast<int>(gmpi2::PinDatatype::Enum)>	EnumOutPin;
+typedef MpControlPin<int, static_cast<int>(PinDirection::In), static_cast<int>(PinDatatype::Enum)>	EnumInPin;
+typedef MpControlPin<int, static_cast<int>(PinDirection::Out), static_cast<int>(PinDatatype::Enum)>	EnumOutPin;
 
 class MidiInPin : public MpPinBase
 {
 public:
-	gmpi2::PinDatatype getDatatype() const override
+	PinDatatype getDatatype() const override
 	{
-		return gmpi2::PinDatatype::Midi;
+		return PinDatatype::Midi;
 	}
-	gmpi2::PinDirection getDirection() const override
+	PinDirection getDirection() const override
 	{
-		return gmpi2::PinDirection::In;
+		return PinDirection::In;
 	}
 
 	// These members not needed for MIDI.
@@ -343,9 +343,9 @@ public:
 class MidiOutPin : public MidiInPin
 {
 public:
-	gmpi2::PinDirection getDirection() const override
+	PinDirection getDirection() const override
 	{
-		return gmpi2::PinDirection::Out;
+		return PinDirection::Out;
 	}
 	MpBaseMemberPtr getDefaultEventHandler() override
 	{
@@ -358,7 +358,7 @@ public:
 
 class TempBlockPositionSetter;
 
-class AudioPlugin : public gmpi2::IAudioPlugin
+class AudioPlugin : public api::IAudioPlugin
 {
 	friend class TempBlockPositionSetter;
 
@@ -367,9 +367,9 @@ public:
 	virtual ~AudioPlugin() {}
 
 	// IAudioPlugin methods
-	gmpi::ReturnCode open(IUnknown* phost) override;
+	gmpi::ReturnCode open(api::IUnknown* phost) override;
 	gmpi::ReturnCode setBuffer(int32_t pinId, float* buffer) override;
-	void process(int32_t count, const gmpi2::Event* events) override;
+	void process(int32_t count, const api::Event* events) override;
 
 	// overridables
 	virtual void onGraphStart();	// called on very first sample.
@@ -377,14 +377,14 @@ public:
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
-	gmpi2_sdk::shared_ptr<gmpi2::IAudioPluginHost> host;
+	gmpi2_sdk::shared_ptr<api::IAudioPluginHost> host;
 
 	// Communication with pins.
 	int getBlockPosition() const
 	{
 		return blockPos_;
 	}
-	void midiHelper( const gmpi2::Event* e );
+	void midiHelper( const api::Event* e );
 	void OnPinStreamingChange(bool isStreaming);
 	void resetSleepCounter();
 	void nudgeSleepCounter()
@@ -438,12 +438,12 @@ protected:
 	void subProcessNothing(int /*sampleFrames*/) {}
 	void subProcessPreSleep(int sampleFrames);
 
-	void preProcessEvent( const gmpi2::Event* e );
-	void processEvent( const gmpi2::Event* e );
-	void postProcessEvent( const gmpi2::Event* e );
+	void preProcessEvent( const api::Event* e );
+	void processEvent( const api::Event* e );
+	void postProcessEvent( const api::Event* e );
 
 	// identification and reference countin
-	GMPI_QUERYINTERFACE(gmpi2::IAudioPlugin::guid, IAudioPlugin);
+	GMPI_QUERYINTERFACE(api::IAudioPlugin::guid, IAudioPlugin);
 	GMPI_REFCOUNT;
 
 protected:

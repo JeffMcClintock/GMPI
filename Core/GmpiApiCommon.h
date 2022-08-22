@@ -45,9 +45,31 @@ namespace gmpi
         NoSupport = -2, // Interface not supported.
         Cancel    = -3, // Async operation cancelled.
     };
+
+    enum class PinDatatype : int32_t
+    {
+        Enum,
+        String,
+        Midi,
+        Float64,
+        Bool,
+        Audio,
+        Float32,
+        Int32 = 8,
+        Int64,
+        Blob,
+    };
+
+    enum class PinDirection : int32_t
+    {
+        In,
+        Out,
+    };
 }
 
-namespace gmpi2
+namespace gmpi
+{
+namespace api
 {
 
 enum class PluginSubtype : int32_t
@@ -55,26 +77,6 @@ enum class PluginSubtype : int32_t
     Audio      = 0, // An audio processor object.
     Editor     = 2, // A graphical editor object.
     Controller = 4, // A controller object.
-};
-
-enum class PinDirection : int32_t
-{
-    In,
-    Out,
-};
-
-enum class PinDatatype : int32_t
-{
-    Enum,
-    String,
-    Midi,
-    Float64,
-    Bool,
-    Audio,
-    Float32,
-    Int32 = 8,
-    Int64,
-    Blob,
 };
 
 struct Guid
@@ -127,4 +129,5 @@ struct DECLSPEC_NOVTABLE IPluginFactory : public IUnknown
 #pragma pack(pop)
 #endif
 
+} // namespace api
 } // namespace gmpi

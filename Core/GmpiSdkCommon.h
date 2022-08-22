@@ -20,7 +20,7 @@
 #include "GmpiApiCommon.h"
 
 // Helper for comparing GUIDs
-inline bool operator==(const gmpi2::Guid& left, const gmpi2::Guid& right)
+inline bool operator==(const gmpi::api::Guid& left, const gmpi::api::Guid& right)
 {
 	return 0 == std::memcmp(&left, &right, sizeof(left));
 }

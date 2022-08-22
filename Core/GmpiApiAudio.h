@@ -34,7 +34,9 @@
 #endif
 #endif
 
-namespace gmpi2
+namespace gmpi
+{
+namespace api
 {
 
 enum class EventType : int32_t
@@ -93,4 +95,5 @@ struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
 #pragma pack(pop)
 #endif
 
-} // namespace
+} // namespace api
+} // namespace gmpi

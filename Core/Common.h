@@ -23,63 +23,66 @@
 #include <string>
 #include "GmpiSdkCommon.h"
 
-namespace gmpi2
+namespace gmpi
+{
+namespace api
 {
 	struct IAudioPlugin;
+}
 }
 
 namespace gmpi
 {
 
-typedef gmpi2::IUnknown* (*CreatePluginPtr)();
+typedef api::IUnknown* (*CreatePluginPtr)();
 
-gmpi::ReturnCode RegisterPlugin(gmpi2::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create);
-gmpi::ReturnCode RegisterPluginWithXml(gmpi2::PluginSubtype subType, const char* xml, CreatePluginPtr create);
+gmpi::ReturnCode RegisterPlugin(api::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create);
+gmpi::ReturnCode RegisterPluginWithXml(api::PluginSubtype subType, const char* xml, CreatePluginPtr create);
 
 template< class moduleClass >
 class Register
 {
 #if 0 // temp disabled
-	inline static int subType(gmpi2::IMpUserInterface* /*unused*/)
+	inline static int subType(api::IMpUserInterface* /*unused*/)
 	{
-		return gmpi2::MP_SUB_TYPE_GUI;
+		return api::MP_SUB_TYPE_GUI;
 	}
-	inline static int subType(gmpi2::IMpUserInterface2* /*unused*/)
+	inline static int subType(api::IMpUserInterface2* /*unused*/)
 	{
-		return gmpi2::MP_SUB_TYPE_GUI2;
+		return api::MP_SUB_TYPE_GUI2;
 	}
-	inline static int subType(gmpi2::IMpController* /*unused*/)
+	inline static int subType(api::IMpController* /*unused*/)
 	{
-		return gmpi2::MP_SUB_TYPE_CONTROLLER;
+		return api::MP_SUB_TYPE_CONTROLLER;
 	}
 #endif
-	inline static gmpi2::PluginSubtype subType(gmpi2::IAudioPlugin*)
+	inline static api::PluginSubtype subType(api::IAudioPlugin*)
 	{
-		return gmpi2::PluginSubtype::Audio;
+		return api::PluginSubtype::Audio;
 	}
 #if 0 // temp disabled
 
 	// Allows unambiguous cast when you support multiple interfaces.
-	inline static gmpi2::IUnknown* toUnknown(gmpi2::IMpController* object) // Controller classes.
+	inline static api::IUnknown* toUnknown(api::IMpController* object) // Controller classes.
 	{
-		return static_cast<gmpi2::IUnknown*>(object);
+		return static_cast<api::IUnknown*>(object);
 	}
-	inline static gmpi2::IUnknown* toUnknown(gmpi2::IMpUserInterface2* object) // GUI classes
+	inline static api::IUnknown* toUnknown(api::IMpUserInterface2* object) // GUI classes
 	{
-		return static_cast<gmpi2::IUnknown*>(object);
+		return static_cast<api::IUnknown*>(object);
 	}
 #endif
 
-	inline static gmpi2::IUnknown* toUnknown(gmpi2::IAudioPlugin* object) // Processor classes.
+	inline static api::IUnknown* toUnknown(api::IAudioPlugin* object) // Processor classes.
 	{
-		return static_cast<gmpi2::IUnknown*>(object);
+		return static_cast<api::IUnknown*>(object);
 	}
 
 public:
 	static bool withId(const char* moduleIdentifier)
 	{
 		RegisterPlugin(subType((moduleClass*) nullptr), moduleIdentifier,
-			[]() -> gmpi2::IUnknown* { return toUnknown(new moduleClass()); }
+			[]() -> api::IUnknown* { return toUnknown(new moduleClass()); }
 		);
 
 		return false; // value not used, but required.
@@ -88,7 +91,7 @@ public:
 	static bool withXml(const char* xml)
 	{
 		RegisterPluginWithXml(subType((moduleClass*) nullptr), xml,
-			[]() -> gmpi2::IUnknown* { return toUnknown(new moduleClass()); }
+			[]() -> api::IUnknown* { return toUnknown(new moduleClass()); }
 		);
 
 		return false;
@@ -108,23 +111,23 @@ private:
 	};
 	template<int N> struct PinDataTypeTraits<int, N>
 	{
-		enum { result = static_cast<int>(gmpi2::PinDatatype::Int32) };
+		enum { result = static_cast<int>(PinDatatype::Int32) };
 	};
 	template<int N> struct PinDataTypeTraits<bool, N>
 	{
-		enum { result = static_cast<int>(gmpi2::PinDatatype::Bool) };
+		enum { result = static_cast<int>(PinDatatype::Bool) };
 	};
 	template<int N> struct PinDataTypeTraits<float, N>
 	{
-		enum { result = static_cast<int>(gmpi2::PinDatatype::Float32) };
+		enum { result = static_cast<int>(PinDatatype::Float32) };
 	};
 	template<int N> struct PinDataTypeTraits<std::string, N>
 	{
-		enum { result = static_cast<int>(gmpi2::PinDatatype::String) };
+		enum { result = static_cast<int>(PinDatatype::String) };
 	};
 	template<int N> struct PinDataTypeTraits<Blob, N>
 	{
-		enum { result = static_cast<int>(gmpi2::PinDatatype::Blob) };
+		enum { result = static_cast<int>(PinDatatype::Blob) };
 	};
 
 public:

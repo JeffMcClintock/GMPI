@@ -27,13 +27,14 @@
 #include "Common.h"
 #include "RefCountMacros.h"
 
-using namespace gmpi2;
+using namespace gmpi;
+using namespace gmpi::api;
 
 //---------------FACTORY --------------------
 
 // MpFactory - a singleton object.  The plugin registers it's ID with the factory.
 
-class MpFactory: public IPluginFactory
+class MpFactory: public gmpi::api::IPluginFactory
 {
 public:
 	MpFactory( void ){}
@@ -47,8 +48,8 @@ public:
 
 	gmpi::ReturnCode getPluginInformation(int32_t index, IString* returnXml) override;
 
-	gmpi::ReturnCode RegisterPlugin( const char* uniqueId, gmpi2::PluginSubtype subType, gmpi::CreatePluginPtr create );
-	gmpi::ReturnCode RegisterPluginWithXml(gmpi2::PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create);
+	gmpi::ReturnCode RegisterPlugin( const char* uniqueId, api::PluginSubtype subType, gmpi::CreatePluginPtr create );
+	gmpi::ReturnCode RegisterPluginWithXml(api::PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create);
 
 	// IUnknown methods
 	GMPI_QUERYINTERFACE(IPluginFactory::guid, IPluginFactory);
@@ -81,24 +82,24 @@ extern "C"
 gmpi::ReturnCode MP_GetFactory( void** returnInterface )
 {
 	// call queryInterface() to keep refcounting in sync
-	return Factory()->queryInterface( &IUnknown::guid, returnInterface );
+	return Factory()->queryInterface( &gmpi::api::IUnknown::guid, returnInterface );
 }
 
 namespace gmpi
 {
 	// register a plugin component with the factory
-	gmpi::ReturnCode RegisterPlugin(PluginSubtype subType, const char* uniqueId, gmpi::CreatePluginPtr create)
+	gmpi::ReturnCode RegisterPlugin(api::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create)
 	{
 		return Factory()->RegisterPlugin(uniqueId, subType, create);
 	}
-	gmpi::ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create)
+	gmpi::ReturnCode RegisterPluginWithXml(api::PluginSubtype subType, const char* xml, CreatePluginPtr create)
 	{
 		return Factory()->RegisterPluginWithXml(subType, xml, create);
 	}
 }
 
 // Factory methods
-gmpi::ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, PluginSubtype subType, gmpi::CreatePluginPtr create )
+gmpi::ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, gmpi::api::PluginSubtype subType, gmpi::CreatePluginPtr create )
 {
 	// already registered this plugin?
 	assert( pluginMap.find({ subType, uniqueId }) == pluginMap.end());
@@ -108,7 +109,7 @@ gmpi::ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, PluginSubtype 
 	return gmpi::ReturnCode::Ok;
 }
 
-gmpi::ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create)
+gmpi::ReturnCode MpFactory::RegisterPluginWithXml(gmpi::api::PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create)
 {
 	std::string xmlstr{xml};
 
