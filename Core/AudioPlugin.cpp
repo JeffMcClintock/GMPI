@@ -23,29 +23,29 @@
 #include <assert.h>
 #include "AudioPlugin.h"
 
-using namespace gmpi2;
+using namespace gmpi;
 
 template<typename INTERFACE>
-INTERFACE* as(IUnknown* com_object)
+INTERFACE* as(gmpi2::IUnknown* com_object)
 {
 	INTERFACE* result = {};
 	com_object->queryInterface(&INTERFACE::guid, (void**)&result);
 	return result;
 }
 
-namespace gmpi2_sdk
+namespace gmpi
 {
-ReturnCode AudioPlugin::open(IUnknown* phost)
+gmpi::ReturnCode AudioPlugin::open(IUnknown* phost)
 {
 #if defined(_DEBUG)
 	debugIsOpen_ = true;
 #endif
 
-	host = as<IAudioPluginHost>(phost);
-	return ReturnCode::Ok;
+	host = as<gmpi2::IAudioPluginHost>(phost);
+	return gmpi::ReturnCode::Ok;
 }
 
-void AudioPlugin::process(int32_t count, const Event* events)
+void AudioPlugin::process(int32_t count, const gmpi2::Event* events)
 {
 	assert(count > 0);
 
@@ -55,7 +55,7 @@ void AudioPlugin::process(int32_t count, const Event* events)
 
 	blockPos_ = 0;
 	int remain = count;
-	const Event* next_event = events;
+	const gmpi2::Event* next_event = events;
 
 	for (;;)
 	{
@@ -95,11 +95,11 @@ void AudioPlugin::process(int32_t count, const Event* events)
 
 		// PRE-PROCESS EVENT
 		bool pins_set_flag = false;
-		const Event* e = next_event;
+		const gmpi2::Event* e = next_event;
 		do
 		{
 			preProcessEvent(e); // updates all pins_ values
-			pins_set_flag = pins_set_flag || e->eventType == EventType::PinSet || e->eventType == EventType::PinStreamingStart || e->eventType == EventType::PinStreamingStop;
+			pins_set_flag = pins_set_flag || e->eventType == gmpi2::EventType::PinSet || e->eventType == gmpi2::EventType::PinStreamingStart || e->eventType == gmpi2::EventType::PinStreamingStop;
 			e = e->next;
 		} while (e != 0 && e->timeDelta == blockPos_); // cur_timeStamp );
 
@@ -129,15 +129,15 @@ void AudioPlugin::process(int32_t count, const Event* events)
 	}
 }
 
-void AudioPlugin::processEvent(const Event* e)
+void AudioPlugin::processEvent(const gmpi2::Event* e)
 {
 	switch (e->eventType)
 	{
 		// pin events redirect to pin
-	case EventType::PinSet:
-	case EventType::PinStreamingStart:
-	case EventType::PinStreamingStop:
-	case EventType::Midi:
+	case gmpi2::EventType::PinSet:
+	case gmpi2::EventType::PinStreamingStart:
+	case gmpi2::EventType::PinStreamingStop:
+	case gmpi2::EventType::Midi:
 	{
 		auto it = pins_.find(e->parm1);
 		if (it != pins_.end())
@@ -147,7 +147,7 @@ void AudioPlugin::processEvent(const Event* e)
 	}
 	break;
 
-	case EventType::GraphStart:
+	case gmpi2::EventType::GraphStart:
 		onGraphStart();
 		assert(debugGraphStartCalled_ && "Please call the base class's MpBase2::onGraphStart(); from your overloaded member.");
 		break;
@@ -157,14 +157,14 @@ void AudioPlugin::processEvent(const Event* e)
 	};
 }
 
-void AudioPlugin::preProcessEvent(const Event* e)
+void AudioPlugin::preProcessEvent(const gmpi2::Event* e)
 {
 	switch (e->eventType)
 	{
-	case EventType::PinStreamingStart:
-	case EventType::PinStreamingStop:
-	case EventType::PinSet:
-	case EventType::Midi:
+	case gmpi2::EventType::PinStreamingStart:
+	case gmpi2::EventType::PinStreamingStop:
+	case gmpi2::EventType::PinSet:
+	case gmpi2::EventType::Midi:
 	{
 		// pin events redirect to pin
 		auto it = pins_.find(e->parm1);
@@ -175,21 +175,21 @@ void AudioPlugin::preProcessEvent(const Event* e)
 	}
 
 	break;
-	case EventType::GraphStart:
+	case gmpi2::EventType::GraphStart:
 	default:
 		break;
 	};
 }
 
-void AudioPlugin::postProcessEvent(const Event* e)
+void AudioPlugin::postProcessEvent(const gmpi2::Event* e)
 {
 	switch (e->eventType)
 	{
 	// pin events redirect to pin
-	case EventType::PinSet:
-	case EventType::PinStreamingStart:
-	case EventType::PinStreamingStop:
-	case EventType::Midi:
+	case gmpi2::EventType::PinSet:
+	case gmpi2::EventType::PinStreamingStart:
+	case gmpi2::EventType::PinStreamingStop:
+	case gmpi2::EventType::Midi:
 	{
 		auto it = pins_.find(e->parm1);
 		if (it != pins_.end())
@@ -199,15 +199,15 @@ void AudioPlugin::postProcessEvent(const Event* e)
 	}
 	break;
 
-	case EventType::GraphStart:
+	case gmpi2::EventType::GraphStart:
 	default:
 		break;
 	};
 }
 
-void AudioPlugin::midiHelper(const Event* e)
+void AudioPlugin::midiHelper(const gmpi2::Event* e)
 {
-	assert(e->eventType == EventType::Midi);
+	assert(e->eventType == gmpi2::EventType::Midi);
 
 	if (e->extraData == 0) // short msg
 	{
@@ -253,13 +253,13 @@ void MpPinBase::initialize(AudioPlugin* plugin, int PinId, MpBaseMemberPtr handl
 	plugin_ = plugin;
 	eventHandler_ = handler;
 
-	if (eventHandler_ == 0 && getDirection() == PinDirection::In)
+	if (eventHandler_ == 0 && getDirection() == gmpi2::PinDirection::In)
 	{
 		eventHandler_ = getDefaultEventHandler();
 	}
 }
 
-void MpPinBase::processEvent(const Event* e)
+void MpPinBase::processEvent(const gmpi2::Event* e)
 {
 	if (eventHandler_)
 		(plugin_->*eventHandler_)(e);
@@ -433,7 +433,7 @@ void AudioPlugin::onGraphStart()	// called on very first sample.
 	for (auto& it : pins_)
 	{
 		auto pin = it.second;
-		if (pin->getDirection() == PinDirection::Out)
+		if (pin->getDirection() == gmpi2::PinDirection::Out)
 		{
 			pin->sendFirstUpdate();
 		}
@@ -470,14 +470,14 @@ void AudioPlugin::resetSleepCounter()
 	sleepCount_ = host->getBlockSize();
 }
 
-void AudioInPin::preProcessEvent(const Event* e)
+void AudioInPin::preProcessEvent(const gmpi2::Event* e)
 {
 	switch (e->eventType)
 	{
-	case EventType::PinStreamingStart:
-	case EventType::PinStreamingStop:
+	case gmpi2::EventType::PinStreamingStart:
+	case gmpi2::EventType::PinStreamingStop:
 		freshValue_ = true;
-		const bool isStreaming = e->eventType == EventType::PinStreamingStart;
+		const bool isStreaming = e->eventType == gmpi2::EventType::PinStreamingStart;
 		if (isStreaming_ != isStreaming)
 		{
 			isStreaming_ = isStreaming;

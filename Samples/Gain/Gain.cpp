@@ -1,7 +1,6 @@
 #include "AudioPlugin.h"
 
-using namespace gmpi2;
-using namespace gmpi2_sdk;
+using namespace gmpi;
 
 struct Gain final : public AudioPlugin
 {

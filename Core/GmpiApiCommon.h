@@ -34,18 +34,21 @@
 #endif
 #endif
 
+namespace gmpi
+{
+    enum class ReturnCode : int32_t
+    {
+        Ok        = 0,  // Success.
+        Handled   = 1,  // Success, no further handing required.
+        Fail      = -1, // General failure.
+        Unhandled = -1, // Event not handled.
+        NoSupport = -2, // Interface not supported.
+        Cancel    = -3, // Async operation cancelled.
+    };
+}
+
 namespace gmpi2
 {
-
-enum class ReturnCode : int32_t
-{
-    Ok        = 0,  // Success.
-    Handled   = 1,  // Success, no further handing required.
-    Fail      = -1, // General failure.
-    Unhandled = -1, // Event not handled.
-    NoSupport = -2, // Interface not supported.
-    Cancel    = -3, // Async operation cancelled.
-};
 
 enum class PluginSubtype : int32_t
 {
@@ -85,7 +88,7 @@ struct Guid
 // INTERFACE 'IUnknown'
 struct DECLSPEC_NOVTABLE IUnknown
 {
-    virtual ReturnCode queryInterface(const Guid* iid, void** returnInterface) = 0;
+    virtual gmpi::ReturnCode queryInterface(const Guid* iid, void** returnInterface) = 0;
     virtual int32_t addRef() = 0;
     virtual int32_t release() = 0;
 
@@ -97,8 +100,8 @@ struct DECLSPEC_NOVTABLE IUnknown
 // INTERFACE 'IString'
 struct DECLSPEC_NOVTABLE IString : public IUnknown
 {
-    virtual ReturnCode setData(const char* data, int32_t size) = 0;
-    virtual ReturnCode getSize() = 0;
+    virtual gmpi::ReturnCode setData(const char* data, int32_t size) = 0;
+    virtual gmpi::ReturnCode getSize() = 0;
     virtual const char* getData() = 0;
 
     // {AB8FFB21-44FF-42B7-8885-29431399E7E4}
@@ -109,8 +112,8 @@ struct DECLSPEC_NOVTABLE IString : public IUnknown
 // INTERFACE 'IPluginFactory'
 struct DECLSPEC_NOVTABLE IPluginFactory : public IUnknown
 {
-    virtual ReturnCode createInstance(const char* id, PluginSubtype subtype, void** returnInterface) = 0;
-    virtual ReturnCode getPluginInformation(int32_t index, IString* returnXml) = 0;
+    virtual gmpi::ReturnCode createInstance(const char* id, PluginSubtype subtype, void** returnInterface) = 0;
+    virtual gmpi::ReturnCode getPluginInformation(int32_t index, IString* returnXml) = 0;
 
     // {31DC1CD9-6BDF-412A-B758-B2E5CD1D8870}
     inline static const Guid guid =

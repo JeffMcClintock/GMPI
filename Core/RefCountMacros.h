@@ -2,12 +2,12 @@
 
 // macros to save typing the reference counting.
 #define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \
-	gmpi2::ReturnCode queryInterface(const gmpi2::Guid* iid, void** returnInterface) override{ \
+	gmpi::ReturnCode queryInterface(const gmpi2::Guid* iid, void** returnInterface) override{ \
 	*returnInterface = 0; \
 	if ((*iid) == INTERFACE_IID || (*iid) == gmpi2::IUnknown::guid ){ \
 	*returnInterface = static_cast<CLASS_NAME*>(this); addRef(); \
-	return gmpi2::ReturnCode::Ok;} \
-	return gmpi2::ReturnCode::NoSupport;}
+	return gmpi::ReturnCode::Ok;} \
+	return gmpi::ReturnCode::NoSupport;}
 
 #ifndef GMPI_REFCOUNT
 #define GMPI_REFCOUNT int refCount2_ = 1; \

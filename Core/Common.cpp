@@ -40,15 +40,15 @@ public:
 	virtual ~MpFactory( void ){}
 
 	// IMpPluginFactory methods
-	ReturnCode createInstance(
+	gmpi::ReturnCode createInstance(
 		const char* uniqueId,
 		PluginSubtype subType,
 		void** returnInterface ) override;
 
-	ReturnCode getPluginInformation(int32_t index, IString* returnXml) override;
+	gmpi::ReturnCode getPluginInformation(int32_t index, IString* returnXml) override;
 
-	ReturnCode RegisterPlugin( const char* uniqueId, gmpi2::PluginSubtype subType, gmpi2_sdk::CreatePluginPtr create );
-	ReturnCode RegisterPluginWithXml(gmpi2::PluginSubtype subType, const char* xml, gmpi2_sdk::CreatePluginPtr create);
+	gmpi::ReturnCode RegisterPlugin( const char* uniqueId, gmpi2::PluginSubtype subType, gmpi::CreatePluginPtr create );
+	gmpi::ReturnCode RegisterPluginWithXml(gmpi2::PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create);
 
 	// IUnknown methods
 	GMPI_QUERYINTERFACE(IPluginFactory::guid, IPluginFactory);
@@ -56,7 +56,7 @@ public:
 
 private:
 	// a map of all registered IIDs.
-	std::map< std::pair<PluginSubtype, std::string>, gmpi2_sdk::CreatePluginPtr> pluginMap;
+	std::map< std::pair<PluginSubtype, std::string>, gmpi::CreatePluginPtr> pluginMap;
 	std::vector< std::string > xmls;
 };
 
@@ -78,37 +78,37 @@ extern "C"
 #endif
 #endif
 
-ReturnCode MP_GetFactory( void** returnInterface )
+gmpi::ReturnCode MP_GetFactory( void** returnInterface )
 {
 	// call queryInterface() to keep refcounting in sync
 	return Factory()->queryInterface( &IUnknown::guid, returnInterface );
 }
 
-namespace gmpi2_sdk
+namespace gmpi
 {
 	// register a plugin component with the factory
-	ReturnCode RegisterPlugin(PluginSubtype subType, const char* uniqueId, CreatePluginPtr create)
+	gmpi::ReturnCode RegisterPlugin(PluginSubtype subType, const char* uniqueId, gmpi::CreatePluginPtr create)
 	{
 		return Factory()->RegisterPlugin(uniqueId, subType, create);
 	}
-	ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create)
+	gmpi::ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create)
 	{
 		return Factory()->RegisterPluginWithXml(subType, xml, create);
 	}
 }
 
 // Factory methods
-ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, PluginSubtype subType, gmpi2_sdk::CreatePluginPtr create )
+gmpi::ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, PluginSubtype subType, gmpi::CreatePluginPtr create )
 {
 	// already registered this plugin?
 	assert( pluginMap.find({ subType, uniqueId }) == pluginMap.end());
 
 	pluginMap[{ subType, uniqueId }] = create;
 
-	return ReturnCode::Ok;
+	return gmpi::ReturnCode::Ok;
 }
 
-ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* xml, gmpi2_sdk::CreatePluginPtr create)
+gmpi::ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* xml, gmpi::CreatePluginPtr create)
 {
 	std::string xmlstr{xml};
 
@@ -121,7 +121,7 @@ ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* x
 	const auto p2 = xmlstr.find("\"", p);
 
 	if( p == std::string::npos || p2 == std::string::npos)
-		return ReturnCode::Fail;
+		return gmpi::ReturnCode::Fail;
 
 	const auto uniqueId = xmlstr.substr(p, p2 - p);
 
@@ -129,10 +129,10 @@ ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* x
 	
 	xmls.push_back(xmlstr);
 
-	return ReturnCode::Ok;
+	return gmpi::ReturnCode::Ok;
 }
 
-ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subType, void** returnInterface )
+gmpi::ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subType, void** returnInterface )
 {
 	*returnInterface = nullptr; // if we fail for any reason, default return-val to nullptr
 
@@ -140,14 +140,14 @@ ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subTyp
 	auto it = pluginMap.find({ subType, uniqueId });
 	if( it == pluginMap.end( ) )
 	{
-		return ReturnCode::NoSupport;
+		return gmpi::ReturnCode::NoSupport;
 	}
 
 	auto create = (*it).second;
 
 	if( create == nullptr )
 	{
-		return ReturnCode::NoSupport;
+		return gmpi::ReturnCode::NoSupport;
 	}
 
 	try
@@ -167,21 +167,21 @@ ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subTyp
 	// the constructor will throw a char* if host don't support required interfaces.
 	catch( ... )
 	{
-		return ReturnCode::Fail;
+		return gmpi::ReturnCode::Fail;
 	}
 
-	return ReturnCode::Ok;
+	return gmpi::ReturnCode::Ok;
 }
 
-ReturnCode MpFactory::getPluginInformation(int32_t index, IString* returnXml)
+gmpi::ReturnCode MpFactory::getPluginInformation(int32_t index, IString* returnXml)
 {
 	if (index < 0 || index >= xmls.size())
 	{
 		returnXml->setData(nullptr, 0);
-		return ReturnCode::Fail;
+		return gmpi::ReturnCode::Fail;
 	}
 
 	returnXml->setData(xmls[index].data(), xmls[index].size());
-	return ReturnCode::Ok;
+	return gmpi::ReturnCode::Ok;
 }
 

@@ -23,7 +23,7 @@
 #include "GmpiSdkCommon.h"
 #include "RefCountMacros.h"
 
-namespace gmpi2_sdk
+namespace gmpi
 {
 
 // Pointer to sound processing member function.
@@ -172,7 +172,7 @@ protected:
 };
 
 template
-<typename T, int pinDirection_, int pinDatatype = gmpi2_sdk::PinTypeTraits<T>::PinDataType>
+<typename T, int pinDirection_, int pinDatatype = PinTypeTraits<T>::PinDataType>
 class MpControlPin : public MpControlPinBase< T, pinDatatype >
 {
 public:
@@ -367,8 +367,8 @@ public:
 	virtual ~AudioPlugin() {}
 
 	// IAudioPlugin methods
-	gmpi2::ReturnCode open(IUnknown* phost) override;
-	gmpi2::ReturnCode setBuffer(int32_t pinId, float* buffer) override;
+	gmpi::ReturnCode open(IUnknown* phost) override;
+	gmpi::ReturnCode setBuffer(int32_t pinId, float* buffer) override;
 	void process(int32_t count, const gmpi2::Event* events) override;
 
 	// overridables
@@ -377,7 +377,7 @@ public:
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
-	shared_ptr<gmpi2::IAudioPluginHost> host;
+	gmpi2_sdk::shared_ptr<gmpi2::IAudioPluginHost> host;
 
 	// Communication with pins.
 	int getBlockPosition() const

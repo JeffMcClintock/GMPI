@@ -61,8 +61,8 @@ struct Event
 // INTERFACE 'IAudioPlugin'
 struct DECLSPEC_NOVTABLE IAudioPlugin : public IUnknown
 {
-    virtual ReturnCode open(IUnknown* host) = 0;
-    virtual ReturnCode setBuffer(int32_t pinId, float* buffer) = 0;
+    virtual gmpi::ReturnCode open(IUnknown* host) = 0;
+    virtual gmpi::ReturnCode setBuffer(int32_t pinId, float* buffer) = 0;
     virtual void process(int32_t count, const Event* events) = 0;
 
     // {23835D7E-DCEB-4B08-A9E7-B43F8465939E}
@@ -73,10 +73,10 @@ struct DECLSPEC_NOVTABLE IAudioPlugin : public IUnknown
 // INTERFACE 'IAudioPluginHost'
 struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
 {
-    virtual ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data) = 0;
-    virtual ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming) = 0;
-    virtual ReturnCode setLatency(int32_t latency) = 0;
-    virtual ReturnCode sleep() = 0;
+    virtual gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data) = 0;
+    virtual gmpi::ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming) = 0;
+    virtual gmpi::ReturnCode setLatency(int32_t latency) = 0;
+    virtual gmpi::ReturnCode sleep() = 0;
     virtual int32_t getBlockSize() = 0;
     virtual int32_t getSampleRate() = 0;
     virtual int32_t getHandle() = 0;

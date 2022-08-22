@@ -28,13 +28,13 @@ namespace gmpi2
 	struct IAudioPlugin;
 }
 
-namespace gmpi2_sdk
+namespace gmpi
 {
 
 typedef gmpi2::IUnknown* (*CreatePluginPtr)();
 
-gmpi2::ReturnCode RegisterPlugin(gmpi2::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create);
-gmpi2::ReturnCode RegisterPluginWithXml(gmpi2::PluginSubtype subType, const char* xml, CreatePluginPtr create);
+gmpi::ReturnCode RegisterPlugin(gmpi2::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create);
+gmpi::ReturnCode RegisterPluginWithXml(gmpi2::PluginSubtype subType, const char* xml, CreatePluginPtr create);
 
 template< class moduleClass >
 class Register
@@ -205,4 +205,4 @@ inline void VariableFromRaw<std::string>(int size, const void* data, std::string
 	returnValue.assign((const char*)data, size);
 }
 
-} // namespace gmpi2_sdk
+} // namespace
