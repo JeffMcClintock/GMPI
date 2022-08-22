@@ -36,39 +36,37 @@
 
 namespace gmpi
 {
-    enum class ReturnCode : int32_t
-    {
-        Ok        = 0,  // Success.
-        Handled   = 1,  // Success, no further handing required.
-        Fail      = -1, // General failure.
-        Unhandled = -1, // Event not handled.
-        NoSupport = -2, // Interface not supported.
-        Cancel    = -3, // Async operation cancelled.
-    };
 
-    enum class PinDatatype : int32_t
-    {
-        Enum,
-        String,
-        Midi,
-        Float64,
-        Bool,
-        Audio,
-        Float32,
-        Int32 = 8,
-        Int64,
-        Blob,
-    };
-
-    enum class PinDirection : int32_t
-    {
-        In,
-        Out,
-    };
-}
-
-namespace gmpi
+enum class ReturnCode : int32_t
 {
+    Ok        = 0,  // Success.
+    Handled   = 1,  // Success, no further handing required.
+    Fail      = -1, // General failure.
+    Unhandled = -1, // Event not handled.
+    NoSupport = -2, // Interface not supported.
+    Cancel    = -3, // Async operation cancelled.
+};
+
+enum class PinDatatype : int32_t
+{
+    Enum,
+    String,
+    Midi,
+    Float64,
+    Bool,
+    Audio,
+    Float32,
+    Int32 = 8,
+    Int64,
+    Blob,
+};
+
+enum class PinDirection : int32_t
+{
+    In,
+    Out,
+};
+
 namespace api
 {
 

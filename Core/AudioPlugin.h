@@ -303,13 +303,13 @@ public:
 	}
 };
 
-typedef MpControlPin<int, static_cast<int>(PinDirection::In)>				IntInPin;
+typedef MpControlPin<int, static_cast<int>(PinDirection::In)>			IntInPin;
 typedef MpControlPin<int, static_cast<int>(PinDirection::Out)>			IntOutPin;
 typedef MpControlPin<float, static_cast<int>(PinDirection::In)>			FloatInPin;
-typedef MpControlPin<float, static_cast<int>(PinDirection::Out)>			FloatOutPin;
-typedef MpControlPin<Blob, static_cast<int>(PinDirection::In)>		BlobInPin;
-typedef MpControlPin<Blob, static_cast<int>(PinDirection::Out)>		BlobOutPin;
-typedef MpControlPin<std::string, static_cast<int>(PinDirection::In)>		StringInPin;
+typedef MpControlPin<float, static_cast<int>(PinDirection::Out)>		FloatOutPin;
+typedef MpControlPin<Blob, static_cast<int>(PinDirection::In)>			BlobInPin;
+typedef MpControlPin<Blob, static_cast<int>(PinDirection::Out)>			BlobOutPin;
+typedef MpControlPin<std::string, static_cast<int>(PinDirection::In)>	StringInPin;
 typedef MpControlPin<std::string, static_cast<int>(PinDirection::Out)>	StringOutPin;
 
 typedef MpControlPin<bool, static_cast<int>(PinDirection::In)>			BoolInPin;
@@ -377,7 +377,7 @@ public:
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
-	gmpi2_sdk::shared_ptr<api::IAudioPluginHost> host;
+	gmpi::shared_ptr<api::IAudioPluginHost> host;
 
 	// Communication with pins.
 	int getBlockPosition() const

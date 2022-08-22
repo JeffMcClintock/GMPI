@@ -25,7 +25,7 @@ inline bool operator==(const gmpi::api::Guid& left, const gmpi::api::Guid& right
 	return 0 == std::memcmp(&left, &right, sizeof(left));
 }
 
-namespace gmpi2_sdk
+namespace gmpi
 {
 // Helper for managing lifetime of reference-counted interface pointer
 template<class wrappedObjT>
