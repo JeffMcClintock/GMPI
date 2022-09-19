@@ -1,4 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
+
+set(SE_LOCAL_BUILD FALSE CACHE BOOL "Execute extra build steps for developers machine")
+
 project(GMPI_Samples)
 
 enable_testing()
@@ -26,4 +29,5 @@ endif()
 
 add_subdirectory(Samples)
 add_subdirectory(Projections/plain_c/Samples)
+add_subdirectory(Converters)
 # TODO add_subdirectory(AGraphics)

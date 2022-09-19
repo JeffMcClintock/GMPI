@@ -240,7 +240,7 @@ float MpAudioPinBase::getValue(int bufferPos) const
 		bufferPos = plugin_->getBlockPosition();
 	}
 
-	assert(bufferPos < plugin_->host.getBlockSize() && "err: Don't access past end of buffer");
+	assert(bufferPos < plugin_->host->getBlockSize() && "err: Don't access past end of buffer");
 
 	return *(getBuffer() + bufferPos);
 }
@@ -327,7 +327,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 		blockPosition = plugin_->getBlockPosition();
 	}
 
-	assert(blockPosition >= 0 && blockPosition < plugin_->host.getBlockSize() && "block posistion must be within current block");
+	assert(blockPosition >= 0 && blockPosition < plugin_->host->getBlockSize() && "block posistion must be within current block");
 
 	// note if streaming has changed (not just repeated one-offs).
 	if (isStreaming_ != isStreaming)
