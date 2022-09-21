@@ -37,6 +37,18 @@ struct pinInfoSem
 	std::string hostConnect;
 	std::string meta_data;
 };
+struct paramInfoSem
+{
+	int32_t id;
+	std::string name;
+	gmpi::PinDatatype datatype;
+	std::string default_value;
+	//int32_t parameterId;
+	//int32_t flags;
+	//std::string hostConnect;
+	std::string meta_data;
+	bool is_private;
+};
 
 struct pluginInfoSem
 {
@@ -46,6 +58,7 @@ struct pluginInfoSem
 	int outputCount = {};
 	std::vector<pinInfoSem> dspPins;
 	std::vector<pinInfoSem> guiPins;
+	std::vector<paramInfoSem> parameters;
 };
 
 inline int countPins(pluginInfoSem& plugin, gmpi::PinDirection direction, gmpi::PinDatatype datatype)
@@ -56,29 +69,6 @@ inline int countPins(pluginInfoSem& plugin, gmpi::PinDirection direction, gmpi::
 		, [direction, datatype](const pinInfoSem& p) -> bool
 		{
 			return p.direction == direction && p.datatype == datatype;
-		}
-	);
-}
-inline int countAudioInputs(pluginInfoSem& plugin)
-{
-	return std::count_if(
-		plugin.dspPins.begin()
-		, plugin.dspPins.end()
-		, [](const pinInfoSem& p) -> bool
-		{
-			return p.direction == gmpi::PinDirection::In && p.datatype == gmpi::PinDatatype::Audio;
-		}
-	);
-}
-
-inline int countAudioOutputs(pluginInfoSem& plugin)
-{
-	return std::count_if(
-		plugin.dspPins.begin()
-		, plugin.dspPins.end()
-		, [](const pinInfoSem& p) -> bool
-		{
-			return p.direction == gmpi::PinDirection::Out && p.datatype == gmpi::PinDatatype::Audio;
 		}
 	);
 }

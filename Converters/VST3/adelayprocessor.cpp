@@ -275,7 +275,7 @@ tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 	auto& semInfo = factory->plugins[0];
 
 	{
-		int numInputs = countAudioInputs(semInfo);
+		int numInputs = countPins(semInfo, gmpi::PinDirection::In, gmpi::PinDatatype::Audio);;
 		inputBuffers.assign(numInputs, nullptr);
 
 		int pinIndex = 0;
@@ -300,7 +300,7 @@ tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 	}
 
 	{
-		int numOutputs = countAudioOutputs(semInfo);
+		int numOutputs = countPins(semInfo, gmpi::PinDirection::Out, gmpi::PinDatatype::Audio);
 		outputBuffers.assign(numOutputs, nullptr);
 		int pinIndex = 0;
 		if (outputsAsStereoPairs)

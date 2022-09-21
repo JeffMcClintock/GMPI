@@ -210,10 +210,75 @@ tresult PLUGIN_API VST3Controller::initialize (FUnknown* context)
 		MpController::Initialize();
 
 		//const auto& info = BundleInfo::instance()->getPluginInfo();
-		pluginInformation info{};
+		auto factory = MyVstPluginFactory::GetInstance();
+		auto& semInfo = factory->plugins[0];
+		supportedChannels = countPins(semInfo, gmpi::PinDirection::In, gmpi::PinDatatype::Midi) == 0 ? 0 : 16;
 
-		const auto supportedChannels = info.midiInputCount ? 16 : 0;
-		const auto supportAllCC = info.vst3Emulate16ChanCcs;
+		// Parameters
+		{
+			int hostParameterIndex = 0;
+			int ParameterHandle = 0;
+			for (auto& param : semInfo.parameters)
+			{
+				bool isPrivate =
+					param.is_private ||
+					param.datatype == gmpi::PinDatatype::String ||
+					param.datatype == gmpi::PinDatatype::Blob;
+
+				float pminimum = 0.0f;
+				float pmaximum = 10.0f;
+
+				if (!param.meta_data.empty())
+				{
+					it_enum_list it(::Utf8ToWstring(param.meta_data));
+
+					pminimum = it.RangeLo();
+					pmaximum = it.RangeHi();
+				}
+
+				MpParameter_base* seParameter = {};
+				if (isPrivate)
+				{
+					auto param = new MpParameter_private(this);
+					seParameter = param;
+//					param->isPolyphonic_ = isPolyphonic_;
+				}
+				else
+				{
+//					assert(ParameterTag >= 0);
+					seParameter = makeNativeParameter(hostParameterIndex++, pminimum > pmaximum);
+				}
+
+				seParameter->hostControl_ = -1; // TODO hostControl;
+				seParameter->minimum = pminimum;
+				seParameter->maximum = pmaximum;
+				seParameter->parameterHandle_ = ParameterHandle;
+				seParameter->datatype_ = (int) param.datatype;
+				seParameter->moduleHandle_ = 0;
+				seParameter->moduleParamId_ = param.id;
+				seParameter->stateful_ = true; // stateful_;
+				seParameter->name_ = convert.from_bytes(param.name);
+				seParameter->enumList_ = convert.from_bytes(param.meta_data); // enumList_;
+				seParameter->ignorePc_ = false; // ignorePc != 0;
+
+				// add one patch value
+				seParameter->rawValues_.push_back(ParseToRaw(seParameter->datatype_, param.default_value));
+
+				parameters_.push_back(std::unique_ptr<MpParameter>(seParameter));
+				ParameterHandleIndex.insert(std::make_pair(ParameterHandle, seParameter));
+				moduleParameterIndex.insert(std::make_pair(std::make_pair(seParameter->moduleHandle_, seParameter->moduleParamId_), ParameterHandle));
+
+				// Ensure host queries return correct value.
+				seParameter->upDateImmediateValue();
+
+				++ParameterHandle;
+			}
+		}
+
+		factory->release();
+
+//		const auto supportedChannels = info.midiInputCount ? 16 : 0;
+		const auto supportAllCC = true; // info.vst3Emulate16ChanCcs;
 
 		// MIDI CC SUPPORT
 		wchar_t ccName[] = L"MIDI CC     ";

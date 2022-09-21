@@ -661,7 +661,100 @@ void MyVstPluginFactory::RegisterXml(const char* xml)
 		else
 			vendorName_ = "GMPI";
 
-		auto parameters = pluginE->FirstChildElement("Parameters");
+		// PARAMETERS
+		{
+			auto parametersE = pluginE->FirstChildElement("Parameters");
+			int nextId = 0;
+			for (auto paramE = parametersE->FirstChildElement("Parameter"); paramE; paramE = paramE->NextSiblingElement("Parameter"))
+			{
+				paramInfoSem param{};
+
+				// I.D.
+				paramE->QueryIntAttribute("id", &(param.id));
+				// Datatype.
+				std::string pin_datatype = FixNullCharPtr(paramE->Attribute("datatype"));
+				// Name.
+				param.name = FixNullCharPtr(paramE->Attribute("name"));
+				// File extension or enum list.
+				param.meta_data = FixNullCharPtr(paramE->Attribute("metadata"));
+				// Default.
+				param.default_value = FixNullCharPtr(paramE->Attribute("default"));
+
+#if 0
+				// Automation.
+				int controllerType = ControllerType::None;
+				if (!XmlStringToController(FixNullCharPtr(paramE->Attribute("automation")), controllerType))
+				{
+//					std::wostringstream oss;
+//					oss << L"err. module XML file (" << Filename() << L"): pin id " << param.id << L" unknown automation type.";
+//#if defined( SE_EDIT_SUPPORT )
+//					Messagebox(oss);
+//#endif
+					controllerType = controllerType << 24;
+				}
+
+				param.automation = controllerType;
+#endif
+				// Datatype.
+				int temp;
+				if (XmlStringToDatatype(pin_datatype, temp) )//&& temp != DT_CLASS)
+				{
+					param.datatype = (gmpi::PinDatatype)temp;
+				}
+				else
+				{
+//					std::wostringstream oss;
+//					oss << L"err. module XML file (" << Filename() << L"): parameter id " << param.id << L" unknown datatype '" << Utf8ToWstring(pin_datatype) << L"'. Valid [float, int ,string, blob, midi ,bool ,enum ,double]";
+//#if defined( SE_EDIT_SUPPORT )
+//					Messagebox(oss);
+//#endif
+				}
+
+				paramE->QueryBoolAttribute("private", &param.is_private);
+#if 0
+				SetPinFlag(("private"), IO_PAR_PRIVATE, paramE, param.flags);
+				SetPinFlag(("ignorePatchChange"), IO_IGNORE_PATCH_CHANGE, paramE, param.flags);
+				// isFilename don't appear to be used???? !!!!!
+				SetPinFlag(("isFilename"), IO_FILENAME, paramE, param.flags);
+				SetPinFlag(("isPolyphonic"), IO_PAR_POLYPHONIC, paramE, param.flags);
+				SetPinFlag(("isPolyphonicGate"), IO_PAR_POLYPHONIC_GATE, paramE, param.flags);
+				// exception. default for 'persistant' is true (set in param constructor).
+				std::string persistantFlag = FixNullCharPtr(paramE->Attribute("persistant"));
+
+				if (persistantFlag == "false")
+				{
+					CLEAR_BITS(param.flags, IO_PARAMETER_PERSISTANT);
+				}
+#endif
+
+#if 0
+				// can't handle poly parameters with 128 patches, bogs down dsp_patch_parameter_base::getQueMessage()
+				// !! these are not really parameters anyhow, more like controlers (host genereated)
+				if ((param.flags & IO_PAR_POLYPHONIC) && (param.flags & IO_IGNORE_PATCH_CHANGE) == 0)
+				{
+					std::wostringstream oss;
+					oss << L"err. '" << GetName() << L"' module XML file: pin id " << param.id << L" - Polyphonic parameters need ignorePatchChange=true";
+					Messagebox(oss);
+				}
+				if (m_parameters.find(param.id) != m_parameters.end())
+				{
+#if defined( SE_EDIT_SUPPORT )
+					std::wostringstream oss;
+					oss << L"err. module XML file: parameter id " << param.id << L" used twice.";
+					Messagebox(oss);
+#endif
+				}
+				else
+				{
+					//bool res = m_parameters.insert(std::pair<int, parameter_description*>(param.id, pind)).second;
+					//assert(res && "parameter already registered");
+				}
+#endif
+				info.parameters.push_back(param);
+
+				++nextId;
+			}
+		}
 
 		int scanTypes[] = { gmpi::MP_SUB_TYPE_AUDIO, gmpi::MP_SUB_TYPE_GUI, gmpi::MP_SUB_TYPE_CONTROLLER };
 		std::vector<pinInfoSem>* pinList = {};
