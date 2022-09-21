@@ -103,12 +103,18 @@ inline std::wstring Utf8ToWstring(const char* p_string)
 
 #ifdef _WIN32
     
-    inline std::wstring ToUtf16( const std::wstring& s )
-    {
-        assert( sizeof(wchar_t) == 2 );
-        return s;
-    }
-    
+inline std::wstring ToUtf16(const std::wstring& s)
+{
+	assert(sizeof(wchar_t) == 2);
+	return s;
+}
+
+inline std::wstring ToUtf16(const std::string& s)
+{
+	assert(sizeof(wchar_t) == 2);
+	return Utf8ToWstring(s);
+}
+
 #else
 /*
 #ifdef __INTEL__
@@ -138,6 +144,12 @@ inline std::wstring Utf8ToWstring(const char* p_string)
         }
         return r;
     }
-    
+
+	inline utf16_string ToUtf16(const std::string s)
+	{
+		const auto temp = Utf8ToWstring(s);
+		return ToUtf16(temp);
+	}
+
 #endif
 }

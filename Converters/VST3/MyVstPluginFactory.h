@@ -1,8 +1,15 @@
 #pragma once
 #include <string>
 #include <vector>
+#include <algorithm>
 #include "pluginterfaces/base/ipluginbase.h"
 #include "pluginterfaces/base/funknown.h"
+#include "GmpiApiCommon.h"
+
+namespace tinyxml2
+{
+	class XMLElement;
+}
 
 struct pluginInfo
 {
@@ -18,11 +25,78 @@ struct pluginInfo
 	std::string outputNames;
 };
 
+struct pinInfoSem
+{
+	int32_t id;
+	std::string name;
+	gmpi::PinDirection direction;
+	gmpi::PinDatatype datatype;
+	std::string default_value;
+	int32_t parameterId;
+	int32_t flags;
+	std::string hostConnect;
+	std::string meta_data;
+};
+
 struct pluginInfoSem
 {
 	std::string id;
 	std::string name;
+	int inputCount = {};
+	int outputCount = {};
+	std::vector<pinInfoSem> dspPins;
+	std::vector<pinInfoSem> guiPins;
 };
+
+inline int countPins(pluginInfoSem& plugin, gmpi::PinDirection direction, gmpi::PinDatatype datatype)
+{
+	return std::count_if(
+		plugin.dspPins.begin()
+		, plugin.dspPins.end()
+		, [direction, datatype](const pinInfoSem& p) -> bool
+		{
+			return p.direction == direction && p.datatype == datatype;
+		}
+	);
+}
+inline int countAudioInputs(pluginInfoSem& plugin)
+{
+	return std::count_if(
+		plugin.dspPins.begin()
+		, plugin.dspPins.end()
+		, [](const pinInfoSem& p) -> bool
+		{
+			return p.direction == gmpi::PinDirection::In && p.datatype == gmpi::PinDatatype::Audio;
+		}
+	);
+}
+
+inline int countAudioOutputs(pluginInfoSem& plugin)
+{
+	return std::count_if(
+		plugin.dspPins.begin()
+		, plugin.dspPins.end()
+		, [](const pinInfoSem& p) -> bool
+		{
+			return p.direction == gmpi::PinDirection::Out && p.datatype == gmpi::PinDatatype::Audio;
+		}
+	);
+}
+
+inline auto getPinName(pluginInfoSem& plugin, gmpi::PinDirection direction, int index) -> std::string
+{
+	int i = 0;
+	for (auto& p : plugin.dspPins)
+	{
+		if (p.direction != direction || p.datatype != gmpi::PinDatatype::Audio)
+			continue;
+
+		if (i++ == index)
+			return p.name;
+	}
+
+	return {};
+}
 
 class MyVstPluginFactory :
 	public Steinberg::IPluginFactory3
@@ -85,9 +159,13 @@ public:
 		return pluginInfo_;
 	}
 
+	std::vector<pluginInfoSem> plugins;
+
 private:
 	void initialize();
 	void RegisterXml(const char* xml);
+	void RegisterPin(tinyxml2::XMLElement* pin, std::vector<pinInfoSem>* pinlist, int32_t plugin_sub_type,
+		int nextPinId);
 	bool initializeFactory();
 
 	std::string vendorName_;
@@ -97,6 +175,5 @@ private:
 	pluginInfo pluginInfo_;
 	int32_t backwardCompatible4charId = -1;
 
-	std::vector<pluginInfoSem> plugins;
 };
 

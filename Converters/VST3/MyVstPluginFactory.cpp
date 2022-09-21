@@ -128,7 +128,7 @@ If you are using the CPluginFactory implementation provided by the SDK, it retur
 int32 MyVstPluginFactory::countClasses ()
 {
 	initialize();
-	return 2;
+	return plugins.size() * 2;
 }
 	
 /** Fill a PClassInfo structure with information about the class at the specified index. */
@@ -136,12 +136,15 @@ tresult MyVstPluginFactory::getClassInfo (int32 index, PClassInfo* info)
 {
 	initialize();
 
-	if( index < 0 || index > 1 )
+	if (index < 0 || index > plugins.size() * 2)
 	{
 		return kInvalidArgument;
 	}
 
-	switch( index )
+	const int pluginIndex = index / 2;
+	const int classIndex = index % 2;
+
+	switch(classIndex)
 	{
 	case 0:
 		strncpy8 (info->category, kVstAudioEffectClass, PClassInfo::kCategorySize );
@@ -155,7 +158,7 @@ tresult MyVstPluginFactory::getClassInfo (int32 index, PClassInfo* info)
 
 	info->cardinality = PClassInfo::kManyInstances;
 
-	strncpy8 (info->name, pluginInfo_.name_.c_str(), PClassInfo::kNameSize );
+	strncpy8 (info->name, plugins[pluginIndex].name.c_str(), PClassInfo::kNameSize );
 
 	return kResultOk;
 }
@@ -165,19 +168,22 @@ tresult MyVstPluginFactory::getClassInfo2 (int32 index, PClassInfo2* info)
 {
 	initialize();
 
-	if( index < 0 || index > 1 )
+	if (index < 0 || index > plugins.size() * 2)
 	{
 		return kInvalidArgument;
 	}
 
+	const int pluginIndex = index / 2;
+	const int classIndex = index % 2;
+
 	info->cardinality = PClassInfo::kManyInstances;
 
-	strncpy8 (info->name, pluginInfo_.name_.c_str(), PClassInfo::kNameSize );
+	strncpy8 (info->name, plugins[pluginIndex].name.c_str(), PClassInfo::kNameSize );
 	strncpy8 (info->sdkVersion, kVstVersionString, PClassInfo2::kVersionSize );
 	strncpy8 (info->vendor, vendorName_.c_str(), PClassInfo2::kVendorSize );
 	strncpy8 (info->version, pluginInfo_.version_.c_str(), PClassInfo2::kVersionSize );
 
-	switch( index )
+	switch(classIndex)
 	{
 	case 0:
 		info->classFlags = Vst::kDistributable;
@@ -237,13 +243,17 @@ int32_t MyVstPluginFactory::getVst2Id64(int32_t pluginIndex) // generated from h
 tresult MyVstPluginFactory::getClassInfoUnicode (int32 index, PClassInfoW* info)
 {
 	initialize();
-
-	if( index < 0 || index > 1 )
+ 
+	if( index < 0 || index > plugins.size() * 2 )
 	{
 		return kInvalidArgument;
 	}
 
-	switch( index )
+	const int pluginIndex = index / 2;
+	const int classIndex = index % 2;
+
+	// todo unique processor and control GUIDs based on plugin unique-id
+	switch(classIndex)
 	{
 	case 0:
 		info->classFlags = Vst::kDistributable;
@@ -263,19 +273,13 @@ tresult MyVstPluginFactory::getClassInfoUnicode (int32 index, PClassInfoW* info)
 
 	str8ToStr16 (info->sdkVersion, kVstVersionString, PClassInfo2::kVersionSize );
 	str8ToStr16 (info->version, pluginInfo_.version_.c_str(), PClassInfo2::kVersionSize );
-
 	str8ToStr16 (info->vendor, vendorName_.c_str(), PClassInfo2::kVendorSize );
-	//auto temp = Utf8ToWstring(vendorName_);
-	//wcscpy_s(info->vendor, PClassInfo2::kVendorSize, temp.c_str());
-
-	str8ToStr16 (info->name, pluginInfo_.name_.c_str(), PClassInfo::kNameSize );
-	//temp = Utf8ToWstring(pluginInfo_.name_);
-	//wcscpy_s(info->name, PClassInfo::kNameSize, temp.c_str());
+	str8ToStr16 (info->name, plugins[pluginIndex].name.c_str(), PClassInfo::kNameSize );
 
 	return kResultOk;
 }
 	
-		/** Receives information about host*/
+		/** Recieves information about host*/
 tresult MyVstPluginFactory::setHostContext (FUnknown* context)
 {
 	return kNotImplemented;
@@ -339,6 +343,282 @@ void MyVstPluginFactory::initialize()
 	static auto callOnce = initializeFactory();
 }
 
+void MyVstPluginFactory::RegisterPin(
+	tinyxml2::XMLElement* pin,
+	std::vector<pinInfoSem>* pinlist,
+	int32_t plugin_sub_type,
+	int nextPinId
+)
+{
+	assert(pin);
+	int type_specific_flags = 0;
+
+	if (plugin_sub_type != gmpi::MP_SUB_TYPE_AUDIO)
+	{
+//?		type_specific_flags = IO_UI_COMMUNICATION;
+	}
+
+	pinInfoSem pind{};
+
+	//		_RPT1(_CRT_WARN, "%s\n", pins[i]->GetXML() );
+	// id
+//	int pin_id; // = XStr2Int( pin->Attribute("id") ));
+	pind.id = nextPinId;
+	pin->QueryIntAttribute("id", &(pind.id));
+	// name
+	pind.name = FixNullCharPtr(pin->Attribute("name"));
+
+	// datatype
+	std::string pin_datatype = FixNullCharPtr(pin->Attribute("datatype"));
+	std::string pin_rate = FixNullCharPtr(pin->Attribute("rate"));
+
+	// Datatype.
+	int temp;
+	if (XmlStringToDatatype(pin_datatype, temp))
+	{
+		assert(0 <= temp && temp < (int)gmpi::PinDatatype::Blob);
+		pind.datatype = (gmpi::PinDatatype)temp;
+/*
+		if (pind.datatype == DT_CLASS) // e.g. "class:geometry"
+		{
+			if (pin_datatype.size() > 6)
+				pind.classname = pin_datatype.substr(6);
+		}
+*/
+	}
+	else
+	{
+		//std::wostringstream oss;
+		//oss << L"err. module XML file (" << Filename() << L"): parameter id " << pin_id << L" unknown datatype '" << Utf8ToWstring(pin_datatype) << L"'. Valid [float, int ,string, blob, midi ,bool ,enum ,double]";
+
+#if defined( SE_EDIT_SUPPORT )
+		Messagebox(oss);
+#endif
+	}
+
+	// default
+	pind.default_value = FixNullCharPtr(pin->Attribute("default"));
+
+	if (pin_rate.compare("audio") == 0)
+	{
+		if (!pind.default_value.empty())
+		{
+			// multiply default by 10 (to Volts). DoubleToString() removes trilaing zeros.
+			char* temp;	// convert string to SAMPLE
+			pind.default_value = std::to_string(10.0f * (float)strtod(pind.default_value.c_str(), &temp));
+		}
+
+		pind.datatype = gmpi::PinDatatype::Audio;
+
+		if (pin_datatype.compare("float") != 0)
+		{
+			//std::wostringstream oss;
+			//oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" audio-rate not supported.";
+			//Messagebox(oss);
+		}
+	}
+
+	// direction
+	const std::string pin_direction = FixNullCharPtr(pin->Attribute("direction"));
+
+	if (pin_direction.compare("out") == 0)
+	{
+		pind.direction = gmpi::PinDirection::Out;
+
+#if defined( SE_EDIT_SUPPORT )
+		if (!pind.default_value.empty())
+		{
+			SafeMessagebox(0, (L"module data: default not supported on output pin"));
+		}
+#endif
+	}
+	else
+	{
+		pind.direction = gmpi::PinDirection::In;
+	}
+
+	// flags
+	pind.flags = type_specific_flags;
+#if 0 // TODO
+	SetPinFlag("private", IO_HIDE_PIN, pin, pind.flags);
+	SetPinFlag("autoRename", IO_RENAME, pin, pind.flags);
+	SetPinFlag("isFilename", IO_FILENAME, pin, pind.flags);
+	SetPinFlag("linearInput", IO_LINEAR_INPUT, pin, pind.flags);
+	SetPinFlag("ignorePatchChange", IO_IGNORE_PATCH_CHANGE, pin, pind.flags);
+	SetPinFlag("autoDuplicate", IO_AUTODUPLICATE, pin, pind.flags);
+	SetPinFlag("isMinimised", IO_MINIMISED, pin, pind.flags);
+	SetPinFlag("isPolyphonic", IO_PAR_POLYPHONIC, pin, pind.flags);
+	SetPinFlag("autoConfigureParameter", IO_AUTOCONFIGURE_PARAMETER, pin, pind.flags);
+	SetPinFlag("noAutomation", IO_PARAMETER_SCREEN_ONLY, pin, pind.flags);
+	SetPinFlag("redrawOnChange", IO_REDRAW_ON_CHANGE, pin, pind.flags);
+	SetPinFlag("isContainerIoPlug", IO_CONTAINER_PLUG, pin, pind.flags);
+	SetPinFlag("isAdderInputPin", IO_ADDER, pin, pind.flags);
+
+	std::wstring pin_automation = Utf8ToWstring(pin->Attribute("automation"));
+#endif
+
+#if defined( SE_EDIT_SUPPORT )
+	if (pin->Attribute("isParameter") != 0)
+	{
+		SafeMessagebox(0, (L"'isParameter' not allowed in pin XML"));
+	}
+	if (!pin_automation.empty())
+	{
+		SafeMessagebox(0, (L"'automation' not allowed in pin XML"));
+	}
+#endif
+
+	// parameter ID. Defaults to ssame as pin ID, but can be overridden.
+	// Pins can be driven from patch-store.
+	int parameterId = -1;
+	pin->QueryIntAttribute("parameterId", &parameterId);
+
+	//if (parameterId != -1)
+	//{
+	//	pind.flags |= (IO_PATCH_STORE | IO_HIDE_PIN);
+	//}
+
+	// host-connect
+	pind.hostConnect = FixNullCharPtr(pin->Attribute("hostConnect"));
+
+	// parameterField.
+#if 0
+	auto parameterFieldId = FT_VALUE;
+	if (!pind.hostConnect.empty() || parameterId != -1)
+	{
+#if defined( SE_TARGET_PLUGIN)
+		// In exported VST3s, just using int in XML. Faster, more compact.
+		pin->QueryIntAttribute("parameterField", &parameterFieldId);
+#else
+
+		// see matching enum ParameterFieldType
+		string parameterField(FixNullCharPtr(pin->Attribute("parameterField")));
+		if (!XmlStringToParameterField(parameterField, parameterFieldId))
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" unknown Parameter Field ID.";
+
+#if defined( SE_EDIT_SUPPORT )
+			Messagebox(oss);
+#endif
+		}
+#endif
+	}
+
+	if (!pind.hostConnect.empty())
+	{
+		pind.flags |= IO_HOST_CONTROL | IO_HIDE_PIN;
+		HostControls hostControlId = (HostControls)StringToHostControl(pind.hostConnect.c_str());
+		if (hostControlId == HC_NONE)
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML: '" << pind.hostConnect << L"' unknown HOST CONTROL.";
+			Messagebox(oss);
+		}
+
+		if (parameterFieldId == FT_VALUE)
+		{
+			int expectedDatatype = GetHostControlDatatype(hostControlId);
+			if (expectedDatatype == DT_ENUM)
+			{
+				expectedDatatype = DT_INT;
+			}
+
+			if (parameterFieldId == FT_VALUE && expectedDatatype != -1 && expectedDatatype != pind.datatype)
+			{
+				std::wostringstream oss;
+				oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" hostConnect wrong datatype. Expected: " << expectedDatatype;
+				Messagebox(oss);
+			}
+		}
+
+		if (pind.direction != DR_IN && (hostControlId < HC_USER_SHARED_PARAMETER_INT0 || hostControlId > HC_USER_SHARED_PARAMETER_INT4))
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" hostConnect pin wrong direction. Expected: direction=\"in\"";
+			Messagebox(oss);
+		}
+	}
+#endif
+	// meta data
+	pind.meta_data = FixNullCharPtr(pin->Attribute("metadata"));
+	
+	// notes
+//	pind.notes = Utf8ToWstring(pin->Attribute("notes"));
+#if 0
+	if (pinlist->find(pin_id) != pinlist->end())
+	{
+		//std::wostringstream oss;
+		//oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" used twice.";
+		//Messagebox(oss);
+	}
+	else
+#endif
+	{
+		//InterfaceObject* iob = new InterfaceObject(pin_id, pind);
+		//// iob->setAutomation(controllerType);
+		//iob->setParameterId(parameterId);
+		//iob->setParameterFieldId(parameterFieldId);
+
+		pind.parameterId = parameterId;
+
+		// constraints
+#if 0
+		// Can't have isParameter on output Gui Pin.
+		if (iob->GetDirection() == DR_OUT && iob->isUiPlug(0) && iob->isParameterPlug(0))
+		{
+			if (
+				m_unique_id != L"Slider" && // exception for old crap.
+				m_unique_id != L"List Entry" &&
+				m_unique_id != L"Text Entry" &&
+				m_group_name != L"Debug"
+				)
+			{
+				std::wostringstream oss;
+				oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" Can't have isParameter on output Gui Pin";
+				Messagebox(oss);
+			}
+		}
+
+		// Patch Store pins must be hidden.
+		if (iob->isParameterPlug(0) && !iob->DisableIfNotConnected(0))
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" Patch-store input pins must have private=true.";
+			Messagebox(oss);
+		}
+
+		// DSP parameters only support FT_VALUE
+		if (iob->getParameterFieldId(0) != FT_VALUE && !iob->isUiPlug(0) && iob->isParameterPlug(0))
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" parameterField not supported on Audio (DSP) pins.";
+			Messagebox(oss);
+		}
+
+		// parameter used by pin but not declared in "Parameters" section.
+		if (iob->isParameterPlug(0) && m_parameters.find(iob->getParameterId(0)) == m_parameters.end())
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L" parameter: " << iob->getParameterId(0) << L" not defined";
+			Messagebox(oss);
+		}
+
+		// parameter used on autoduplicate pin.
+		if (iob->isParameterPlug(0) && iob->autoDuplicate(0))
+		{
+			std::wostringstream oss;
+			oss << L"ERROR. module XML file (" << Filename() << L"): pin id " << pin_id << L"  - can't have both 'autoDuplicate' and 'parameterId'";
+			Messagebox(oss);
+		}
+#endif
+		//std::pair< module_info_pins_t::iterator, bool > res = pinlist->insert(std::pair<int, InterfaceObject*>(pin_id, iob));
+		//assert(res.second && "pin already registered");
+
+		pinlist->push_back(pind);
+	}
+}
+
 void MyVstPluginFactory::RegisterXml(const char* xml)
 {
 	tinyxml2::XMLDocument doc;
@@ -376,38 +656,54 @@ void MyVstPluginFactory::RegisterXml(const char* xml)
 			info.name = info.id;
 		}
 
+		if (auto s = pluginE->Attribute("vendor"); s)
+			vendorName_ = s;
+		else
+			vendorName_ = "GMPI";
+
 		auto parameters = pluginE->FirstChildElement("Parameters");
 
 		int scanTypes[] = { gmpi::MP_SUB_TYPE_AUDIO, gmpi::MP_SUB_TYPE_GUI, gmpi::MP_SUB_TYPE_CONTROLLER };
+		std::vector<pinInfoSem>* pinList = {};
 		for (auto sub_type : scanTypes)
 		{
-			std::string sub_type_name;
+			const char* sub_type_name = {};
 
 			switch (sub_type)
 			{
 			case gmpi::MP_SUB_TYPE_AUDIO:
 				sub_type_name = "Audio";
+				pinList = &info.dspPins;
 				break;
 
 			case gmpi::MP_SUB_TYPE_GUI:
 				sub_type_name = "GUI";
+				pinList = &info.guiPins;
 				break;
 
 			case gmpi::MP_SUB_TYPE_CONTROLLER:
 				sub_type_name = "Controller";
+				pinList = nullptr;
 				break;
 			}
+
+			auto classE = pluginE->FirstChildElement(sub_type_name);
+			if (!classE)
+				continue;
 
 			if (sub_type == gmpi::MP_SUB_TYPE_AUDIO)
 			{
 				// plugin_class->ToElement()->QueryIntAttribute("latency", &latency);
 			}
 
-			int nextPinId = 0;
-			for (auto pinE = pluginList->FirstChildElement("Plugin"); pinE; pinE = pinE->NextSiblingElement())
+			if (pinList)
 			{
-				//	RegisterPin(node->ToElement(), pinlist, plugin_sub_type, nextPinId);
-				++nextPinId;
+				int nextPinId = 0;
+				for (auto pinE = classE->FirstChildElement("Pin"); pinE; pinE = pinE->NextSiblingElement("Pin"))
+				{
+					RegisterPin(pinE, pinList, sub_type, nextPinId);
+					++nextPinId;
+				}
 			}
 		}
 	}

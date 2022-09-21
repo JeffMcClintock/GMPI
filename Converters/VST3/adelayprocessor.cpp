@@ -256,7 +256,15 @@ void SeProcessor::reInitialise()
 //-----------------------------------------------------------------------------
 tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 {
+	tresult result = AudioEffect::initialize(context);
+	if (result != kResultTrue)
+		return result;
+
 	auto factory = MyVstPluginFactory::GetInstance();
+
+	if (factory->plugins.empty())
+		return kResultFalse;
+
 	outputsAsStereoPairs = factory->GetOutputsAsStereoPairs();
 
 	//const auto& info = BundleInfo::instance()->getPluginInfo();
@@ -264,70 +272,64 @@ tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 
 	reInitialise();
 
-	tresult result = AudioEffect::initialize (context);
+	auto& semInfo = factory->plugins[0];
 
-	if (result == kResultTrue)
 	{
-//		int numInputs = synthEditProject.getNumInputs();
-int numInputs = 2;
+		int numInputs = countAudioInputs(semInfo);
 		inputBuffers.assign(numInputs, nullptr);
 
-		if( outputsAsStereoPairs )
+		int pinIndex = 0;
+		if (outputsAsStereoPairs)
 		{
-			while( numInputs > 1 )
+			while (numInputs > 1)
 			{
-				addAudioInput (STR16 ("AudioInput"), SpeakerArr::kStereo);
+				const auto name = ToUtf16(getPinName(semInfo, gmpi::PinDirection::In, pinIndex));
+				addAudioInput(name.c_str(), SpeakerArr::kStereo);
 				numInputs -= 2;
+				pinIndex += 2;
 			}
 		}
 
-		while( numInputs > 0 )
+		while (numInputs > 0)
 		{
-			addAudioInput( STR16( "AudioInput" ), SpeakerArr::kMono );
+			const auto name = ToUtf16(getPinName(semInfo, gmpi::PinDirection::In, pinIndex));
+			addAudioInput(name.c_str(), SpeakerArr::kMono);
 			numInputs -= 1;
+			pinIndex += 1;
 		}
+	}
 
-		//int numOutputs = synthEditProject.getNumOutputs();
-int numOutputs = 2;
+	{
+		int numOutputs = countAudioOutputs(semInfo);
 		outputBuffers.assign(numOutputs, nullptr);
 		int pinIndex = 0;
-		if( outputsAsStereoPairs )
+		if (outputsAsStereoPairs)
 		{
-			while( numOutputs > 1 )
+			while (numOutputs > 1)
 			{
-#ifdef MAC
-                auto name = JmUnicodeConversions::ToUtf16( factory->GetOutputsName(pinIndex) );
-#else
-				auto name = factory->GetOutputsName(pinIndex);
-#endif
+				const auto name = ToUtf16(getPinName(semInfo, gmpi::PinDirection::Out, pinIndex));
 				addAudioOutput(name.c_str(), SpeakerArr::kStereo);
 				numOutputs -= 2;
 				pinIndex += 2;
 			}
 		}
-		while( numOutputs > 0 )
+		while (numOutputs > 0)
 		{
-#ifdef MAC
-            auto name = JmUnicodeConversions::ToUtf16( factory->GetOutputsName(pinIndex) );
-#else
-            auto name = factory->GetOutputsName(pinIndex);
-#endif
+			const auto name = ToUtf16(getPinName(semInfo, gmpi::PinDirection::Out, pinIndex));
 			addAudioOutput(name.c_str(), SpeakerArr::kMono);
 			numOutputs -= 1;
 			pinIndex += 1;
 		}
+	}
 
-#if 0 // TODO
-		if(synthEditProject.wantsMidi())
-		{
-			addEventInput(STR16 ("Event Input"), 16);
-		}
+	for (int i = countPins(semInfo, gmpi::PinDirection::In, gmpi::PinDatatype::Midi) ; i > 0 ; --i)
+	{
+		addEventInput(STR16 ("MIDI In"), 16);
+	}
 
-		if (synthEditProject.sendsMidi())
-		{
-			addEventOutput(STR16("Event Output"), 16);
-		}
-#endif
+	for (int i = countPins(semInfo, gmpi::PinDirection::Out, gmpi::PinDatatype::Midi); i > 0; --i)
+	{
+		addEventOutput(STR16("MIDI Out"), 16);
 	}
 
 	factory->release();
@@ -342,7 +344,6 @@ int numOutputs = 2;
 			);
 	}
 	return result;
-	return true;
 }
 
 uint32 SeProcessor::getLatencySamples()
