@@ -1,10 +1,13 @@
 #pragma once
+//#include "GmpiSdkCommon.h" // for GUID equality operator
 
+//	if ((*iid) == CLASS_NAME::guid || (*iid) == gmpi::api::IUnknown::guid ){ \
+// 
 // macros to save typing the reference counting.
-#define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \
+#define GMPI_QUERYINTERFACE( CLASS_NAME ) \
 	gmpi::ReturnCode queryInterface(const gmpi::api::Guid* iid, void** returnInterface) override{ \
 	*returnInterface = 0; \
-	if ((*iid) == INTERFACE_IID || (*iid) == gmpi::api::IUnknown::guid ){ \
+	if (0 == std::memcmp(iid, &CLASS_NAME::guid, sizeof(gmpi::api::Guid)) || 0 == std::memcmp(iid, &gmpi::api::IUnknown::guid, sizeof(gmpi::api::Guid)) ){ \
 	*returnInterface = static_cast<CLASS_NAME*>(this); addRef(); \
 	return gmpi::ReturnCode::Ok;} \
 	return gmpi::ReturnCode::NoSupport;}

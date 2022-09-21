@@ -42,6 +42,8 @@
 #include "pluginterfaces/vst/ivstmidicontrollers.h"
 #include "pluginterfaces/vst/ivstevents.h"
 //#include "SynthRuntime.h"
+#include "GmpiApiAudio.h"
+#include "GmpiSdkCommon.h"
 #include <thread>
 #include <mutex>
 #include <atomic>
@@ -49,32 +51,47 @@
 #include "se_types.h"
 #include "lock_free_fifo.h"
 #include "interThreadQue.h"
+#include "xp_dynamic_linking.h"
+//#include "RefCountMacros.h"
 
 static const int MidiControllersParameterId = 10000;
 
 enum class VoiceAllocationHint {Keyboard, MPE};
 
-namespace Steinberg {
-namespace Vst {
+//namespace Steinberg {
+//namespace Vst {
+
+// to work arround Steinberg Interfaces having incompatible addRef etc
+class GmpiBaseClass :public gmpi::api::IAudioPluginHost
+{
+public:
+	GMPI_REFCOUNT_NO_DELETE;
+};
+
+//// Helper for comparing GUIDs
+//inline bool operator==(gmpi::api::Guid left, gmpi::api::Guid right)
+//{
+//	return 0 == std::memcmp(&left, &right, sizeof(left));
+//}
 
 //-----------------------------------------------------------------------------
-class SeProcessor : public AudioEffect //, public IShellServices, public IProcessorMessageQues
+class SeProcessor : public Steinberg::Vst::AudioEffect, public GmpiBaseClass //, public IShellServices, public IProcessorMessageQues
 {
 public:
 	SeProcessor ();
 	~SeProcessor ();
 	
-	tresult PLUGIN_API initialize (FUnknown* context) override;
-	uint32 PLUGIN_API getLatencySamples() override;
-	tresult PLUGIN_API setBusArrangements(SpeakerArrangement* inputs, int32 numIns, SpeakerArrangement* outputs, int32 numOuts) override;
+	Steinberg::tresult PLUGIN_API initialize (FUnknown* context) override;
+	Steinberg::uint32 PLUGIN_API getLatencySamples() override;
+	Steinberg::tresult PLUGIN_API setBusArrangements(Steinberg::Vst::SpeakerArrangement* inputs, Steinberg::int32 numIns, Steinberg::Vst::SpeakerArrangement* outputs, Steinberg::int32 numOuts) override;
 
-	tresult PLUGIN_API setActive (TBool state) override;
-	tresult PLUGIN_API process (ProcessData& data) override;
+	Steinberg::tresult PLUGIN_API setActive (Steinberg::TBool state) override;
+	Steinberg::tresult PLUGIN_API process (Steinberg::Vst::ProcessData& data) override;
 
-	tresult PLUGIN_API setState (IBStream* state) override;
-	tresult PLUGIN_API getState (IBStream* state) override;
+	Steinberg::tresult PLUGIN_API setState (Steinberg::IBStream* state) override;
+	Steinberg::tresult PLUGIN_API getState (Steinberg::IBStream* state) override;
 
-	tresult PLUGIN_API notify(IMessage* message) override;
+	Steinberg::tresult PLUGIN_API notify(Steinberg::Vst::IMessage* message) override;
 
 	static FUnknown* createInstance (void*) { return (IAudioProcessor*)new SeProcessor (); }
 
@@ -103,6 +120,15 @@ public:
 	}
 #endif
 
+	// IAudioPluginHost
+	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data) override;
+	gmpi::ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming) override;
+	gmpi::ReturnCode setLatency(int32_t latency) override;
+	gmpi::ReturnCode sleep() override;
+	int32_t getBlockSize() override;
+	int32_t getSampleRate() override;
+	int32_t getHandle() override;
+
 protected:
 	void CommunicationProc();
 	void DoNoteOff(int channel, int32_t noteId, float velocity, int sampleOffset);
@@ -121,6 +147,9 @@ protected:
 	SeProcessor::vstNoteInfo& allocateKey(const Steinberg::Vst::NoteOnEvent& note);
 
 //TODO	SynthRuntime synthEditProject;
+	gmpi::shared_ptr<gmpi::api::IAudioPlugin> plugin_;
+	gmpi_dynamic_linking::DLL_HANDLE plugin_dllHandle = {};
+
 	bool active_;
 //TODO	my_VstTimeInfo timeInfo;
 
@@ -152,11 +181,23 @@ protected:
 		uint8_t quantized;
 	};
 	avoidRepeatedCCs ControlChangeValue[128];
-	ProcessData* dataptr = {};
+	Steinberg::Vst::ProcessData* dataptr = {};
 
 	std::vector<float> silence;
+
+//	GMPI_QUERYINTERFACE(gmpi::api::IAudioPluginHost);
+	gmpi::ReturnCode queryInterface(const gmpi::api::Guid* iid, void** returnInterface) override
+	{
+		*returnInterface = 0;
+		if ((*iid) == gmpi::api::IAudioPluginHost::guid || (*iid) == gmpi::api::IUnknown::guid)
+		{
+			*returnInterface = static_cast<gmpi::api::IAudioPluginHost*>(this); GmpiBaseClass::addRef();
+			return gmpi::ReturnCode::Ok;
+		}
+		return gmpi::ReturnCode::NoSupport;
+	}
 };
 
-}} // namespaces
+//}} // namespaces
 
 #endif

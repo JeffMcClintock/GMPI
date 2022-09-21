@@ -5,7 +5,8 @@
 #include "TimerManager.h"
 #include "RawView.h"
 #include "xplatform.h"
-#include "mp_sdk_common.h"
+                                                                    // TODO remove, replace with GMPI new SDK (gmpi::FieldType etc)
+                                                                    #include "mp_sdk_common.h"
 
 class MpParameter : public TimerClient
 {

@@ -619,7 +619,7 @@ void MyVstPluginFactory::RegisterPin(
 	}
 }
 
-void MyVstPluginFactory::RegisterXml(const char* xml)
+void MyVstPluginFactory::RegisterXml(const platform_string& pluginPath, const char* xml)
 {
 	tinyxml2::XMLDocument doc;
 	doc.Parse(xml);
@@ -649,6 +649,7 @@ void MyVstPluginFactory::RegisterXml(const char* xml)
 
 		auto& info = plugins.back();
 		info.id = id;
+		info.pluginPath = pluginPath;
 
 		info.name = pluginE->Attribute("name");
 		if (info.name.empty())
@@ -855,7 +856,7 @@ bool MyVstPluginFactory::initializeFactory()
 			FreeResource((HANDLE)lpRsrc);
 			gmpi_dynamic_linking::MP_DllUnload(hinstLib);
 
-			RegisterXml(xmlFile.c_str());
+			RegisterXml(pluginPath, xmlFile.c_str());
 
 			return true;
 		}
@@ -924,7 +925,7 @@ bool MyVstPluginFactory::initializeFactory()
 			if (r != gmpi::MP_OK)
 				break;
 
-			RegisterXml(s.c_str());
+			RegisterXml(pluginPath, s.c_str());
 			//TiXmlDocument doc2;
 			//doc2.Parse(s.c_str());
 

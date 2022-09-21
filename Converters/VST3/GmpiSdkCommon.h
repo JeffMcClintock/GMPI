@@ -17,16 +17,19 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+#include <string>
+#include <assert.h>
 #include "GmpiApiCommon.h"
 #include "RefCountMacros.h"
 
-namespace gmpi
-{
 // Helper for comparing GUIDs
-inline bool operator==(const api::Guid& left, const api::Guid& right)
+inline bool operator==(gmpi::api::Guid left, gmpi::api::Guid right)
 {
 	return 0 == std::memcmp(&left, &right, sizeof(left));
 }
+
+namespace gmpi
+{
 
 // Helper for managing lifetime of reference-counted interface pointer
 template<class wrappedObjT>
@@ -181,7 +184,7 @@ public:
 	{
 		return cppString;
 	}
-	GMPI_QUERYINTERFACE(api::IString::guid, api::IString);
+	GMPI_QUERYINTERFACE(api::IString);
 	GMPI_REFCOUNT_NO_DELETE;
 };
 } // namespace gmpi

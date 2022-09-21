@@ -5,6 +5,7 @@
 #include "pluginterfaces/base/ipluginbase.h"
 #include "pluginterfaces/base/funknown.h"
 #include "GmpiApiCommon.h"
+#include "platform_string.h"
 
 namespace tinyxml2
 {
@@ -59,6 +60,8 @@ struct pluginInfoSem
 	std::vector<pinInfoSem> dspPins;
 	std::vector<pinInfoSem> guiPins;
 	std::vector<paramInfoSem> parameters;
+
+	platform_string pluginPath;
 };
 
 inline int countPins(pluginInfoSem& plugin, gmpi::PinDirection direction, gmpi::PinDatatype datatype)
@@ -153,7 +156,7 @@ public:
 
 private:
 	void initialize();
-	void RegisterXml(const char* xml);
+	void RegisterXml(const platform_string& pluginPath, const char* xml);
 	void RegisterPin(tinyxml2::XMLElement* pin, std::vector<pinInfoSem>* pinlist, int32_t plugin_sub_type,
 		int nextPinId);
 	bool initializeFactory();

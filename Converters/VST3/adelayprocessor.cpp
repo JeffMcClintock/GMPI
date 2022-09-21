@@ -9,7 +9,6 @@
 #include "unicode_conversion.h"
 #include "mp_midi.h"
 #include "Controller.h"
-#include "mp_midi.h"
 //#include "BundleInfo.h"
 //#include "UMidiBuffer2.h"
 
@@ -19,9 +18,11 @@ using namespace JmUnicodeConversions;
 extern HINSTANCE ghInst;
 #endif
 
+using namespace Steinberg;
+using namespace Steinberg::Vst;
 
-namespace Steinberg {
-namespace Vst {
+//namespace Steinberg {
+//namespace Vst {
 
 //-----------------------------------------------------------------------------
 SeProcessor::SeProcessor ()
@@ -237,22 +238,103 @@ SeProcessor::~SeProcessor ()
 
 		background.join();
 	}
+
+	gmpi_dynamic_linking::MP_DllUnload(plugin_dllHandle);
 }
 
 void SeProcessor::reInitialise()
 {
-#if 0 // TODO
-	synthEditProject.prepareToPlay(
-		this,
-		processSetup.sampleRate,
-		processSetup.maxSamplesPerBlock,
-		processSetup.processMode != kOffline
-	);
+	// Get a handle to the DLL module.
+	auto factory = MyVstPluginFactory::GetInstance();
+	auto& semInfo = factory->plugins[0];
+	auto load_filename = semInfo.pluginPath;
+
+	if (!plugin_dllHandle)
+	{
+#if defined( _WIN32)
+		if (gmpi_dynamic_linking::MP_DllLoad(&plugin_dllHandle, load_filename.c_str()))
+		{
+			// TODO.
+			//// load failed, try it as a bundle.
+			//const auto bundleFilepath = load_filename + L"/Contents/x86_64-win/" + filename;
+			//gmpi_dynamic_linking::MP_DllLoad(&dllHandle, bundleFilepath.c_str());
+		}
+#else
+		// int32_t r = MP_DllLoad( &dllHandle, load_filename.c_str() );
+
+		// Create a path to the bundle
+		CFStringRef pluginPathStringRef = CFStringCreateWithCString(NULL,
+			WStringToUtf8(load_filename).c_str(), kCFStringEncodingASCII);
+
+		CFURLRef bundleUrl = CFURLCreateWithFileSystemPath(kCFAllocatorDefault,
+			pluginPathStringRef, kCFURLPOSIXPathStyle, true);
+		if (bundleUrl == NULL) {
+			printf("Couldn't make URL reference for plugin\n");
+			return;
+		}
+
+		// Open the bundle
+		dllHandle = (DLL_HANDLE)CFBundleCreate(kCFAllocatorDefault, bundleUrl);
+		if (dllHandle == 0) {
+			printf("Couldn't create bundle reference\n");
+			CFRelease(pluginPathStringRef);
+			CFRelease(bundleUrl);
+			return;
+		}
 #endif
 
-	silence.assign(processSetup.maxSamplesPerBlock, 0.0f);
-}
+		// Factory
+		int32_t r{};
 
+		gmpi::MP_DllEntry dll_entry_point = {};
+#ifdef _WIN32
+		r = gmpi_dynamic_linking::MP_DllSymbol(plugin_dllHandle, "MP_GetFactory", (void**)&dll_entry_point);
+#else
+		dll_entry_point = (gmpi::MP_DllEntry)CFBundleGetFunctionPointerForName((CFBundleRef)plugin_dllHandle, CFSTR("MP_GetFactory"));
+#endif        
+
+		if (!dll_entry_point)
+		{
+			return;
+		}
+
+		gmpi::shared_ptr<gmpi::api::IUnknown> factoryBase;
+		r = dll_entry_point(factoryBase.asIMpUnknownPtr());
+
+		gmpi::shared_ptr<gmpi::api::IPluginFactory> factory;
+		auto r2 = factoryBase->queryInterface(&gmpi::api::IPluginFactory::guid, factory.asIMpUnknownPtr());
+
+		if (!factory || r != gmpi::MP_OK)
+		{
+			return;
+		}
+
+		gmpi::shared_ptr<gmpi::api::IUnknown> pluginUnknown;
+		r2 = factory->createInstance(semInfo.id.c_str(), gmpi::api::PluginSubtype::Audio, pluginUnknown.asIMpUnknownPtr());
+		if (!pluginUnknown || r != gmpi::MP_OK)
+		{
+			return;
+		}
+
+		plugin_ = pluginUnknown.As<gmpi::api::IAudioPlugin>();
+
+		if (plugin_)
+		{
+			plugin_->open(this);
+		}
+
+#if 0 // TODO
+		synthEditProject.prepareToPlay(
+			this,
+			processSetup.sampleRate,
+			processSetup.maxSamplesPerBlock,
+			processSetup.processMode != kOffline
+		);
+#endif
+
+		silence.assign(processSetup.maxSamplesPerBlock, 0.0f);
+	}
+}
 //-----------------------------------------------------------------------------
 tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 {
@@ -332,8 +414,6 @@ tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 		addEventOutput(STR16("MIDI Out"), 16);
 	}
 
-	factory->release();
-
 	if (!background.joinable()) // protect against double initialize (Steinberg validator)
 	{
 		background = std::thread(
@@ -343,6 +423,8 @@ tresult PLUGIN_API SeProcessor::initialize (FUnknown* context)
 			}
 			);
 	}
+
+	factory->release();
 	return result;
 }
 
@@ -1227,4 +1309,38 @@ void SeProcessor::MidiToHost(MidiBuffer3* mb, timestamp_t SeStartClock, int numS
 #endif
 }
 
-}} // namespaces
+// IAudioPluginHost
+gmpi::ReturnCode SeProcessor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data)
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+gmpi::ReturnCode SeProcessor::setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming)
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+gmpi::ReturnCode SeProcessor::setLatency(int32_t latency)
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+gmpi::ReturnCode SeProcessor::sleep()
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+int32_t SeProcessor::getBlockSize()
+{
+	return processSetup.maxSamplesPerBlock;
+}
+
+int32_t SeProcessor::getSampleRate()
+{
+	return processSetup.sampleRate;
+}
+
+int32_t SeProcessor::getHandle()
+{
+	return 0; // only one plugin, can have handle zero.
+}
