@@ -321,6 +321,44 @@ void SeProcessor::reInitialise()
 		if (plugin_)
 		{
 			plugin_->open(this);
+
+			events.push(
+				{
+					0,             // timeDelta
+					gmpi::api::EventType::GraphStart,
+					{},            // parm1
+					{},            // parm2
+					{},            // parm3
+					{},            // parm4
+					{},            // extraData
+					{}             // next (ignored)
+				}
+			);
+			events.push(
+				{
+					0,             // timeDelta
+					gmpi::api::EventType::PinStreamingStart,
+					0,             // pin index
+					{},            // parm2
+					{},            // parm3
+					{},            // parm4
+					{},            // extraData
+					{}             // next (ignored)
+				}
+			);
+			float parameterValue = 0.7f;
+			events.push(
+				{
+					0,             // timeDelta
+					gmpi::api::EventType::PinSet,
+					2,             // pin index
+					4,             // data size in bytes
+					*reinterpret_cast<int32_t*>(&parameterValue),            // data 1
+					{},            // data 2
+					{},            // extraData
+					{}             // next (ignored)
+				}
+			);
 		}
 
 #if 0 // TODO
@@ -940,6 +978,7 @@ tresult PLUGIN_API SeProcessor::process (ProcessData& data)
 			synthEditProject.UpdateTempo(&timeInfo);
 		}
 	}
+#endif
 
 	// Setup audio buffers.
 	int numChannelsIn = 0;
@@ -954,7 +993,7 @@ tresult PLUGIN_API SeProcessor::process (ProcessData& data)
 		{
 			const bool isSilent = 0 != (silenceFlags & 1);
 
-			synthEditProject.setInputSilent(n, isSilent);
+//			synthEditProject.setInputSilent(n, isSilent);
 
 			if (isSilent)
 			{
@@ -983,9 +1022,16 @@ tresult PLUGIN_API SeProcessor::process (ProcessData& data)
 		}
 	}
 
-	timestamp_t SeStartClock = synthEditProject.getSampleClock();
+//	timestamp_t SeStartClock = synthEditProject.getSampleClock();
 
-	synthEditProject.process(data.numSamples, (const float**) inputBuffers.data(), outputBuffers.data(), numChannelsIn, numChannelsOut);
+	plugin_->setBuffer(0, inputBuffers[0]);
+	plugin_->setBuffer(1, outputBuffers[0]);
+
+	// synthEditProject.process(data.numSamples, (const float**) inputBuffers.data(), outputBuffers.data(), numChannelsIn, numChannelsOut);
+	plugin_->process(data.numSamples, events.head());
+
+	events.clear();
+#if 0
 
 	// silence flags
 	n = 0;

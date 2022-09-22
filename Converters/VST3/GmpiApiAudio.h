@@ -41,7 +41,7 @@ namespace api
 
 enum class EventType : int32_t
 {
-    PinSet            = 100, // A parameter has changed value.
+    PinSet            = 100, // A pin has changed value.
     PinStreamingStart = 101, // An input is not silent.
     PinStreamingStop  = 102, // An input is silent.
     Midi              = 103, // A MIDI message.
@@ -52,11 +52,11 @@ struct Event
 {
     int32_t timeDelta;
     EventType eventType;
-    int32_t parm1;
-    int32_t parm2;
-    int32_t parm3;
+    int32_t parm1;          // pin index
+    int32_t parm2;          // data size in bytes
+    int32_t parm3;          // data (when size <= 8 bytes)
     int32_t parm4;
-    char* extraData;
+    char* extraData;        // data (when size > 8 bytes)
     Event* next;
 };
 

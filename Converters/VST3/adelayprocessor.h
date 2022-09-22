@@ -1,52 +1,15 @@
-//-----------------------------------------------------------------------------
-// Project     : VST SDK
-// Version     : 3.5.2
-//
-// Category    : Examples
-// Filename    : public.sdk/samples/vst/adelay/source/adelayprocessor.cpp
-// Created by  : Steinberg, 06/2009
-// Description : 
-//
-//-----------------------------------------------------------------------------
-// LICENSE
-// (c) 2012, Steinberg Media Technologies GmbH, All Rights Reserved
-//-----------------------------------------------------------------------------
-// Redistribution and use in source and binary forms, with or without modification,
-// are permitted provided that the following conditions are met:
-// 
-//   * Redistributions of source code must retain the above copyright notice, 
-//     this list of conditions and the following disclaimer.
-//   * Redistributions in binary form must reproduce the above copyright notice,
-//     this list of conditions and the following disclaimer in the documentation 
-//     and/or other materials provided with the distribution.
-//   * Neither the name of the Steinberg Media Technologies nor the names of its
-//     contributors may be used to endorse or promote products derived from this 
-//     software without specific prior written permission.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
-// ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-// WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-// IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-// INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, 
-// BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, 
-// DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF 
-// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE 
-// OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
-// OF THE POSSIBILITY OF SUCH DAMAGE.
-//-----------------------------------------------------------------------------
-
 #ifndef __adelayprocessor__
 #define __adelayprocessor__
 
 #include "public.sdk/source/vst/vstaudioeffect.h"
 #include "pluginterfaces/vst/ivstmidicontrollers.h"
 #include "pluginterfaces/vst/ivstevents.h"
-//#include "SynthRuntime.h"
 #include "GmpiApiAudio.h"
 #include "GmpiSdkCommon.h"
 #include <thread>
 #include <mutex>
 #include <atomic>
+#include <array>
 #include "mp_midi.h"
 #include "se_types.h"
 #include "lock_free_fifo.h"
@@ -68,11 +31,45 @@ public:
 	GMPI_REFCOUNT_NO_DELETE;
 };
 
-//// Helper for comparing GUIDs
-//inline bool operator==(gmpi::api::Guid left, gmpi::api::Guid right)
-//{
-//	return 0 == std::memcmp(&left, &right, sizeof(left));
-//}
+template<int N>
+class EventQue
+{
+	std::array<gmpi::api::Event, N> events;
+	int tail = 0;
+public:
+
+	EventQue()
+	{
+		for (size_t i = 0 ; i < events.size() - 1; ++i)
+		{
+			events[i].next = &events[i + 1];
+		}
+	}
+
+	void push(gmpi::api::Event event)
+	{
+		events[tail++] = event;
+	}
+
+	gmpi::api::Event* head()
+	{
+		if (tail == 0)
+			return {};
+
+		for (int i = 0; i < tail; ++i)
+		{
+			events[i].next = &events[i + 1];
+		}
+
+		events[tail - 1].next = {};
+		return &events[0];
+	}
+
+	void clear()
+	{
+		tail = 0;
+	}
+};
 
 //-----------------------------------------------------------------------------
 class SeProcessor : public Steinberg::Vst::AudioEffect, public GmpiBaseClass //, public IShellServices, public IProcessorMessageQues
@@ -148,6 +145,9 @@ protected:
 
 //TODO	SynthRuntime synthEditProject;
 	gmpi::shared_ptr<gmpi::api::IAudioPlugin> plugin_;
+
+	EventQue<1000> events;
+
 	gmpi_dynamic_linking::DLL_HANDLE plugin_dllHandle = {};
 
 	bool active_;
