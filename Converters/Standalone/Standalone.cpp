@@ -3,6 +3,8 @@
 
 #include "framework.h"
 #include "Standalone.h"
+#include "Drawingframe_win32.h"
+#include "MainView.h"
 
 #define MAX_LOADSTRING 100
 
@@ -31,6 +33,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     LoadStringW(hInstance, IDS_APP_TITLE, szTitle, MAX_LOADSTRING);
     LoadStringW(hInstance, IDC_STANDALONE, szWindowClass, MAX_LOADSTRING);
     MyRegisterClass(hInstance);
+
 
     // Perform application initialization:
     if (!InitInstance (hInstance, nCmdShow))
@@ -105,8 +108,20 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
       return FALSE;
    }
 
+   auto drawingFrame = new GmpiGuiHosting::DrawingFrame();
+
+   gmpi_sdk::mp_shared_ptr<MainView> mainview;
+   mainview.Attach(new MainView(drawingFrame));
+
+   drawingFrame->AddView(mainview);
+
+   // attach drawingframe to window
+   SetWindowLongPtr(hWnd, GWLP_USERDATA, (__int3264)(LONG_PTR)drawingFrame);
+
    ShowWindow(hWnd, nCmdShow);
    UpdateWindow(hWnd);
+
+   drawingFrame->open(hWnd);
 
    return TRUE;
 }
@@ -151,6 +166,14 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
         }
         break;
     case WM_DESTROY:
+        {
+            auto drawingFrame = (GmpiGuiHosting::DrawingFrame*)(LONG_PTR)GetWindowLongPtr(hWnd, GWLP_USERDATA);
+            if (drawingFrame)
+            {
+                SetWindowLongPtr(hWnd, GWLP_USERDATA, (__int3264)(LONG_PTR)nullptr);
+                delete drawingFrame;
+            }
+        }
         PostQuitMessage(0);
         break;
     default:
