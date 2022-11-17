@@ -60,6 +60,20 @@ struct Event
     Event* next;
 };
 
+#if 0
+struct Event
+{
+    int32_t timeDelta;
+    const Event* next;
+    int32_t eventType; // type/size
+    int32_t parm1;          // pin index
+//    int32_t parm2;          // data size in bytes
+    int32_t parm3;          // data (when size <= 8 bytes) or ptr to data
+    int32_t parm4;
+//    char* extraData;        // data (when size > 8 bytes)
+};
+#endif
+
 // INTERFACE 'IAudioPlugin'
 struct DECLSPEC_NOVTABLE IAudioPlugin : public IUnknown
 {

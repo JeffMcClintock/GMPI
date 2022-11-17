@@ -48,7 +48,10 @@ public:
 
 	void push(gmpi::api::Event event)
 	{
-		events[tail++] = event;
+		assert(tail != events.size()); // opps, filled event list up.
+
+		if(tail < events.size() - 1)
+			events[tail++] = event;
 	}
 
 	gmpi::api::Event* head()
