@@ -139,7 +139,7 @@ gmpi::ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype 
 
 	/* search m_pluginMap for the requested IID */
 	auto it = pluginMap.find({ subType, uniqueId });
-	if( it == pluginMap.end( ) )
+	if (it == pluginMap.end())
 	{
 		return gmpi::ReturnCode::NoSupport;
 	}

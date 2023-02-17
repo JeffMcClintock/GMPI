@@ -133,14 +133,13 @@ void AudioPlugin::processEvent(const api::Event* e)
 {
 	switch (e->eventType)
 	{
-		// pin events redirect to pin
+	// pin events redirect to pin
 	case api::EventType::PinSet:
 	case api::EventType::PinStreamingStart:
 	case api::EventType::PinStreamingStop:
 	case api::EventType::Midi:
 	{
-		auto it = pins_.find(e->parm1);
-		if (it != pins_.end())
+		if (auto it = pins_.find(e->parm1); it != pins_.end())
 		{
 			(*it).second->processEvent(e);
 		}
@@ -167,8 +166,7 @@ void AudioPlugin::preProcessEvent(const api::Event* e)
 	case api::EventType::Midi:
 	{
 		// pin events redirect to pin
-		auto it = pins_.find(e->parm1);
-		if (it != pins_.end())
+		if (auto it = pins_.find(e->parm1); it != pins_.end())
 		{
 			(*it).second->preProcessEvent(e);
 		}
@@ -191,8 +189,7 @@ void AudioPlugin::postProcessEvent(const api::Event* e)
 	case api::EventType::PinStreamingStop:
 	case api::EventType::Midi:
 	{
-		auto it = pins_.find(e->parm1);
-		if (it != pins_.end())
+		if (auto it = pins_.find(e->parm1); it != pins_.end())
 		{
 			(*it).second->postProcessEvent(e);
 		}
@@ -288,15 +285,14 @@ void AudioPlugin::initializePin(int PinId, MpPinBase& pin, MpBaseMemberPtr handl
 {
 	pin.initialize(this, PinId, handler);
 
-	[[maybe_unused]] auto r = pins_.insert(std::pair<int, MpPinBase*>(PinId, &pin));
+	[[maybe_unused]] auto r = pins_.insert({ PinId, &pin });
 
 	assert(r.second && "Did you initializePin() with the same index twice?");
 }
 
 ReturnCode AudioPlugin::setBuffer(int32_t pinId, float* buffer)
 {
-	auto it = pins_.find(pinId);
-	if (it != pins_.end())
+	if (auto it = pins_.find(pinId); it != pins_.end())
 	{
 		(*it).second->setBuffer(buffer);
 		return ReturnCode::Ok;
