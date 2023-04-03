@@ -101,7 +101,7 @@ struct DECLSPEC_NOVTABLE IUnknown
 struct DECLSPEC_NOVTABLE IString : public IUnknown
 {
     virtual gmpi::ReturnCode setData(const char* data, int32_t size) = 0;
-    virtual gmpi::ReturnCode getSize() = 0;
+    virtual int32_t getSize() = 0;
     virtual const char* getData() = 0;
 
     // {AB8FFB21-44FF-42B7-8885-29431399E7E4}
