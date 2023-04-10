@@ -47,6 +47,12 @@ enum class ReturnCode : int32_t
     Cancel    = -3, // Async operation cancelled.
 };
 
+enum class PinDirection : int32_t
+{
+    In,
+    Out,
+};
+
 enum class PinDatatype : int32_t
 {
     Enum,
@@ -59,12 +65,6 @@ enum class PinDatatype : int32_t
     Int32 = 8,
     Int64,
     Blob,
-};
-
-enum class PinDirection : int32_t
-{
-    In,
-    Out,
 };
 
 namespace api
@@ -88,7 +88,7 @@ struct Guid
 // INTERFACE 'IUnknown'
 struct DECLSPEC_NOVTABLE IUnknown
 {
-    virtual gmpi::ReturnCode queryInterface(const Guid* iid, void** returnInterface) = 0;
+    virtual ReturnCode queryInterface(const Guid* iid, void** returnInterface) = 0;
     virtual int32_t addRef() = 0;
     virtual int32_t release() = 0;
 
@@ -100,7 +100,7 @@ struct DECLSPEC_NOVTABLE IUnknown
 // INTERFACE 'IString'
 struct DECLSPEC_NOVTABLE IString : public IUnknown
 {
-    virtual gmpi::ReturnCode setData(const char* data, int32_t size) = 0;
+    virtual ReturnCode setData(const char* data, int32_t size) = 0;
     virtual int32_t getSize() = 0;
     virtual const char* getData() = 0;
 
@@ -112,13 +112,17 @@ struct DECLSPEC_NOVTABLE IString : public IUnknown
 // INTERFACE 'IPluginFactory'
 struct DECLSPEC_NOVTABLE IPluginFactory : public IUnknown
 {
-    virtual gmpi::ReturnCode createInstance(const char* id, PluginSubtype subtype, void** returnInterface) = 0;
-    virtual gmpi::ReturnCode getPluginInformation(int32_t index, IString* returnXml) = 0;
+    virtual ReturnCode createInstance(const char* id, PluginSubtype subtype, void** returnInterface) = 0;
+    virtual ReturnCode getPluginInformation(int32_t index, IString* returnXml) = 0;
 
     // {31DC1CD9-6BDF-412A-B758-B2E5CD1D8870}
     inline static const Guid guid =
     { 0x31DC1CD9, 0x6BDF, 0x412A, { 0xB7, 0x58, 0xB2, 0xE5, 0xCD, 0x1D, 0x88, 0x70} };
 };
+
+
+} // namespace api
+} // namespace gmpi
 
 // Platform specific definitions.
 #if defined __BORLANDC__
@@ -127,5 +131,3 @@ struct DECLSPEC_NOVTABLE IPluginFactory : public IUnknown
 #pragma pack(pop)
 #endif
 
-} // namespace api
-} // namespace gmpi
