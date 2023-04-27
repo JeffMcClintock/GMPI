@@ -29,5 +29,5 @@ endif()
 
 add_subdirectory(Samples)
 add_subdirectory(Projections/plain_c/Samples)
-add_subdirectory(Converters)
+# add_subdirectory(Converters)
 # TODO add_subdirectory(AGraphics)
