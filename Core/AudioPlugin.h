@@ -356,6 +356,24 @@ public:
 	virtual void send(const unsigned char* data, int size, int blockPosition = -1);
 };
 
+class AudioPluginHostWrapper
+{
+	gmpi::shared_ptr<api::IAudioPluginHost> host;
+
+public:
+	ReturnCode Init(api::IUnknown* phost);
+	api::IAudioPluginHost* get();
+
+	// IAudioPluginHost
+	ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data);
+	ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming);
+	ReturnCode setLatency(int32_t latency);
+	ReturnCode sleep();
+	int32_t getBlockSize() const;
+	int32_t getSampleRate() const;
+	int32_t getHandle() const;
+};
+
 class TempBlockPositionSetter;
 
 class AudioPlugin : public api::IAudioPlugin
@@ -377,7 +395,7 @@ public:
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
-	gmpi::shared_ptr<api::IAudioPluginHost> host;
+	AudioPluginHostWrapper host;
 
 	// Communication with pins.
 	int getBlockPosition() const
@@ -442,7 +460,7 @@ protected:
 	void processEvent( const api::Event* e );
 	void postProcessEvent( const api::Event* e );
 
-	// identification and reference countin
+	// identification and reference counting
 	GMPI_QUERYINTERFACE(api::IAudioPlugin::guid, IAudioPlugin);
 	GMPI_REFCOUNT;
 

@@ -47,7 +47,7 @@ public:
 	// Attach object without incrementing ref count. For objects created with new.
 	void Attach(wrappedObjT* newobj)
 	{
-		wrappedObjT* old = obj;
+		auto old = obj;
 		obj = newobj;
 
 		if( old )
@@ -133,4 +133,13 @@ private:
 		}
 	}
 };
-} // namespace gmpi2_sdk
+
+template<typename INTERFACE>
+INTERFACE* as(api::IUnknown* com_object)
+{
+	INTERFACE* result{};
+	com_object->queryInterface(&INTERFACE::guid, (void**)&result);
+	return result;
+}
+
+} // namespace gmpi

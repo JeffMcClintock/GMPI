@@ -41,8 +41,7 @@ gmpi::ReturnCode AudioPlugin::open(IUnknown* phost)
 	debugIsOpen_ = true;
 #endif
 
-	host = as<api::IAudioPluginHost>(phost);
-	return gmpi::ReturnCode::Ok;
+	return host.Init(phost);
 }
 
 void AudioPlugin::process(int32_t count, const api::Event* events)
@@ -237,7 +236,7 @@ float MpAudioPinBase::getValue(int bufferPos) const
 		bufferPos = plugin_->getBlockPosition();
 	}
 
-	assert(bufferPos < plugin_->host->getBlockSize() && "err: Don't access past end of buffer");
+	assert(bufferPos < plugin_->host.getBlockSize() && "err: Don't access past end of buffer");
 
 	return *(getBuffer() + bufferPos);
 }
@@ -273,7 +272,7 @@ void MpPinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t bloc
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.setValue( value, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host->setPin(blockPosition, getId(), rawSize, rawData);
+	plugin_->host.setPin(blockPosition, getId(), rawSize, rawData);
 }
 
 MpBaseMemberPtr MidiInPin::getDefaultEventHandler()
@@ -309,7 +308,7 @@ void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
 		assert(plugin_->blockPosExact_ && "err: Please use - midiPin.send( data, size, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host->setPin(blockPosition, getId(), size, data);
+	plugin_->host.setPin(blockPosition, getId(), size, data);
 }
 
 void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
@@ -323,7 +322,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 		blockPosition = plugin_->getBlockPosition();
 	}
 
-	assert(blockPosition >= 0 && blockPosition < plugin_->host->getBlockSize() && "block posistion must be within current block");
+	assert(blockPosition >= 0 && blockPosition < plugin_->host.getBlockSize() && "block posistion must be within current block");
 
 	// note if streaming has changed (not just repeated one-offs).
 	if (isStreaming_ != isStreaming)
@@ -339,7 +338,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 		plugin_->resetSleepCounter();
 	}
 
-	plugin_->host->setPinStreaming(blockPosition, getId(), (int)isStreaming_);
+	plugin_->host.setPinStreaming(blockPosition, getId(), (int)isStreaming_);
 };
 
 void AudioPlugin::setSleep(bool isOkToSleep)
@@ -390,7 +389,7 @@ void AudioPlugin::subProcessPreSleep(int sampleFrames)
 		{
 			if (eventsComplete_)
 			{
-				host->sleep();
+				host.sleep();
 				blockPos_ = saveBlockPos; // restore bufferOffset_, else may be incremented twice.
 				return;
 			}
@@ -463,7 +462,7 @@ void AudioPlugin::OnPinStreamingChange(bool isStreaming)
 
 void AudioPlugin::resetSleepCounter()
 {
-	sleepCount_ = host->getBlockSize();
+	sleepCount_ = host.getBlockSize();
 }
 
 void AudioInPin::preProcessEvent(const api::Event* e)
@@ -489,4 +488,46 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 		break;
 	};
 }
+
+ReturnCode AudioPluginHostWrapper::Init(api::IUnknown* phost)
+{
+	host = as<api::IAudioPluginHost>(phost);
+	return host ? gmpi::ReturnCode::Ok : gmpi::ReturnCode::NoSupport;
+}
+
+api::IAudioPluginHost* AudioPluginHostWrapper::get()
+{
+	return host.get();
+}
+
+ReturnCode AudioPluginHostWrapper::setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data)
+{
+	return host->setPin(timestamp, pinId, size, data);
+}
+
+ReturnCode AudioPluginHostWrapper::setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming)
+{
+	return host->setPinStreaming(timestamp, pinId, isStreaming);
+}
+ReturnCode AudioPluginHostWrapper::setLatency(int32_t latency)
+{
+	return host->setLatency(latency);
+}
+ReturnCode AudioPluginHostWrapper::sleep()
+{
+	return host->sleep();
+}
+int32_t AudioPluginHostWrapper::getBlockSize() const
+{
+	return host->getBlockSize();
+}
+int32_t AudioPluginHostWrapper::getSampleRate() const
+{
+	return host->getSampleRate();
+}
+int32_t AudioPluginHostWrapper::getHandle() const
+{
+	return host->getHandle();
+}
+
 } // namespace

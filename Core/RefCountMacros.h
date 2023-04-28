@@ -3,7 +3,7 @@
 // macros to save typing the reference counting.
 #define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \
 	gmpi::ReturnCode queryInterface(const gmpi::api::Guid* iid, void** returnInterface) override{ \
-	*returnInterface = 0; \
+	*returnInterface = {}; \
 	if ((*iid) == INTERFACE_IID || (*iid) == gmpi::api::IUnknown::guid ){ \
 	*returnInterface = static_cast<CLASS_NAME*>(this); addRef(); \
 	return gmpi::ReturnCode::Ok;} \
