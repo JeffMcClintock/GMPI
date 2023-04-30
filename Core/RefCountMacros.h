@@ -1,4 +1,7 @@
 #pragma once
+/*
+#include "RefCountMacros.h"
+*/
 
 // macros to save typing the reference counting.
 #define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \

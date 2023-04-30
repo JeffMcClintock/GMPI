@@ -1,7 +1,9 @@
 #pragma once
 #include "./EmbeddedFile.h"
-#include "Common.h"
-#include "RefCountMacros.h"
+#include "GmpiSdkCommon.h"
+//#include "RefCountMacros.h"
+//#include "Common.h"
+//#include "GmpiApiCommon.h"
 
 namespace synthedit
 {
@@ -20,7 +22,7 @@ public:
 	// IEmbeddedFileSupport
 	std::string resolveFilename(std::string filename)
 	{
-		MpString fullFilename;
+		gmpi::ReturnString fullFilename;
 		host->resolveFilename(filename.c_str(), &fullFilename);
 		return fullFilename.c_str();
 	}
