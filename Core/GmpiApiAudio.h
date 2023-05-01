@@ -80,7 +80,7 @@ struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
     virtual ReturnCode setLatency(int32_t latency) = 0;
     virtual ReturnCode sleep() = 0;
     virtual int32_t getBlockSize() = 0;
-    virtual int32_t getSampleRate() = 0;
+    virtual float getSampleRate() = 0;
     virtual int32_t getHandle() = 0;
 
     // {87CCD426-71D7-414E-A9A6-5ADCA81C7420}

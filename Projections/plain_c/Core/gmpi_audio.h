@@ -62,7 +62,7 @@ typedef struct GMPI_IAudioPluginHostMethods
     int32_t (*setLatency)(GMPI_IAudioPluginHost*, int32_t latency);
     int32_t (*sleep)(GMPI_IAudioPluginHost*);
     int32_t (*getBlockSize)(GMPI_IAudioPluginHost*);
-    int32_t (*getSampleRate)(GMPI_IAudioPluginHost*);
+    float (*getSampleRate)(GMPI_IAudioPluginHost*);
     int32_t (*getHandle)(GMPI_IAudioPluginHost*);
 } GMPI_IAudioPluginHostMethods;
 
