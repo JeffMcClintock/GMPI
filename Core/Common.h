@@ -21,15 +21,7 @@
 #include <cassert>
 #include <vector>
 #include <string>
-#include "GmpiSdkCommon.h"
-
-namespace gmpi
-{
-namespace api
-{
-	struct IAudioPlugin;
-}
-}
+#include "GmpiApiAudio.h"
 
 namespace gmpi
 {

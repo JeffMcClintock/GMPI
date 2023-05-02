@@ -26,6 +26,7 @@
 #include <memory.h>
 #include "Common.h"
 #include "RefCountMacros.h"
+#include "GmpiSdkCommon.h"
 
 using namespace gmpi;
 using namespace gmpi::api;
