@@ -27,7 +27,7 @@
 #endif
 
 #ifndef DECLSPEC_NOVTABLE
-#if defined(__cplusplus)
+#if defined(__cplusplus) && defined(_MSC_VER)
 #define DECLSPEC_NOVTABLE   __declspec(novtable)
 #else
 #define DECLSPEC_NOVTABLE
