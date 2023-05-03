@@ -138,7 +138,7 @@ void AudioPlugin::processEvent(const api::Event* e)
 	case api::EventType::PinStreamingStop:
 	case api::EventType::Midi:
 	{
-		if (auto it = pins_.find(e->parm1); it != pins_.end())
+		if (auto it = pins_.find(e->pinIdx); it != pins_.end())
 		{
 			(*it).second->processEvent(e);
 		}
@@ -165,7 +165,7 @@ void AudioPlugin::preProcessEvent(const api::Event* e)
 	case api::EventType::Midi:
 	{
 		// pin events redirect to pin
-		if (auto it = pins_.find(e->parm1); it != pins_.end())
+		if (auto it = pins_.find(e->pinIdx); it != pins_.end())
 		{
 			(*it).second->preProcessEvent(e);
 		}
@@ -188,7 +188,7 @@ void AudioPlugin::postProcessEvent(const api::Event* e)
 	case api::EventType::PinStreamingStop:
 	case api::EventType::Midi:
 	{
-		if (auto it = pins_.find(e->parm1); it != pins_.end())
+		if (auto it = pins_.find(e->pinIdx); it != pins_.end())
 		{
 			(*it).second->postProcessEvent(e);
 		}
@@ -205,16 +205,10 @@ void AudioPlugin::midiHelper(const api::Event* e)
 {
 	assert(e->eventType == api::EventType::Midi);
 
-	if (e->extraData == 0) // short msg
-	{
-		onMidiMessage(e->parm1 // pin
-			, (const unsigned char*)&(e->parm3), e->parm2); // midi bytes (short msg)
-	}
-	else
-	{
-		onMidiMessage(e->parm1 // pin
-			, (const unsigned char*)e->extraData, e->parm2); // midi bytes (sysex)
-	}
+	onMidiMessage(
+		e->pinIdx
+		, EventData(e)
+		, e->size);
 }
 
 AudioPlugin::AudioPlugin() :

@@ -26,12 +26,18 @@
 #pragma pack(push,8)
 #endif
 
+#define COMPACT_EVENTS 1
+
 namespace gmpi
 {
 namespace api
 {
 
+#if COMPACT_EVENTS
+enum class EventType : int16_t
+#else
 enum class EventType : int32_t
+#endif
 {
     PinSet            = 100, // A parameter has changed value.
     PinStreamingStart = 101, // An input is not silent.
@@ -40,17 +46,45 @@ enum class EventType : int32_t
     GraphStart        = 104, // Plugin is about to process the very first sample.
 };
 
+#if COMPACT_EVENTS
+// 28 bytes
 struct Event
 {
-    int32_t timeDelta;
-    EventType eventType;
-    int32_t parm1;
-    int32_t parm2;
-    int32_t parm3;
-    int32_t parm4;
-    char* extraData;
-    Event* next;
+	Event* next;				// 8 bytes
+	int32_t timeDelta;			// 4 bytes
+	EventType eventType;		// 2 bytes
+	int16_t pinIdx;				// 2 bytes
+	union
+	{
+		uint8_t data[8];		// 8 bytes
+		const uint8_t* oversizeData;
+	};
+	int32_t size;				// 4 bytes
 };
+
+inline const uint8_t* EventData(const Event* e)
+{
+	return e->size > 8 ? e->oversizeData : e->data;
+}
+
+
+#else
+// 40 bytes
+struct Event
+{
+    int32_t timeDelta;			// 4 bytes
+    EventType eventType;		// 4 bytes
+    int32_t parm1;				// 4 bytes
+    int32_t parm2;				// 4 bytes
+    int32_t parm3;				// 4 bytes
+    int32_t parm4;				// 4 bytes
+    char* extraData;			// 8 bytes
+    Event* next;				// 8 bytes
+};
+
+// param3/4 is event data storage (up to 8 bytes) 
+
+#endif
 
 // INTERFACE 'IAudioPlugin'
 struct DECLSPEC_NOVTABLE IAudioPlugin : public IUnknown
