@@ -2,7 +2,7 @@
 
 /*
   GMPI - Generalized Music Plugin Interface specification.
-  Copyright 2007-2022 Jeff McClintock.
+  Copyright 2023 Jeff McClintock.
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -20,71 +20,48 @@
 #include "GmpiApiCommon.h"
 
 // Platform specific definitions.
-#if defined __BORLANDC__
-#pragma -a8
-#elif defined(_WIN32) || defined(__FLAT__) || defined (CBUILDER)
 #pragma pack(push,8)
-#endif
-
-#define COMPACT_EVENTS 1
 
 namespace gmpi
 {
 namespace api
 {
 
-#if COMPACT_EVENTS
-enum class EventType : int16_t
-#else
 enum class EventType : int32_t
-#endif
 {
-    PinSet            = 100, // A parameter has changed value.
-    PinStreamingStart = 101, // An input is not silent.
-    PinStreamingStop  = 102, // An input is silent.
-    Midi              = 103, // A MIDI message.
-    GraphStart        = 104, // Plugin is about to process the very first sample.
+    PinSet            = 0, // A parameter has changed value.
+    PinStreamingStart = 1, // An input is not silent.
+    PinStreamingStop  = 2, // An input is silent.
+    Midi              = 3, // A MIDI message.
+    GraphStart        = 4, // Plugin is about to process the very first sample.
 };
 
-#if COMPACT_EVENTS
-// 28 bytes
+#pragma pack(push,4)
+
 struct Event
 {
-	Event* next;				// 8 bytes
-	int32_t timeDelta;			// 4 bytes
-	EventType eventType;		// 2 bytes
-	int16_t pinIdx;				// 2 bytes
+	Event* next;
+	int32_t timeDelta;
+	EventType eventType;
+	int32_t pinIdx;
+	int32_t size_;
 	union
 	{
-		uint8_t data[8];		// 8 bytes
-		const uint8_t* oversizeData;
+		uint8_t data_[8];
+		const uint8_t* oversizeData_;
 	};
-	int32_t size;				// 4 bytes
+
+	int32_t size() const
+	{
+		return size_;
+	}
+	const uint8_t* data() const
+	{
+		return size_ > 8 ? oversizeData_ : data_;
+	}
 };
 
-inline const uint8_t* EventData(const Event* e)
-{
-	return e->size > 8 ? e->oversizeData : e->data;
-}
-
-
-#else
-// 40 bytes
-struct Event
-{
-    int32_t timeDelta;			// 4 bytes
-    EventType eventType;		// 4 bytes
-    int32_t parm1;				// 4 bytes
-    int32_t parm2;				// 4 bytes
-    int32_t parm3;				// 4 bytes
-    int32_t parm4;				// 4 bytes
-    char* extraData;			// 8 bytes
-    Event* next;				// 8 bytes
-};
-
-// param3/4 is event data storage (up to 8 bytes) 
-
-#endif
+#pragma pack(pop)
 
 // INTERFACE 'IAudioPlugin'
 struct DECLSPEC_NOVTABLE IAudioPlugin : public IUnknown
@@ -115,11 +92,7 @@ struct DECLSPEC_NOVTABLE IAudioPluginHost : public IUnknown
 };
 
 // Platform specific definitions.
-#if defined __BORLANDC__
-#pragma -a-
-#elif defined(_WIN32) || defined(__FLAT__) || defined (CBUILDER)
 #pragma pack(pop)
-#endif
 
 } // namespace api
 } // namespace gmpi

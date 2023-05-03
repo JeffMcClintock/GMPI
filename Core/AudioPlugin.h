@@ -135,7 +135,7 @@ public:
 	{
 		if(e->eventType == api::EventType::PinSet)
 		{
-			setValueRaw(e->size, EventData(e));
+			setValueRaw(e->size(), e->data());
 			freshValue_ = true;
 		};
 	}

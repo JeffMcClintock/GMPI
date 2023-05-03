@@ -207,8 +207,8 @@ void AudioPlugin::midiHelper(const api::Event* e)
 
 	onMidiMessage(
 		e->pinIdx
-		, EventData(e)
-		, e->size);
+		, e->data()
+		, e->size());
 }
 
 AudioPlugin::AudioPlugin() :
