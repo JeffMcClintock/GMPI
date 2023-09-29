@@ -35,7 +35,7 @@ INTERFACE* as(api::IUnknown* com_object)
 
 namespace gmpi
 {
-gmpi::ReturnCode AudioPlugin::open(IUnknown* phost)
+ReturnCode AudioPlugin::open(IUnknown* phost)
 {
 #if defined(_DEBUG)
 	debugIsOpen_ = true;
@@ -486,7 +486,7 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 ReturnCode AudioPluginHostWrapper::Init(api::IUnknown* phost)
 {
 	host = as<api::IAudioPluginHost>(phost);
-	return host ? gmpi::ReturnCode::Ok : gmpi::ReturnCode::NoSupport;
+	return host ? ReturnCode::Ok : ReturnCode::NoSupport;
 }
 
 api::IAudioPluginHost* AudioPluginHostWrapper::get()
