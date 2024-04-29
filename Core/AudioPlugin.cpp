@@ -480,6 +480,9 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 			plugin_->nudgeSleepCounter();
 		}
 		break;
+
+	default:
+		break;
 	};
 }
 
