@@ -89,6 +89,8 @@ This is just one example of how GMPI takes away the drudgery for you by providin
 
 # Detailed GMPI Specification
 
-[detailed GMPI specs](Docs/GMPI_Specs.md)
+[More on the design decisions of GMPI](Docs/FAQ.md) This document explains the design decisions behind GMPI.
 
-[full working group discussion](https://www.freelists.org/archive/gmpi)
+[detailed GMPI specs](Docs/GMPI_Specs.md) This is the original specification document which was created by the MMA. It's a bit out of date, but it's still a good reference.
+
+[full working group discussion](https://www.freelists.org/archive/gmpi) This is the original discussion where you can find the rationale behind the design decisions.
