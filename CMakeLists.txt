@@ -10,9 +10,8 @@ set(sdk_folder
     ${CMAKE_CURRENT_SOURCE_DIR}/Core
     )
 
-include_directories(
-    ${CMAKE_CURRENT_SOURCE_DIR}/Core
-    )
+#include_directories(${CMAKE_CURRENT_SOURCE_DIR}/Core)
+target_include_directories (${PROJECT_NAME} PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/Core")
 
 set(CMAKE_CXX_STANDARD 17)
 
