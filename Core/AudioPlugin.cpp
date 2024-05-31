@@ -465,6 +465,7 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 	{
 	case api::EventType::PinStreamingStart:
 	case api::EventType::PinStreamingStop:
+	{
 		freshValue_ = true;
 		const bool isStreaming = e->eventType == api::EventType::PinStreamingStart;
 		if (isStreaming_ != isStreaming)
@@ -474,11 +475,12 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 		}
 
 		// For modules with no output pins, it's important to process that one last sample after processing the event,
-		// else the module will sleep immediatly without processing the sample associated with the event.
+		// else the module will sleep immediately without processing the sample associated with the event.
 		if (!isStreaming_)
 		{
 			plugin_->nudgeSleepCounter();
 		}
+	}
 		break;
 
 	default:
