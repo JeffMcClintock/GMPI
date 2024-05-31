@@ -9,14 +9,14 @@ cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}"
 
 # add SDK files
 set(sdk_srcs
-${gmpi_sdk_folder}/Common.h
-${gmpi_sdk_folder}/Common.cpp
+${gmpi_sdk_folder}/Core/Common.h
+${gmpi_sdk_folder}/Core/Common.cpp
 )
 
 if(${GMPI_PLUGIN_HAS_DSP})
     set(sdk_srcs ${sdk_srcs}
-    ${gmpi_sdk_folder}/AudioPlugin.h
-    ${gmpi_sdk_folder}/AudioPlugin.cpp
+    ${gmpi_sdk_folder}/Core/AudioPlugin.h
+    ${gmpi_sdk_folder}/Core/AudioPlugin.cpp
     )
     set(srcs ${srcs}
     ${GMPI_PLUGIN_PROJECT_NAME}.cpp
