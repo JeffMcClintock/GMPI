@@ -85,6 +85,12 @@ struct Guid
     uint8_t data4[8];
 };
 
+// Helper for comparing GUIDs
+inline bool operator==(Guid const& left, Guid const& right)
+{
+    return !std::memcmp(&left, &right, sizeof(left));
+}
+
 // INTERFACE 'IUnknown'
 struct DECLSPEC_NOVTABLE IUnknown
 {

@@ -17,14 +17,9 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+#include <assert.h>
 #include "GmpiApiCommon.h"
 #include "RefCountMacros.h"
-
-// Helper for comparing GUIDs
-inline bool operator==(const gmpi::api::Guid& left, const gmpi::api::Guid& right)
-{
-	return 0 == std::memcmp(&left, &right, sizeof(left));
-}
 
 namespace gmpi
 {

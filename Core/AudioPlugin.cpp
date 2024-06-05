@@ -58,7 +58,7 @@ void AudioPlugin::process(int32_t count, const api::Event* events)
 
 	for (;;)
 	{
-		if (next_event == 0) // fast version, when no events on list.
+		if (!next_event) // fast version, when no events on list.
 		{
 			(this->*(curSubProcess_))(remain);
 			break;
@@ -94,13 +94,13 @@ void AudioPlugin::process(int32_t count, const api::Event* events)
 
 		// PRE-PROCESS EVENT
 		bool pins_set_flag = false;
-		const api::Event* e = next_event;
+		auto e = next_event;
 		do
 		{
 			preProcessEvent(e); // updates all pins_ values
 			pins_set_flag = pins_set_flag || e->eventType == api::EventType::PinSet || e->eventType == api::EventType::PinStreamingStart || e->eventType == api::EventType::PinStreamingStop;
 			e = e->next;
-		} while (e != 0 && e->timeDelta == blockPos_); // cur_timeStamp );
+		} while (e && e->timeDelta == blockPos_); // cur_timeStamp );
 
 		// PROCESS EVENT
 		e = next_event;
@@ -108,7 +108,7 @@ void AudioPlugin::process(int32_t count, const api::Event* events)
 		{
 			processEvent(e); // notify all pins_ values
 			e = e->next;
-		} while (e != 0 && e->timeDelta == blockPos_); //cur_timeStamp );
+		} while (e && e->timeDelta == blockPos_); //cur_timeStamp );
 
 		if (pins_set_flag)
 		{

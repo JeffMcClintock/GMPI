@@ -1,5 +1,5 @@
 function(GMPI_PLUGIN)
-set(options HAS_DSP HAS_GUI HAS_XML)
+set(options HAS_DSP HAS_GUI HAS_XML BUILD_VST3_WRAPPER)
 set(oneValueArgs PROJECT_NAME)
 set(multiValueArgs SOURCE_FILES)
 cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}"
@@ -77,16 +77,33 @@ if(WIN32)
 target_link_options(${GMPI_PLUGIN_PROJECT_NAME} PRIVATE "/SUBSYSTEM:WINDOWS")
 endif()
 
+if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
+ #LINK TEH VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
+ target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} PUBLIC SynthEdit_VST3)
+ # TODO: rename as gmpi_vst3_adaptor)
+endif()
+
 if(CMAKE_HOST_WIN32)
 
 if (SE_LOCAL_BUILD)
+
+# Run after all other rules within the target have been executed
+if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
     add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
-    # Run after all other rules within the target have been executed
+    POST_BUILD
+    COMMAND xcopy /c /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName).vst3"
+    COMMENT "Copy to system plugin folder"
+    VERBATIM
+)
+
+else()
+    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
     POST_BUILD
     COMMAND xcopy /c /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\community_modules"
     COMMENT "Copy to system plugin folder"
     VERBATIM
 )
+endif()
 endif()
 endif()
 
