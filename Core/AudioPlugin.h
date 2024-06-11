@@ -454,7 +454,7 @@ protected:
 	void postProcessEvent( const api::Event* e );
 
 	// identification and reference counting
-	GMPI_QUERYINTERFACE(api::IAudioPlugin::guid, IAudioPlugin);
+	GMPI_QUERYINTERFACE_METHOD(IAudioPlugin);
 	GMPI_REFCOUNT;
 
 protected:
@@ -466,7 +466,7 @@ protected:
 	int sleepCount_;			// sleep countdown timer.
 	int streamingPinCount_;		// tracks how many pins streaming.
 	enum { SLEEP_AUTO = -1, SLEEP_DISABLE, SLEEP_ENABLE } canSleepManualOverride_;
-	bool eventsComplete_;		// Flag indicates all events have been delt with, and module is safe to sleep.
+	bool eventsComplete_;		// Flag indicates all events have been dealt with, and module is safe to sleep.
 
 #if defined(_DEBUG)
 public:

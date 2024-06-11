@@ -22,6 +22,7 @@
 #include <vector>
 #include <string>
 #include "GmpiApiAudio.h"
+#include "GmpiApiEditor.h"
 
 namespace gmpi
 {
@@ -52,6 +53,10 @@ class Register
 	{
 		return api::PluginSubtype::Audio;
 	}
+	inline static api::PluginSubtype subType(api::IEditor*)
+	{
+		return api::PluginSubtype::Editor;
+	}
 #if 0 // temp disabled
 
 	// Allows unambiguous cast when you support multiple interfaces.
@@ -64,6 +69,11 @@ class Register
 		return static_cast<api::IUnknown*>(object);
 	}
 #endif
+
+	inline static api::IUnknown* toUnknown(api::IEditor* object) // Editor classes.
+	{
+		return static_cast<api::IUnknown*>(object);
+	}
 
 	inline static api::IUnknown* toUnknown(api::IAudioPlugin* object) // Processor classes.
 	{

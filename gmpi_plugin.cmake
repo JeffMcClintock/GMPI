@@ -23,15 +23,20 @@ if(${GMPI_PLUGIN_HAS_DSP})
     )
 endif()
 
-#if(${GMPI_PLUGIN_HAS_GUI})
-#    set(sdk_srcs ${sdk_srcs}
-#    ${gmpi_sdk_folder}/mp_sdk_gui.h
-#    ${gmpi_sdk_folder}/mp_sdk_gui.cpp
-#    )
-#    set(srcs ${srcs}
-#    ${GMPI_PLUGIN_PROJECT_NAME}Gui.cpp
-#    )
-#endif()
+if(${GMPI_PLUGIN_HAS_GUI})
+    set(sdk_srcs ${sdk_srcs}
+    ${gmpi_ui_folder}/Drawing_API.h
+    ${gmpi_ui_folder}/Drawing.h
+    )
+    set(srcs ${srcs}
+    ${GMPI_PLUGIN_PROJECT_NAME}Gui.cpp
+    )
+
+    # add include folder
+    include_directories(
+        ${gmpi_ui_folder}
+    )
+endif()
 
 if(${GMPI_PLUGIN_HAS_XML})
 set(resource_srcs
@@ -78,7 +83,7 @@ target_link_options(${GMPI_PLUGIN_PROJECT_NAME} PRIVATE "/SUBSYSTEM:WINDOWS")
 endif()
 
 if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
- #LINK TEH VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
+ #LINK THE VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
  target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} PUBLIC SynthEdit_VST3)
  # TODO: rename as gmpi_vst3_adaptor)
 endif()
@@ -91,16 +96,16 @@ if (SE_LOCAL_BUILD)
 if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
     add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
     POST_BUILD
-    COMMAND xcopy /c /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName).vst3"
-    COMMENT "Copy to system plugin folder"
+    COMMAND copy "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName).vst3" /Y
+    COMMENT "Copy to VST3 folder"
     VERBATIM
 )
 
 else()
     add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
     POST_BUILD
-    COMMAND xcopy /c /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\community_modules"
-    COMMENT "Copy to system plugin folder"
+    COMMAND xcopy /c /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\"
+    COMMENT "Copy to SEM folder"
     VERBATIM
 )
 endif()

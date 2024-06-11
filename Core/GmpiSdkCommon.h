@@ -1,4 +1,6 @@
 #pragma once
+#ifndef _GMPI_SDK_COMMON_H_INCLUDED // ignore source file in multiple locations.
+#define _GMPI_SDK_COMMON_H_INCLUDED
 
 /*
   GMPI - Generalized Music Plugin Interface specification.
@@ -96,6 +98,14 @@ public:
 		assert(obj == nullptr); // Free it before you re-use it!
 		return &obj;
 	}
+
+	wrappedObjT** put()
+	{
+		// Free it before you re-use it
+		if (obj){obj->release();}
+		obj = nullptr;
+		return &obj;
+	}
 	void** asIMpUnknownPtr()
 	{
 		assert(obj == 0); // Free it before you re-use it!
@@ -137,6 +147,48 @@ INTERFACE* as(api::IUnknown* com_object)
 	com_object->queryInterface(&INTERFACE::guid, (void**)&result);
 	return result;
 }
+
+// helper wraps an interface as a value-type
+// TODO: copy WINUI3 stype get(), put()
+template<class InterfaceClass>
+class IWrapper
+{
+protected:
+	mutable gmpi::shared_ptr<InterfaceClass> m_ptr;
+
+//?	IWrapper() {}
+	IWrapper(IWrapper const& other) : m_ptr(other.m_ptr) {}
+	IWrapper(IWrapper&& other) : m_ptr(std::move(other.m_ptr)) {}
+	void Copy(InterfaceClass* other) { m_ptr = other; }
+	void Move(IWrapper&& other) { m_ptr = std::move(other.m_ptr); }
+
+public:
+	IWrapper(/*gmpi::api::IUnknown* other*/) : m_ptr(nullptr)
+	{
+	}
+
+	// TODO copy winrt::com_ptr
+	inline InterfaceClass* get() const
+	{
+		return m_ptr.get();
+	}
+
+	InterfaceClass** put() noexcept
+	{
+		m_ptr = nullptr;
+		return m_ptr.getAddressOf();
+	}
+
+	explicit operator bool() {
+		return m_ptr != nullptr;
+	}
+
+private: // need em?
+	inline gmpi::api::IUnknown*& Unknown() { return m_ptr.get(); };
+	inline void** asIMpUnknownPtr() { return m_ptr.asIMpUnknownPtr(); };
+	inline bool isNull() { return m_ptr == nullptr; }
+	void setNull() { m_ptr = nullptr; }
+};
 
 // Helper for returning strings.
 class ReturnString : public gmpi::api::IString
@@ -186,8 +238,9 @@ public:
 		return cppString;
 	}
 	// identification and reference counting
-	GMPI_QUERYINTERFACE(gmpi::api::IString::guid, gmpi::api::IString);
+	GMPI_QUERYINTERFACE_METHOD(gmpi::api::IString);
 	GMPI_REFCOUNT_NO_DELETE;
 };
 
 } // namespace gmpi
+#endif // _GMPI_SDK_COMMON_H_

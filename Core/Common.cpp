@@ -53,7 +53,7 @@ public:
     ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create);
 
 	// IUnknown methods
-	GMPI_QUERYINTERFACE(IPluginFactory::guid, IPluginFactory);
+	GMPI_QUERYINTERFACE_METHOD(IPluginFactory);
 	GMPI_REFCOUNT_NO_DELETE
 
 private:
@@ -153,10 +153,22 @@ ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subTyp
 
 	auto create = (*it).second;
 
+	if( create == nullptr )
+	{
+		return gmpi::ReturnCode::NoSupport;
+	}
+
 	try
 	{
 		auto m = create();
 		*returnInterface = m;
+#ifdef _DEBUG
+		{
+			m->addRef();
+			int refcount = m->release();
+			assert(refcount == 1);
+		}
+#endif
 	}
 
 	// the new function will throw a std::bad_alloc exception if the memory allocation fails.
