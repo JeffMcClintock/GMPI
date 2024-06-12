@@ -31,7 +31,7 @@ namespace api
 // INTERFACE 'Editor' (experimental)
 struct DECLSPEC_NOVTABLE IGraphicsClient_x : public IUnknown
 {
-    virtual ReturnCode OnRender(drawing::api::IDeviceContext* drawingContext) = 0;
+    virtual ReturnCode render(drawing::api::IDeviceContext* drawingContext) = 0;
 
     // First pass of layout update. Return minimum size required for given available size
     virtual ReturnCode measure(drawing::SizeU availableSize, drawing::SizeU* returnDesiredSize) = 0;
