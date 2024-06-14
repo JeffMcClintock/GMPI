@@ -25,7 +25,7 @@ endif()
 
 if(${GMPI_PLUGIN_HAS_GUI})
     set(sdk_srcs ${sdk_srcs}
-    ${gmpi_ui_folder}/Drawing_API.h
+    ${gmpi_ui_folder}/GmpiApiDrawing.h
     ${gmpi_ui_folder}/Drawing.h
     )
     set(srcs ${srcs}

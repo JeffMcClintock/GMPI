@@ -17,6 +17,8 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+// TODO:: filename sync with interface name (IGraphicsClient vs GmpiApiDrawingClient.h)
+
 #include "GmpiApiCommon.h"
 #include "GmpiApiDrawing.h"
 
