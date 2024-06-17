@@ -29,7 +29,7 @@ namespace gmpi
 {
 namespace api
 {
-
+#if 0 // duplicates 'IGraphicsClient'
 // INTERFACE 'Editor' (experimental)
 struct DECLSPEC_NOVTABLE IGraphicsClient_x : public IUnknown
 {
@@ -50,7 +50,7 @@ struct DECLSPEC_NOVTABLE IGraphicsClient_x : public IUnknown
 };
 
 using IGraphicsClient = IGraphicsClient_x;
-
+#endif
 // Platform specific definitions.
 #pragma pack(pop)
 
