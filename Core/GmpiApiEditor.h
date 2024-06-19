@@ -61,6 +61,16 @@ struct DECLSPEC_NOVTABLE IEditorHost_x : public IUnknown
     { 0x8a8cf7dc, 0xbc36, 0x4743, { 0xa0, 0x9a, 0x96, 0x75, 0x71, 0x35, 0x5a, 0x1a } };
 };
 
+class IParameterObserver : public IUnknown
+{
+public:
+    virtual ReturnCode setParameter(int32_t parameterHandle, int32_t fieldId, int32_t voice, int32_t size, const void* data) = 0;
+
+    // {7D5AD528-A035-44E5-82A2-4E3A70AEA099}
+    inline static const Guid guid =
+    { 0x7d5ad528, 0xa035, 0x44e5, { 0x82, 0xa2, 0x4e, 0x3a, 0x70, 0xae, 0xa0, 0x99 } };
+};
+
 using IEditor = IEditor_x;
 using IEditorHost = IEditorHost_x;
 
