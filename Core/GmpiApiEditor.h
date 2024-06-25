@@ -24,6 +24,26 @@
 
 namespace gmpi
 {
+    enum class FieldType
+    {
+        MP_FT_VALUE
+        , MP_FT_SHORT_NAME
+        , MP_FT_LONG_NAME
+        , MP_FT_MENU_ITEMS
+        , MP_FT_MENU_SELECTION
+        , MP_FT_RANGE_LO
+        , MP_FT_RANGE_HI
+        , MP_FT_ENUM_LIST
+        , MP_FT_FILE_EXTENSION
+        , MP_FT_IGNORE_PROGRAM_CHANGE
+        , MP_FT_PRIVATE
+        , MP_FT_AUTOMATION				// int
+        , MP_FT_AUTOMATION_SYSEX			// STRING
+        , MP_FT_DEFAULT					// same type as parameter
+        , MP_FT_GRAB						// (mouse down) bool
+        , MP_FT_NORMALIZED				// float
+    };
+
 namespace api
 {
 
@@ -64,7 +84,7 @@ struct DECLSPEC_NOVTABLE IEditorHost_x : public IUnknown
 class IParameterObserver : public IUnknown
 {
 public:
-    virtual ReturnCode setParameter(int32_t parameterHandle, int32_t fieldId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::FieldType fieldId, int32_t voice, int32_t size, const void* data) = 0;
 
     // {7D5AD528-A035-44E5-82A2-4E3A70AEA099}
     inline static const Guid guid =
