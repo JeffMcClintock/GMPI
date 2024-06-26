@@ -382,7 +382,7 @@ public:
 	gmpi::ReturnCode setBuffer(int32_t pinId, float* buffer) override;
 	void process(int32_t count, const api::Event* events) override;
 
-	// overridables
+	// overrides
 	virtual void onGraphStart();	// called on very first sample.
 	virtual void onSetPins() {}  // one or more pins_ updated.  Check pin update flags to determine which ones.
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}

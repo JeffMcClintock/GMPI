@@ -86,6 +86,11 @@ if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
  #LINK THE VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
  target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} PUBLIC SynthEdit_VST3)
  # TODO: rename as gmpi_vst3_adaptor)
+ target_compile_definitions(
+  ${GMPI_PLUGIN_PROJECT_NAME} PRIVATE 
+  GMPI_HAS_VST3_WRAPPER
+)
+
 endif()
 
 if(CMAKE_HOST_WIN32)

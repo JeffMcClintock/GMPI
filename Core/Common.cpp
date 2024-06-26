@@ -27,6 +27,9 @@
 #include "Common.h"
 #include "RefCountMacros.h"
 #include "GmpiSdkCommon.h"
+#ifdef GMPI_HAS_VST3_WRAPPER
+#include "public.sdk/source/main/pluginfactory.h"
+#endif
 
 using namespace gmpi;
 using namespace gmpi::api;
@@ -142,6 +145,11 @@ ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* x
 
 ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subType, void** returnInterface )
 {
+#ifdef GMPI_HAS_VST3_WRAPPER
+	// ensure that the VST3 library is not discarded by the linker
+	auto test = GetPluginFactory();
+#endif
+
 	*returnInterface = nullptr; // if we fail for any reason, default return-val to nullptr
 
     // search m_pluginMap for the requested ID
