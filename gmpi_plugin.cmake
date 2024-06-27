@@ -18,9 +18,9 @@ if(${GMPI_PLUGIN_HAS_DSP})
     ${gmpi_sdk_folder}/Core/AudioPlugin.h
     ${gmpi_sdk_folder}/Core/AudioPlugin.cpp
     )
-    set(srcs ${srcs}
-    ${GMPI_PLUGIN_PROJECT_NAME}.cpp
-    )
+#! 'srcs' not used    set(srcs ${srcs}
+#    ${GMPI_PLUGIN_PROJECT_NAME}.cpp
+#   )
 endif()
 
 if(${GMPI_PLUGIN_HAS_GUI})
@@ -28,9 +28,9 @@ if(${GMPI_PLUGIN_HAS_GUI})
     ${gmpi_ui_folder}/GmpiApiDrawing.h
     ${gmpi_ui_folder}/Drawing.h
     )
-    set(srcs ${srcs}
-    ${GMPI_PLUGIN_PROJECT_NAME}Gui.cpp
-    )
+#    set(srcs ${srcs} 'srcs' not used
+#    ${GMPI_PLUGIN_PROJECT_NAME}Gui.cpp
+#    )
 
     # add include folder
     include_directories(
@@ -39,7 +39,7 @@ if(${GMPI_PLUGIN_HAS_GUI})
 endif()
 
 if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
-    set(srcs ${srcs}
+    set(sdk_srcs ${sdk_srcs}
     ${VST3_SDK}/public.sdk/source/main/macmain.cpp
     )
 endif()
