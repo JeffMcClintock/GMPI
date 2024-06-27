@@ -147,7 +147,7 @@ ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subTyp
 {
 #ifdef GMPI_HAS_VST3_WRAPPER
 	// ensure that the VST3 library is not discarded by the linker
-	auto test = GetPluginFactory();
+//	auto test = GetPluginFactory();
 #endif
 
 	*returnInterface = nullptr; // if we fail for any reason, default return-val to nullptr

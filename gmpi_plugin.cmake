@@ -41,6 +41,8 @@ endif()
 if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
     set(sdk_srcs ${sdk_srcs}
     ${VST3_SDK}/public.sdk/source/main/macmain.cpp
+    ${GMPI_ADAPTORS}/VST3/MyVstPluginFactory.h
+    ${GMPI_ADAPTORS}/VST3/MyVstPluginFactory.cpp
     )
 endif()
 
