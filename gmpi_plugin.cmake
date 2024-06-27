@@ -38,6 +38,13 @@ if(${GMPI_PLUGIN_HAS_GUI})
     )
 endif()
 
+if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
+    set(srcs ${srcs}
+    ${VST3_SDK}/public.sdk/source/main/macmain.cpp
+    )
+endif()
+
+
 if(${GMPI_PLUGIN_HAS_XML})
 set(resource_srcs
 ${GMPI_PLUGIN_PROJECT_NAME}.xml
