@@ -66,7 +66,6 @@ target_compile_definitions(
 
 if(APPLE)
   set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE TRUE)
-  set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "gmpi")
 
 if(${GMPI_PLUGIN_HAS_XML})
   # Place xml file in bundle 'Resources' folder.
@@ -75,8 +74,6 @@ if(${GMPI_PLUGIN_HAS_XML})
   set_source_files_properties(${xml_path} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 endif()
 endif()
-
-set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES SUFFIX ".gmpi")
 
 if(WIN32)
 target_link_options(${GMPI_PLUGIN_PROJECT_NAME} PRIVATE "/SUBSYSTEM:WINDOWS")
@@ -90,6 +87,13 @@ if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
   ${GMPI_PLUGIN_PROJECT_NAME} PRIVATE 
   GMPI_HAS_VST3_WRAPPER
 )
+set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES SUFFIX ".gmpi")
+set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "gmpi")
+
+else()
+
+set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES SUFFIX ".vst3")
+set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
 
 endif()
 
