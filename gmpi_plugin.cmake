@@ -130,6 +130,8 @@ ${VST3_SDK}/public.sdk/source/vst/vstaudioeffect.h
 ${VST3_SDK}/public.sdk/source/vst/vstaudioeffect.cpp
 ${VST3_SDK}/public.sdk/source/vst/vstparameters.h
 ${VST3_SDK}/public.sdk/source/vst/vstparameters.cpp 
+${GMPI_ADAPTORS}/VST3/VST3EditorBase.h
+${GMPI_ADAPTORS}/VST3/VST3EditorBase.cpp
 )
 
 IF(WIN32)
