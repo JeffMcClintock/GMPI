@@ -27,9 +27,9 @@
 #include "Common.h"
 #include "RefCountMacros.h"
 #include "GmpiSdkCommon.h"
-#ifdef GMPI_HAS_VST3_WRAPPER
-#include "public.sdk/source/main/pluginfactory.h"
-#endif
+//#ifdef GMPI_HAS_VST3_WRAPPER
+//#include "public.sdk/source/main/pluginfactory.h"
+//#endif
 
 using namespace gmpi;
 using namespace gmpi::api;
