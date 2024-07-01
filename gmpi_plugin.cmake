@@ -52,11 +52,16 @@ source_group(resources FILES ${resource_srcs})
 endif()
 endif()
 
-# organise SDK file into folders/groups in IDE
-source_group(sdk FILES ${sdk_srcs})
 
 ########################################### VST3 WRAPPER ###########################################
 if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
+set(sdk_srcs ${sdk_srcs} ${GMPI_ADAPTORS}/VST3/wrapperVst3.cpp)
+endif()
+
+# organise SDK file into folders/groups in IDE
+source_group(sdk FILES ${sdk_srcs})
+
+if(FALSE)
 add_definitions(-D_UNICODE)
 add_definitions(-DSE_TARGET_PLUGIN)
 add_definitions(-DSE_TARGET_VST3)
@@ -226,6 +231,12 @@ if(CMAKE_HOST_WIN32)
 target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} d3d11.lib d2d1 dwrite windowscodecs)
 endif()
 
+#LINK THE VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
+# TODO: rename as gmpi_vst3_adaptor)
+if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
+target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} SynthEdit_VST3)
+endif()
+
 if(APPLE)
 set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE TRUE)
 set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION vst3)
@@ -256,24 +267,6 @@ if(WIN32)
 target_link_options(${GMPI_PLUGIN_PROJECT_NAME} PRIVATE "/SUBSYSTEM:WINDOWS")
 endif()
 endif()
-
-#if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
-# #LINK THE VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
-# target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} PUBLIC SynthEdit_VST3)
-# # TODO: rename as gmpi_vst3_adaptor)
-# target_compile_definitions(
-#  ${GMPI_PLUGIN_PROJECT_NAME} PRIVATE 
-#  GMPI_HAS_VST3_WRAPPER
-#)
-#set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES SUFFIX ".gmpi")
-#set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "gmpi")
-#
-#else()
-#
-#set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES SUFFIX ".vst3")
-#set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
-#
-#endif()
 
 if(CMAKE_HOST_WIN32)
 
