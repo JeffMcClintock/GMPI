@@ -237,7 +237,7 @@ float MpAudioPinBase::getValue(int bufferPos) const
 
 void MpPinBase::initialize(AudioPlugin* plugin, int PinId, MpBaseMemberPtr handler)
 {
-	assert(id_ == -1 && "pin initialized twice?"); // check your constructor's calls to initializePin() for duplicates.
+	assert(id_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
 
 	id_ = PinId;
 	plugin_ = plugin;
@@ -258,7 +258,7 @@ void MpPinBase::processEvent(const api::Event* e)
 // Pins
 void MpPinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockPosition)
 {
-	assert(plugin_ != nullptr && "err: Please don't forgot to call initializePin(pinWhatever) in contructor.");
+	assert(plugin_ != nullptr && "err: Please don't forgot to call init(pinWhatever) in contructor.");
 	assert(plugin_->debugIsOpen_ && "err: Please don't update output pins in constructor or open().");
 
 	if (blockPosition == -1)
@@ -274,13 +274,13 @@ MpBaseMemberPtr MidiInPin::getDefaultEventHandler()
 	return &AudioPlugin::midiHelper;
 }
 
-void AudioPlugin::initializePin(int PinId, MpPinBase& pin, MpBaseMemberPtr handler)
+void AudioPlugin::init(int PinId, MpPinBase& pin, MpBaseMemberPtr handler)
 {
 	pin.initialize(this, PinId, handler);
 
 	[[maybe_unused]] auto r = pins_.insert({ PinId, &pin });
 
-	assert(r.second && "Did you initializePin() with the same index twice?");
+	assert(r.second && "Did you init() with the same index twice?");
 }
 
 ReturnCode AudioPlugin::setBuffer(int32_t pinId, float* buffer)
@@ -307,7 +307,7 @@ void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
 
 void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 {
-	assert(plugin_ && "Don't forget initializePin() in your DSP class constructor for each pin");
+	assert(plugin_ && "Don't forget init() in your DSP class constructor for each pin");
 	assert(plugin_->debugIsOpen_ && "Can't setStreaming() until after module open().");
 
 	if (blockPosition == -1)

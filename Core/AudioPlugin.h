@@ -81,12 +81,12 @@ public:
 	}
 	const T& getValue() const
 	{
-		assert( id_ != -1 && "remember initializePin() in constructor?" );
+		assert( id_ != -1 && "remember init() in constructor?" );
 		return value_;
 	}
 	operator T()
 	{
-		assert( id_ != -1 && "remember initializePin() in constructor?" );
+		assert( id_ != -1 && "remember init() in constructor?" );
 		return value_;
 	}
 	void setValue( const T &value, int blockPosition = -1 )
@@ -108,7 +108,7 @@ public:
 	}
 	bool operator==(T other)
 	{
-		assert( plugin_ != 0 && "Don't forget initializePin() on each pin in your constructor." );
+		assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
 		return other == value_;
 	}
 	virtual void setValueRaw(int size, const void* data)
@@ -181,7 +181,7 @@ public:
 	}
 	const T& operator=(const T &value)
 	{
-		// GCC don't like using plugin_ in this scope. assert( plugin_ != 0 && "Don't forget initializePin() on each pin in your constructor." );
+		// GCC don't like using plugin_ in this scope. assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
 		return MpControlPinBase< T, pinDatatype> ::operator=(value);
 	}
 	// todo: specialise for value_ vs ref types !!!
@@ -404,15 +404,15 @@ public:
 	}
 
 protected:
-	void initializePin(int PinId, MpPinBase& pin, MpBaseMemberPtr handler = 0);
-	void initializePin(MpPinBase& pin, MpBaseMemberPtr handler = 0)
+	void init(int PinId, MpPinBase& pin, MpBaseMemberPtr handler = 0);
+	void init(MpPinBase& pin, MpBaseMemberPtr handler = 0)
 	{
 		int idx = 0;
 		if (!pins_.empty())
 		{
 			idx = pins_.rbegin()->first + 1;
 		}
-		initializePin(idx, pin, handler); // Automatic indexing.
+		init(idx, pin, handler); // Automatic indexing.
 	}
 
 	const float* getBuffer(const AudioInPin& pin) const
