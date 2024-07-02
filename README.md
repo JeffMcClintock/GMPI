@@ -6,25 +6,25 @@ In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Softwar
 
 The GMPI project was started to gather the best parts of existing specifications and bring them together into an easy to use, open, powerful, and cross-platform alternative to the proprietary standards offered by Steinberg, Apple, and other vendors.
 
-GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavored to adhere to the specification as closely as is practical.
+GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavoured to adhere to the specification as closely as is practical.
 
 # Features
 
 GMPI:
 * Supports Instruments, Audio Effects, and MIDI plugins
-* Has a permissive open-source license
-* An open standard. No fees, contracts or NDAs
+* Has a permissive open-source license (No fees, contracts or NDAs)
 * Has cross-platform support
-* Includes a cross-plaform Graphics option
+* MIDI 1.0, MPE and MIDI 2.0 support
+* Thread-safe by default
+* Supports a cross-platform drawing option [GMPI UI](https://github.com/JeffMcClintock/gmpi_ui)
 * A clean and bloat-free API surface
 * Provides all APIs in pure portable 'C' for maximum compatibility
 * Supports sample-accurate automation, tempo and song-position
+* VST3 and AudioUnit adaptors are under development.
 * Supports plugin latency compensation
 * Supports 'silent' buffer optimisations
 * Supports musical timing information 
 * Supports polyphonic parameters
-* Supports MIDI 1.0, MPE and MIDI 2.0
-* Thread-safe by default
 * Plugin meta-data is plain XML
 * Supports 'extensions'. It's easy to add new or DAW-specific features
 * Stable, finalized and tested. GMPI has been in active use and refined over 10 years.
@@ -83,13 +83,13 @@ Gain()
 }
 ```
 
-The GMPI framework will now automatically save and load your plugin state from/into that member variable.
+The GMPI framework will now automatically initialize, save, and load your plugin state from/into that member variable. Supported datatypes are: 32 and 64-bit integer and float, bool, std::string, BLOB (any struct composed of plain data types).
 
 # Sample-accurate automation and MIDI by default
 
 The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled half-way through a process-block, the framework will process the first half of the samples, notify the plugin of the event, and then process the remaining samples.
 
-This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time.  This behaviour is easy to override if you prefer to handle events manually.
+This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time (and it's easy to override if you prefer to handle events manually).
 
 # Silence Detection
 
@@ -105,10 +105,10 @@ Adding only a few lines of code to our example plugin will enable the silence-fl
 		pinOutput.setStreaming(pinInput.isStreaming());
 	}
 ```
-What this does is communicate to the DAW, that if the plugins input signal is silent - then so is its output.
+What this does is communicate to the DAW, that since the input is silent - then so is the plugins output.
 
-Notice how when its input is silent the plugin can choose to completely shut down, using absolutely no CPU at all (see below).
-This is just one example of how GMPI takes away the drudgery for you by providing *sensible default behaviour* out of the box (which can still be customized anytime you need to).
+Notice how when its input is silent the plugin can choose to completely shut down, using no CPU at all (see below).
+This is just one example of how GMPI takes away the drudgery for you by providing *sensible default behaviour* out of the box (which can be customized if you need to).
 
 <img src="Docs/images/SilenceDetection.gif" width="500"/>
 
