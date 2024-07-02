@@ -36,14 +36,14 @@ Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin.
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
-GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [Samples/Gain.cpp](Samples/Gain/Gain.cpp)
+GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [GMPI Plugins/Gain.cpp](https://github.com/JeffMcClintock/GMPI-plugins/blob/main/plugins/Gain/Gain.cpp)
 
 But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation. This is because GMPI provides
 *sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. And you can easily override the defaults when you need to.
 
 # Metadata in XML
 Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future proof than the rigid fixed 'descriptors'
-of other plugin APIs, because you can add new features or flags without breaking any existing plugins or DAWs. Here's the decription of the example gain plugin...
+of other plugin APIs, because you can add new features or flags without breaking any existing plugins or DAWs. Here's the description of the example gain plugin...
 
 ```XML
   <Plugin id="GMPI Gain" name="Gain" category="SDK Examples" vendor="Jeff McClintock" helpUrl="Gain.htm">
@@ -61,10 +61,35 @@ Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as 
 
 # Thread safe by default
 
-With GMPI, all Processor and Editor methods are thread-safe. i.e. the DAW does not ever call GUI components from the real-time thread, or vica versa.
+With GMPI, all Processor and Editor methods are thread-safe. i.e. the DAW does not ever call GUI components from the real-time thread, or vice versa.
 GMPI plugins by default require no locks (e.g. `std::mutex`) and require no atomic values (e.g. `std::atomic`) when communicating between the various components.
 This is because the GMPI framework includes a wait-free, lock-free message-passing mechanism. This feature alone eliminates a large
 class of common bugs which are found in audio plugins.
+
+# Serialization by default
+
+The GMPI framework provides saving and loading of the plugin state by default. You don't have to provide any 'getStateInformation' or 'setStateInformation' type of methods. It's automatic.
+
+How it works: You describe the parameters and state of your plugin in the XML metadata.
+```XML
+<Parameter id="0" name="Gain" datatype="float" default="0.8"/>
+```
+Then associate this data with your plugins variables in the plugin constructor.
+
+```C
+Gain()
+{
+	initializePin(pinGain);
+}
+```
+
+The GMPI framework will now automatically save and load your plugin state from/into that member variable.
+
+# Sample-accurate automation and MIDI by default
+
+The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled half-way through a process-block, the framework will process the first half of the samples, notify the plugin of the event, and then process the remaining samples.
+
+This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time.  This behaviour is easy to override if you prefer to handle events manually.
 
 # Silence Detection
 
