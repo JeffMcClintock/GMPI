@@ -83,13 +83,47 @@ Gain()
 }
 ```
 
-The GMPI framework will now automatically initialize, save, and load your plugin state from/into that member variable. Supported datatypes are: 32 and 64-bit integer and float, bool, std::string, BLOB (any struct composed of plain data types).
+The GMPI framework will now automatically initialize, save, and load your plugin state from/into that member variable.
+
+If the GUI is closed, the framework updates it the next time it is opened. If the Processor is suspended (due to the silence-detection feature), the GUI will remain 'live' and responsive, because the plugin state is owned by neither the GUI nor the Processor, but shared.
+
+Supported datatypes are: 32 and 64-bit integer and float, bool, std::string, BLOB (any struct composed of plain data types).
+
+# Syncronisation by default
+
+Synchronizing a plugins state between the GUI and Audio thread in other APIs is a common source of bugs and confusion. In GMPI it's simple. Here is how the GUI can update the plugins gain parameter.
+
+```C
+pinGain = newParameterValue;
+```
+That's it. The framework will notify both the host and also the Processor (on the audio thread) of the new value.
+
+And if you want to synchronize a non-atomic datatype with the real-time thread, it's exactly the same:
+```C
+pinSampleFilenameString = "C:\SomeFolder\SomeSample.wav"; // this is thread-safe
+```
+(it's a big hassle to synchronize a std::string in other plugin APIs).
+
 
 # Sample-accurate automation and MIDI by default
 
 The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled half-way through a process-block, the framework will process the first half of the samples, notify the plugin of the event, and then process the remaining samples.
 
 This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time (and it's easy to override if you prefer to handle events manually).
+
+# Simultaneous parameter changes
+
+A subtle cause of bugs and flaky behaviour in other plugin APIs is the handling of simultaneous parameter changes.
+What if two parameters change at the exact same time? Is the API going to notify the Processor one-at-a-time in some random order?
+GMPI allows you to detect simultaneous parameter changes and handle them in a deterministic way.
+
+```C
+void MidiToCv2::onSetPins()
+{
+	if (pinVoiceBender.isUpdated() || pinBender.isUpdated() || pinBenderRange.isUpdated())
+	{
+		// handle any change to the poly or mono note bending in one place.
+```
 
 # Silence Detection
 
