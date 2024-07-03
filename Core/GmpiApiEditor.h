@@ -24,7 +24,7 @@
 
 namespace gmpi
 {
-    enum class FieldType
+    enum class Field
     {
         MP_FT_VALUE
         , MP_FT_SHORT_NAME
@@ -84,7 +84,7 @@ struct DECLSPEC_NOVTABLE IEditorHost_x : public IUnknown
 class IParameterObserver : public IUnknown
 {
 public:
-    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::FieldType fieldId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
 
     // {7D5AD528-A035-44E5-82A2-4E3A70AEA099}
     inline static const Guid guid =
