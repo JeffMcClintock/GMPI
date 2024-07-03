@@ -94,7 +94,7 @@ Supported datatypes are: 32 and 64-bit integer and float, bool, std::string, BLO
 Synchronizing a plugins state between the GUI and Audio thread in other APIs is a common source of bugs and confusion. In GMPI it's simple. Here is how the GUI can update the plugins gain parameter.
 
 ```C
-pinGain = newParameterValue;
+pinGain = 3.5;
 ```
 That's it. The framework will notify both the host and also the Processor (on the audio thread) of the new value.
 
