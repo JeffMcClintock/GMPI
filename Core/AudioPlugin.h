@@ -61,7 +61,7 @@ protected:
 };
 
 template
-<typename T, int pinDatatype = PinTypeTraits<T>::PinDataType>
+<typename T, PinDatatype pinDatatype = PinTypeTraits<T>::PinDataType>
 class MpControlPinBase : public MpPinBase
 {
 public:
@@ -129,7 +129,7 @@ public:
 	}
 	PinDatatype getDatatype() const override
 	{
-		return (PinDatatype) pinDatatype;
+		return pinDatatype;
 	}
 	void preProcessEvent( const api::Event* e ) override
 	{
@@ -165,7 +165,7 @@ protected:
 };
 
 template
-<typename T, int pinDirection_, int pinDatatype = PinTypeTraits<T>::PinDataType>
+<typename T, PinDirection pinDirection_, PinDatatype pinDatatype = (PinDatatype) PinTypeTraits<T>::PinDataType>
 class MpControlPin : public MpControlPinBase< T, pinDatatype >
 {
 public:
@@ -177,7 +177,7 @@ public:
 	}
 	PinDirection getDirection() const override
 	{
-		return (PinDirection) pinDirection_;
+		return pinDirection_;
 	}
 	const T& operator=(const T &value)
 	{
@@ -186,12 +186,12 @@ public:
 	}
 	// todo: specialise for value_ vs ref types !!!
 
-	const T& operator=(const MpControlPin<T, static_cast<int>(PinDirection::In), pinDatatype> &other)
+	const T& operator=(const MpControlPin<T, PinDirection::In, pinDatatype> &other)
 	{
 		return operator=(other.getValue());
 	}
 
-	const T& operator=(const MpControlPin<T, static_cast<int>(PinDirection::Out), pinDatatype> &other)
+	const T& operator=(const MpControlPin<T, PinDirection::Out, pinDatatype> &other)
 	{
 		return operator=(other.getValue());
 	}
@@ -242,17 +242,17 @@ protected:
 };
 
 template
-<int pinDirection_>
+<PinDirection pinDirection_>
 class MpAudioPinBaseB : public MpAudioPinBase
 {
 public:
 	PinDirection getDirection() const override
 	{
-		return (PinDirection) pinDirection_;
+		return pinDirection_;
 	}
 };
 
-class AudioInPin final : public MpAudioPinBaseB<static_cast<int>(PinDirection::In)>
+class AudioInPin final : public MpAudioPinBaseB<PinDirection::In>
 {
 public:
 	AudioInPin(){}
@@ -281,7 +281,7 @@ private:
 	bool freshValue_ = true; // true = value_ has been updated on current sample_clock
 };
 
-class AudioOutPin final : public MpAudioPinBaseB<static_cast<int>(PinDirection::Out)>
+class AudioOutPin final : public MpAudioPinBaseB<PinDirection::Out>
 {
 public:
 	// Indicate output pin's value changed, but it's not streaming (a 'one-off' change).
@@ -296,21 +296,21 @@ public:
 	}
 };
 
-typedef MpControlPin<int, static_cast<int>(PinDirection::In)>			IntInPin;
-typedef MpControlPin<int, static_cast<int>(PinDirection::Out)>			IntOutPin;
-typedef MpControlPin<float, static_cast<int>(PinDirection::In)>			FloatInPin;
-typedef MpControlPin<float, static_cast<int>(PinDirection::Out)>		FloatOutPin;
-typedef MpControlPin<Blob, static_cast<int>(PinDirection::In)>			BlobInPin;
-typedef MpControlPin<Blob, static_cast<int>(PinDirection::Out)>			BlobOutPin;
-typedef MpControlPin<std::string, static_cast<int>(PinDirection::In)>	StringInPin;
-typedef MpControlPin<std::string, static_cast<int>(PinDirection::Out)>	StringOutPin;
+typedef MpControlPin<int, PinDirection::In>				IntInPin;
+typedef MpControlPin<int, PinDirection::Out>			IntOutPin;
+typedef MpControlPin<float, PinDirection::In>			FloatInPin;
+typedef MpControlPin<float, PinDirection::Out>			FloatOutPin;
+typedef MpControlPin<Blob, PinDirection::In>			BlobInPin;
+typedef MpControlPin<Blob, PinDirection::Out>			BlobOutPin;
+typedef MpControlPin<std::string, PinDirection::In>		StringInPin;
+typedef MpControlPin<std::string, PinDirection::Out>	StringOutPin;
 
-typedef MpControlPin<bool, static_cast<int>(PinDirection::In)>			BoolInPin;
-typedef MpControlPin<bool, static_cast<int>(PinDirection::Out)>			BoolOutPin;
+typedef MpControlPin<bool, PinDirection::In>			BoolInPin;
+typedef MpControlPin<bool, PinDirection::Out>			BoolOutPin;
 
 // enum (List) pin based on Int Pin
-typedef MpControlPin<int, static_cast<int>(PinDirection::In), static_cast<int>(PinDatatype::Enum)>	EnumInPin;
-typedef MpControlPin<int, static_cast<int>(PinDirection::Out), static_cast<int>(PinDatatype::Enum)>	EnumOutPin;
+typedef MpControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;
+typedef MpControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
 
 class MidiInPin : public MpPinBase
 {

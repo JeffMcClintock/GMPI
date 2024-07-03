@@ -104,7 +104,7 @@ endif() # APPLE
 # TODO: rename as gmpi_vst3_adaptor)
 TARGET_LINK_LIBRARIES( ${GMPI_PLUGIN_PROJECT_NAME} base )
 TARGET_LINK_LIBRARIES( ${GMPI_PLUGIN_PROJECT_NAME} pluginterfaces )
-target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} SynthEdit_VST3)
+target_link_libraries(${GMPI_PLUGIN_PROJECT_NAME} VST3_Wrapper)
 endif() # GMPI_PLUGIN_BUILD_VST3_WRAPPER
 
 if(WIN32)
