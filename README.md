@@ -74,16 +74,16 @@ How it works: You describe the parameters and state of your plugin in the XML me
 ```XML
 <Parameter id="0" name="Gain" datatype="float" default="0.8"/>
 ```
-Then associate this data with your plugins variables in the plugin constructor.
+Then associate this metadata with your plugins variables in the plugin constructor.
 
 ```C
 Gain()
 {
-	initializePin(pinGain);
+	init(pinGain);
 }
 ```
 
-The GMPI framework will now automatically initialize, save, and load your plugin state from/into that member variable.
+The GMPI framework will automatically initialize, synchronize, save, and load your plugin state from/into that member variable.
 
 If the GUI is closed, the framework updates it the next time it is opened. If the Processor is suspended (due to the silence-detection feature), the GUI will remain 'live' and responsive, because the plugin state is owned by neither the GUI nor the Processor, but shared.
 
