@@ -1,6 +1,6 @@
 /*
   GMPI - Generalized Music Plugin Interface specification.
-  Copyright 2007-2022 Jeff McClintock.
+  Copyright 2007-2024 Jeff McClintock.
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -221,7 +221,7 @@ AudioPlugin::AudioPlugin() :
 }
 
 // specialised for audio pins_
-float MpAudioPinBase::getValue(int bufferPos) const
+float AudioPinBase::getValue(int bufferPos) const
 {
 	if (bufferPos < 0)
 	{
@@ -235,7 +235,7 @@ float MpAudioPinBase::getValue(int bufferPos) const
 	return *(getBuffer() + bufferPos);
 }
 
-void MpPinBase::initialize(AudioPlugin* plugin, int PinId, MpBaseMemberPtr handler)
+void PinBase::initialize(AudioPlugin* plugin, int PinId, AudioPluginMemberPtr handler)
 {
 	assert(id_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
 
@@ -249,14 +249,14 @@ void MpPinBase::initialize(AudioPlugin* plugin, int PinId, MpBaseMemberPtr handl
 	}
 }
 
-void MpPinBase::processEvent(const api::Event* e)
+void PinBase::processEvent(const api::Event* e)
 {
 	if (eventHandler_)
 		(plugin_->*eventHandler_)(e);
 }
 
 // Pins
-void MpPinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockPosition)
+void PinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockPosition)
 {
 	assert(plugin_ != nullptr && "err: Please don't forgot to call init(pinWhatever) in contructor.");
 	assert(plugin_->debugIsOpen_ && "err: Please don't update output pins in constructor or open().");
@@ -269,12 +269,12 @@ void MpPinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t bloc
 	plugin_->host.setPin(blockPosition, getId(), rawSize, rawData);
 }
 
-MpBaseMemberPtr MidiInPin::getDefaultEventHandler()
+AudioPluginMemberPtr MidiInPin::getDefaultEventHandler()
 {
 	return &AudioPlugin::midiHelper;
 }
 
-void AudioPlugin::init(int PinId, MpPinBase& pin, MpBaseMemberPtr handler)
+void AudioPlugin::init(int PinId, PinBase& pin, AudioPluginMemberPtr handler)
 {
 	pin.initialize(this, PinId, handler);
 
@@ -399,19 +399,19 @@ void AudioPlugin::subProcessPreSleep(int sampleFrames)
 		}
 
 		// only process minimum samples.
-		// determin how many samples remain to be processed.
+		// determine how many samples remain to be processed.
 		int toDo = sampleFramesRemain;
 		if (sleepCount_ < toDo)
 		{
 			toDo = sleepCount_;
 		}
 
-		sleepCount_ -= toDo; // must be before sub-processs in case sub-process resets it.
+		sleepCount_ -= toDo; // must be before sub-process in case sub-process resets it.
 		sampleFramesRemain -= toDo;
 
 		(this->*(saveSubProcess_))(toDo);
 
-		blockPos_ += toDo; // !! Messey, may screw up main process loop if not restored on exit.
+		blockPos_ += toDo; // !! Messy, may screw up main process loop if not restored on exit.
 
 	} while (true);
 }

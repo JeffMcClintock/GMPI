@@ -2,7 +2,7 @@
 
 /*
   GMPI - Generalized Music Plugin Interface specification.
-  Copyright 2007-2022 Jeff McClintock.
+  Copyright 2007-2024 Jeff McClintock.
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -31,14 +31,14 @@ class AudioPlugin;
 typedef void (AudioPlugin::* SubProcessPtr)(int sampleFrames);
 
 // Pointer to event handler member function.
-typedef void (AudioPlugin::* MpBaseMemberPtr)(const api::Event*);
+typedef void (AudioPlugin::* AudioPluginMemberPtr)(const api::Event*);
 
-class MpPinBase
+class PinBase
 {
 public:
-	MpPinBase(){}
-	virtual ~MpPinBase(){}
-	void initialize( AudioPlugin* plugin, int PinId, MpBaseMemberPtr handler = 0 );
+	PinBase(){}
+	virtual ~PinBase(){}
+	void initialize( AudioPlugin* plugin, int PinId, AudioPluginMemberPtr handler = 0 );
 
 	// overrides for audio pins_
 	virtual void setBuffer( float* buffer ) = 0;
@@ -50,30 +50,30 @@ public:
 	int getId(){return id_;}
 	virtual PinDatatype getDatatype() const = 0;
 	virtual PinDirection getDirection() const = 0;
-	virtual MpBaseMemberPtr getDefaultEventHandler() = 0;
+	virtual AudioPluginMemberPtr getDefaultEventHandler() = 0;
 	virtual void sendFirstUpdate() = 0;
 
 protected:
 	void sendPinUpdate( int32_t rawSize, const void* rawData, int32_t blockPosition = - 1 );
 	int id_ = -1;
 	class AudioPlugin* plugin_ = {};
-	MpBaseMemberPtr eventHandler_ = {};
+	AudioPluginMemberPtr eventHandler_ = {};
 };
 
 template
 <typename T, PinDatatype pinDatatype = PinTypeTraits<T>::PinDataType>
-class MpControlPinBase : public MpPinBase
+class ControlPinBase : public PinBase
 {
 public:
-	MpControlPinBase()
+	ControlPinBase()
 	{
 	}
-	MpControlPinBase( T initialValue ) : value_( initialValue )
+	ControlPinBase( T initialValue ) : value_( initialValue )
 	{
 	}
 	void sendPinUpdate(int blockPosition = -1)
 	{
-		MpPinBase::sendPinUpdate( rawSize(), rawData(), blockPosition );
+		PinBase::sendPinUpdate( rawSize(), rawData(), blockPosition );
 	}
 	void setBuffer( float* /*buffer*/ ) override
 	{
@@ -146,7 +146,7 @@ public:
 			freshValue_ = false;
 		};
 	}
-	MpBaseMemberPtr getDefaultEventHandler() override
+	AudioPluginMemberPtr getDefaultEventHandler() override
 	{
 		return nullptr;
 	}
@@ -166,13 +166,13 @@ protected:
 
 template
 <typename T, PinDirection pinDirection_, PinDatatype pinDatatype = (PinDatatype) PinTypeTraits<T>::PinDataType>
-class MpControlPin : public MpControlPinBase< T, pinDatatype >
+class ControlPin : public ControlPinBase< T, pinDatatype >
 {
 public:
-	MpControlPin() : MpControlPinBase< T, pinDatatype >()
+	ControlPin() : ControlPinBase< T, pinDatatype >()
 	{
 	}
-	MpControlPin( T initialValue ) : MpControlPinBase< T, pinDatatype >( initialValue )
+	ControlPin( T initialValue ) : ControlPinBase< T, pinDatatype >( initialValue )
 	{
 	}
 	PinDirection getDirection() const override
@@ -182,25 +182,25 @@ public:
 	const T& operator=(const T &value)
 	{
 		// GCC don't like using plugin_ in this scope. assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
-		return MpControlPinBase< T, pinDatatype> ::operator=(value);
+		return ControlPinBase< T, pinDatatype> ::operator=(value);
 	}
 	// todo: specialise for value_ vs ref types !!!
 
-	const T& operator=(const MpControlPin<T, PinDirection::In, pinDatatype> &other)
+	const T& operator=(const ControlPin<T, PinDirection::In, pinDatatype> &other)
 	{
 		return operator=(other.getValue());
 	}
 
-	const T& operator=(const MpControlPin<T, PinDirection::Out, pinDatatype> &other)
+	const T& operator=(const ControlPin<T, PinDirection::Out, pinDatatype> &other)
 	{
 		return operator=(other.getValue());
 	}
 };
 
-class MpAudioPinBase : public MpPinBase
+class AudioPinBase : public PinBase
 {
 public:
-	MpAudioPinBase(){}
+	AudioPinBase(){}
 	
 	void setBuffer( float* buffer ) override
 	{
@@ -227,7 +227,7 @@ public:
 	{
 		return PinDatatype::Audio;
 	}
-	MpBaseMemberPtr getDefaultEventHandler() override
+	AudioPluginMemberPtr getDefaultEventHandler() override
 	{
 		return 0;
 	}
@@ -243,7 +243,7 @@ protected:
 
 template
 <PinDirection pinDirection_>
-class MpAudioPinBaseB : public MpAudioPinBase
+class AudioPinBaseB : public AudioPinBase
 {
 public:
 	PinDirection getDirection() const override
@@ -252,7 +252,7 @@ public:
 	}
 };
 
-class AudioInPin final : public MpAudioPinBaseB<PinDirection::In>
+class AudioInPin final : public AudioPinBaseB<PinDirection::In>
 {
 public:
 	AudioInPin(){}
@@ -281,7 +281,7 @@ private:
 	bool freshValue_ = true; // true = value_ has been updated on current sample_clock
 };
 
-class AudioOutPin final : public MpAudioPinBaseB<PinDirection::Out>
+class AudioOutPin final : public AudioPinBaseB<PinDirection::Out>
 {
 public:
 	// Indicate output pin's value changed, but it's not streaming (a 'one-off' change).
@@ -296,23 +296,23 @@ public:
 	}
 };
 
-typedef MpControlPin<int, PinDirection::In>				IntInPin;
-typedef MpControlPin<int, PinDirection::Out>			IntOutPin;
-typedef MpControlPin<float, PinDirection::In>			FloatInPin;
-typedef MpControlPin<float, PinDirection::Out>			FloatOutPin;
-typedef MpControlPin<Blob, PinDirection::In>			BlobInPin;
-typedef MpControlPin<Blob, PinDirection::Out>			BlobOutPin;
-typedef MpControlPin<std::string, PinDirection::In>		StringInPin;
-typedef MpControlPin<std::string, PinDirection::Out>	StringOutPin;
+typedef ControlPin<int, PinDirection::In>				IntInPin;
+typedef ControlPin<int, PinDirection::Out>			IntOutPin;
+typedef ControlPin<float, PinDirection::In>			FloatInPin;
+typedef ControlPin<float, PinDirection::Out>			FloatOutPin;
+typedef ControlPin<Blob, PinDirection::In>			BlobInPin;
+typedef ControlPin<Blob, PinDirection::Out>			BlobOutPin;
+typedef ControlPin<std::string, PinDirection::In>		StringInPin;
+typedef ControlPin<std::string, PinDirection::Out>	StringOutPin;
 
-typedef MpControlPin<bool, PinDirection::In>			BoolInPin;
-typedef MpControlPin<bool, PinDirection::Out>			BoolOutPin;
+typedef ControlPin<bool, PinDirection::In>			BoolInPin;
+typedef ControlPin<bool, PinDirection::Out>			BoolOutPin;
 
 // enum (List) pin based on Int Pin
-typedef MpControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;
-typedef MpControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
+typedef ControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;
+typedef ControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
 
-class MidiInPin : public MpPinBase
+class MidiInPin : public PinBase
 {
 public:
 	PinDatatype getDatatype() const override
@@ -329,7 +329,7 @@ public:
 	{
 		assert( false && "MIDI pins_ don't have a buffer" );
 	}
-	MpBaseMemberPtr getDefaultEventHandler() override;
+	AudioPluginMemberPtr getDefaultEventHandler() override;
 	void sendFirstUpdate() override {}
 };
 
@@ -340,7 +340,7 @@ public:
 	{
 		return PinDirection::Out;
 	}
-	MpBaseMemberPtr getDefaultEventHandler() override
+	AudioPluginMemberPtr getDefaultEventHandler() override
 	{
 		assert( false && "output pins don't need event handler" );
 		return 0;
@@ -404,8 +404,8 @@ public:
 	}
 
 protected:
-	void init(int PinId, MpPinBase& pin, MpBaseMemberPtr handler = 0);
-	void init(MpPinBase& pin, MpBaseMemberPtr handler = 0)
+	void init(int PinId, PinBase& pin, AudioPluginMemberPtr handler = 0);
+	void init(PinBase& pin, AudioPluginMemberPtr handler = 0)
 	{
 		int idx = 0;
 		if (!pins_.empty())
@@ -460,7 +460,7 @@ protected:
 protected:
 	SubProcessPtr curSubProcess_ = &AudioPlugin::subProcessPreSleep;
 	SubProcessPtr saveSubProcess_ = &AudioPlugin::subProcessNothing; // saves curSubProcess_ while sleeping
-	std::map<int, MpPinBase*> pins_;
+	std::map<int, PinBase*> pins_;
 
 	int blockPos_;				// valid only during processEvent()
 	int sleepCount_;			// sleep countdown timer.

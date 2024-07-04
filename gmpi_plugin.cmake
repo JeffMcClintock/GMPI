@@ -128,7 +128,7 @@ else()
     add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
     POST_BUILD
     COMMAND xcopy /c /y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\"
-    COMMENT "Copy to SEM folder"
+    COMMENT "Copy to GMPI folder"
     VERBATIM
 )
 endif()
@@ -136,6 +136,6 @@ endif()
 endif()
 
 # all individual modules should be groups under "modules" solution folder
-SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES FOLDER "modules")
+SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES FOLDER "plugins")
 
 endfunction()
