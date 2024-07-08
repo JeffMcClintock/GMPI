@@ -49,7 +49,7 @@ class Register
 		return api::MP_SUB_TYPE_CONTROLLER;
 	}
 #endif
-	inline static api::PluginSubtype subType(api::IAudioPlugin*)
+	inline static api::PluginSubtype subType(api::IProcessor*)
 	{
 		return api::PluginSubtype::Audio;
 	}
@@ -75,7 +75,7 @@ class Register
 		return static_cast<api::IUnknown*>(object);
 	}
 
-	inline static api::IUnknown* toUnknown(api::IAudioPlugin* object) // Processor classes.
+	inline static api::IUnknown* toUnknown(api::IProcessor* object) // Processor classes.
 	{
 		return static_cast<api::IUnknown*>(object);
 	}

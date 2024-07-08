@@ -27,18 +27,18 @@ namespace gmpi
 {
 
 // Pointer to sound processing member function.
-class AudioPlugin;
-typedef void (AudioPlugin::* SubProcessPtr)(int sampleFrames);
+class Processor;
+typedef void (Processor::* SubProcessPtr)(int sampleFrames);
 
 // Pointer to event handler member function.
-typedef void (AudioPlugin::* AudioPluginMemberPtr)(const api::Event*);
+typedef void (Processor::* ProcessorMemberPtr)(const api::Event*);
 
 class PinBase
 {
 public:
 	PinBase(){}
 	virtual ~PinBase(){}
-	void initialize( AudioPlugin* plugin, int PinId, AudioPluginMemberPtr handler = 0 );
+	void initialize( Processor* plugin, int PinId, ProcessorMemberPtr handler = 0 );
 
 	// overrides for audio pins_
 	virtual void setBuffer( float* buffer ) = 0;
@@ -50,14 +50,14 @@ public:
 	int getId(){return id_;}
 	virtual PinDatatype getDatatype() const = 0;
 	virtual PinDirection getDirection() const = 0;
-	virtual AudioPluginMemberPtr getDefaultEventHandler() = 0;
+	virtual ProcessorMemberPtr getDefaultEventHandler() = 0;
 	virtual void sendFirstUpdate() = 0;
 
 protected:
 	void sendPinUpdate( int32_t rawSize, const void* rawData, int32_t blockPosition = - 1 );
 	int id_ = -1;
-	class AudioPlugin* plugin_ = {};
-	AudioPluginMemberPtr eventHandler_ = {};
+	class Processor* plugin_ = {};
+	ProcessorMemberPtr eventHandler_ = {};
 };
 
 template
@@ -146,7 +146,7 @@ public:
 			freshValue_ = false;
 		};
 	}
-	AudioPluginMemberPtr getDefaultEventHandler() override
+	ProcessorMemberPtr getDefaultEventHandler() override
 	{
 		return nullptr;
 	}
@@ -227,7 +227,7 @@ public:
 	{
 		return PinDatatype::Audio;
 	}
-	AudioPluginMemberPtr getDefaultEventHandler() override
+	ProcessorMemberPtr getDefaultEventHandler() override
 	{
 		return 0;
 	}
@@ -329,7 +329,7 @@ public:
 	{
 		assert( false && "MIDI pins_ don't have a buffer" );
 	}
-	AudioPluginMemberPtr getDefaultEventHandler() override;
+	ProcessorMemberPtr getDefaultEventHandler() override;
 	void sendFirstUpdate() override {}
 };
 
@@ -340,7 +340,7 @@ public:
 	{
 		return PinDirection::Out;
 	}
-	AudioPluginMemberPtr getDefaultEventHandler() override
+	ProcessorMemberPtr getDefaultEventHandler() override
 	{
 		assert( false && "output pins don't need event handler" );
 		return 0;
@@ -351,11 +351,11 @@ public:
 
 class AudioPluginHostWrapper
 {
-	gmpi::shared_ptr<api::IAudioPluginHost> host;
+	gmpi::shared_ptr<api::IProcessorHost> host;
 
 public:
 	ReturnCode Init(api::IUnknown* phost);
-	api::IAudioPluginHost* get();
+	api::IProcessorHost* get();
 
 	// IAudioPluginHost
 	ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data);
@@ -369,13 +369,13 @@ public:
 
 class TempBlockPositionSetter;
 
-class AudioPlugin : public api::IAudioPlugin
+class Processor : public api::IProcessor
 {
 	friend class TempBlockPositionSetter;
 
 public:
-	AudioPlugin();
-	virtual ~AudioPlugin() {}
+	Processor();
+	virtual ~Processor() {}
 
 	// IAudioPlugin methods
 	gmpi::ReturnCode open(api::IUnknown* phost) override;
@@ -404,8 +404,8 @@ public:
 	}
 
 protected:
-	void init(int PinId, PinBase& pin, AudioPluginMemberPtr handler = 0);
-	void init(PinBase& pin, AudioPluginMemberPtr handler = 0)
+	void init(int PinId, PinBase& pin, ProcessorMemberPtr handler = 0);
+	void init(PinBase& pin, ProcessorMemberPtr handler = 0)
 	{
 		int idx = 0;
 		if (!pins_.empty())
@@ -435,7 +435,7 @@ protected:
 		else // in sleep mode.
 		{
 			saveSubProcess_ = static_cast <SubProcessPtr> (functionPointer);
-			assert(saveSubProcess_ != &AudioPlugin::subProcessPreSleep);
+			assert(saveSubProcess_ != &Processor::subProcessPreSleep);
 		}
 	}
 
@@ -454,12 +454,12 @@ protected:
 	void postProcessEvent( const api::Event* e );
 
 	// identification and reference counting
-	GMPI_QUERYINTERFACE_METHOD(IAudioPlugin);
+	GMPI_QUERYINTERFACE_METHOD(IProcessor);
 	GMPI_REFCOUNT;
 
 protected:
-	SubProcessPtr curSubProcess_ = &AudioPlugin::subProcessPreSleep;
-	SubProcessPtr saveSubProcess_ = &AudioPlugin::subProcessNothing; // saves curSubProcess_ while sleeping
+	SubProcessPtr curSubProcess_ = &Processor::subProcessPreSleep;
+	SubProcessPtr saveSubProcess_ = &Processor::subProcessNothing; // saves curSubProcess_ while sleeping
 	std::map<int, PinBase*> pins_;
 
 	int blockPos_;				// valid only during processEvent()
@@ -483,10 +483,10 @@ class TempBlockPositionSetter
 {
 	bool saveBlockPosExact_;
 	int saveBlockPosition_;
-	AudioPlugin* module_;
+	Processor* module_;
 
 public:
-	TempBlockPositionSetter(AudioPlugin* module, int currentBlockPosition)
+	TempBlockPositionSetter(Processor* module, int currentBlockPosition)
 	{
 		module_ = module;
 		saveBlockPosition_ = module_->getBlockPosition();

@@ -13,8 +13,8 @@ ${gmpi_sdk_folder}/Core/Common.cpp
 
 if(${GMPI_PLUGIN_HAS_DSP})
     set(sdk_srcs ${sdk_srcs}
-    ${gmpi_sdk_folder}/Core/AudioPlugin.h
-    ${gmpi_sdk_folder}/Core/AudioPlugin.cpp
+    ${gmpi_sdk_folder}/Core/Processor.h
+    ${gmpi_sdk_folder}/Core/Processor.cpp
     )
 endif()
 

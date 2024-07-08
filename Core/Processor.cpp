@@ -21,7 +21,7 @@
 #endif
 
 #include <assert.h>
-#include "AudioPlugin.h"
+#include "Processor.h"
 
 using namespace gmpi;
 
@@ -35,7 +35,7 @@ INTERFACE* as(api::IUnknown* com_object)
 
 namespace gmpi
 {
-ReturnCode AudioPlugin::open(IUnknown* phost)
+ReturnCode Processor::open(IUnknown* phost)
 {
 #if defined(_DEBUG)
 	debugIsOpen_ = true;
@@ -44,7 +44,7 @@ ReturnCode AudioPlugin::open(IUnknown* phost)
 	return host.Init(phost);
 }
 
-void AudioPlugin::process(int32_t count, const api::Event* events)
+void Processor::process(int32_t count, const api::Event* events)
 {
 	assert(count > 0);
 
@@ -128,7 +128,7 @@ void AudioPlugin::process(int32_t count, const api::Event* events)
 	}
 }
 
-void AudioPlugin::processEvent(const api::Event* e)
+void Processor::processEvent(const api::Event* e)
 {
 	switch (e->eventType)
 	{
@@ -155,7 +155,7 @@ void AudioPlugin::processEvent(const api::Event* e)
 	};
 }
 
-void AudioPlugin::preProcessEvent(const api::Event* e)
+void Processor::preProcessEvent(const api::Event* e)
 {
 	switch (e->eventType)
 	{
@@ -178,7 +178,7 @@ void AudioPlugin::preProcessEvent(const api::Event* e)
 	};
 }
 
-void AudioPlugin::postProcessEvent(const api::Event* e)
+void Processor::postProcessEvent(const api::Event* e)
 {
 	switch (e->eventType)
 	{
@@ -201,7 +201,7 @@ void AudioPlugin::postProcessEvent(const api::Event* e)
 	};
 }
 
-void AudioPlugin::midiHelper(const api::Event* e)
+void Processor::midiHelper(const api::Event* e)
 {
 	assert(e->eventType == api::EventType::Midi);
 
@@ -211,7 +211,7 @@ void AudioPlugin::midiHelper(const api::Event* e)
 		, e->size());
 }
 
-AudioPlugin::AudioPlugin() :
+Processor::Processor() :
 	blockPos_(0)
 	, sleepCount_(0)
 	, streamingPinCount_(0)
@@ -235,7 +235,7 @@ float AudioPinBase::getValue(int bufferPos) const
 	return *(getBuffer() + bufferPos);
 }
 
-void PinBase::initialize(AudioPlugin* plugin, int PinId, AudioPluginMemberPtr handler)
+void PinBase::initialize(Processor* plugin, int PinId, ProcessorMemberPtr handler)
 {
 	assert(id_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
 
@@ -269,12 +269,12 @@ void PinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockP
 	plugin_->host.setPin(blockPosition, getId(), rawSize, rawData);
 }
 
-AudioPluginMemberPtr MidiInPin::getDefaultEventHandler()
+ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
 {
-	return &AudioPlugin::midiHelper;
+	return &Processor::midiHelper;
 }
 
-void AudioPlugin::init(int PinId, PinBase& pin, AudioPluginMemberPtr handler)
+void Processor::init(int PinId, PinBase& pin, ProcessorMemberPtr handler)
 {
 	pin.initialize(this, PinId, handler);
 
@@ -283,7 +283,7 @@ void AudioPlugin::init(int PinId, PinBase& pin, AudioPluginMemberPtr handler)
 	assert(r.second && "Did you init() with the same index twice?");
 }
 
-ReturnCode AudioPlugin::setBuffer(int32_t pinId, float* buffer)
+ReturnCode Processor::setBuffer(int32_t pinId, float* buffer)
 {
 	if (auto it = pins_.find(pinId); it != pins_.end())
 	{
@@ -335,12 +335,12 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 	plugin_->host.setPinStreaming(blockPosition, getId(), (int)isStreaming_);
 };
 
-void AudioPlugin::setSleep(bool isOkToSleep)
+void Processor::setSleep(bool isOkToSleep)
 {
 	if (isOkToSleep)
 	{
 		canSleepManualOverride_ = SLEEP_ENABLE;
-		curSubProcess_ = &AudioPlugin::subProcessPreSleep;
+		curSubProcess_ = &Processor::subProcessPreSleep;
 	}
 	else
 	{
@@ -349,7 +349,7 @@ void AudioPlugin::setSleep(bool isOkToSleep)
 }
 
 // module is OK to sleep, but first needs to output enough samples to clear the output buffers.
-void AudioPlugin::subProcessPreSleep(int sampleFrames)
+void Processor::subProcessPreSleep(int sampleFrames)
 {
 	// this routine used whenever we MAYBY need to sleep.
 	bool canSleep;
@@ -416,7 +416,7 @@ void AudioPlugin::subProcessPreSleep(int sampleFrames)
 	} while (true);
 }
 
-void AudioPlugin::onGraphStart()	// called on very first sample.
+void Processor::onGraphStart()	// called on very first sample.
 {
 	// Send initial update on all output pins.
 	for (auto& it : pins_)
@@ -433,7 +433,7 @@ void AudioPlugin::onGraphStart()	// called on very first sample.
 #endif
 }
 
-void AudioPlugin::OnPinStreamingChange(bool isStreaming)
+void Processor::OnPinStreamingChange(bool isStreaming)
 {
 	if (isStreaming)
 	{
@@ -446,7 +446,7 @@ void AudioPlugin::OnPinStreamingChange(bool isStreaming)
 
 	if (streamingPinCount_ == 0 || canSleepManualOverride_ == SLEEP_ENABLE)
 	{
-		curSubProcess_ = &AudioPlugin::subProcessPreSleep;
+		curSubProcess_ = &Processor::subProcessPreSleep;
 	}
 	else // no need for sleep mode.
 	{
@@ -454,7 +454,7 @@ void AudioPlugin::OnPinStreamingChange(bool isStreaming)
 	}
 }
 
-void AudioPlugin::resetSleepCounter()
+void Processor::resetSleepCounter()
 {
 	sleepCount_ = host.getBlockSize();
 }
@@ -490,11 +490,11 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 
 ReturnCode AudioPluginHostWrapper::Init(api::IUnknown* phost)
 {
-	host = as<api::IAudioPluginHost>(phost);
+	host = as<api::IProcessorHost>(phost);
 	return host ? ReturnCode::Ok : ReturnCode::NoSupport;
 }
 
-api::IAudioPluginHost* AudioPluginHostWrapper::get()
+api::IProcessorHost* AudioPluginHostWrapper::get()
 {
 	return host.get();
 }
