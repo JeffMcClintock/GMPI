@@ -481,7 +481,9 @@ public:
 // This helper class lets you set the block-position manually in able to use shorthand pin setting syntax. e.g. pinOut = 3;
 class TempBlockPositionSetter
 {
+#if defined(_DEBUG)
 	bool saveBlockPosExact_;
+#endif
 	int saveBlockPosition_;
 	Processor* module_;
 
