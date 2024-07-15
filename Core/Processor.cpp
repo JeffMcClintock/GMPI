@@ -232,7 +232,7 @@ float AudioPinBase::getValue(int bufferPos) const
 
 	assert(bufferPos < plugin_->host.getBlockSize() && "err: Don't access past end of buffer");
 
-	return *(getBuffer() + bufferPos);
+	return *(begin() + bufferPos);
 }
 
 void PinBase::initialize(Processor* plugin, int PinId, ProcessorMemberPtr handler)

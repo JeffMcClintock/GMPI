@@ -206,7 +206,7 @@ public:
 	{
 		buffer_ = buffer;
 	}
-	float* getBuffer( void ) const
+	float* begin() const
 	{
 		return buffer_;
 	}
@@ -229,7 +229,7 @@ public:
 	}
 	ProcessorMemberPtr getDefaultEventHandler() override
 	{
-		return 0;
+		return {};
 	}
 	bool isStreaming()
 	{
@@ -417,11 +417,11 @@ protected:
 
 	const float* getBuffer(const AudioInPin& pin) const
 	{
-		return blockPos_ + pin.getBuffer();
+		return blockPos_ + pin.begin();
 	}
 	float* getBuffer(const AudioOutPin& pin) const
 	{
-		return blockPos_ + pin.getBuffer();
+		return blockPos_ + pin.begin();
 	}
 
 	template <typename PointerToMember>
