@@ -58,7 +58,6 @@ class Register
 		return api::PluginSubtype::Editor;
 	}
 #if 0 // temp disabled
-
 	// Allows unambiguous cast when you support multiple interfaces.
 	inline static api::IUnknown* toUnknown(api::IMpController* object) // Controller classes.
 	{
@@ -139,60 +138,60 @@ public:
 
 // Get size of variable's data.
 template <typename T>
-inline int variableRawSize(const T& /*value*/)
+inline int dataSize(const T& /*value*/)
 {
 	return sizeof(T);
 }
 
 template<>
-inline int variableRawSize<std::string>(const std::string& value)
+inline int dataSize<std::string>(const std::string& value)
 {
 	return static_cast<int>(value.size());
 }
 
 template<>
-inline int variableRawSize<Blob>(const Blob& value)
+inline int dataSize<Blob>(const Blob& value)
 {
 	return static_cast<int>(value.size());
 }
 
 // Serialize variable's value as bytes.
 template <typename T>
-inline const void* variableRawData(const T& value)
+inline const void* dataPtr(const T& value)
 {
 	return reinterpret_cast<const void*>(&value);
 }
 
 template<>
-inline const void* variableRawData<std::string>(const std::string& value)
+inline const void* dataPtr<std::string>(const std::string& value)
 {
 	return reinterpret_cast<const void*>(value.data());
 }
 
 template<>
-inline const void* variableRawData<Blob>(const Blob& value)
+inline const void* dataPtr<Blob>(const Blob& value)
 {
 	return reinterpret_cast<const void*>(value.data());
 }
 
 // De-serialize type.
 template <typename T>
-inline void VariableFromRaw(int size, const void* data, T& returnValue)
+inline void valueFromData(int size, const void* data, T& returnValue)
 {
 	assert(size == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
 	memcpy(&returnValue, data, size);
 }
 
 template <>
-inline void VariableFromRaw<Blob>(int size, const void* data, Blob& returnValue)
+inline void valueFromData<Blob>(int size, const void* data, Blob& returnValue)
 {
 	returnValue.assign((uint8_t*)data, (uint8_t*)data + size);
 }
 
 template <>
-inline void VariableFromRaw<bool>(int size, const void* data, bool& returnValue)
+inline void valueFromData<bool>(int size, const void* data, bool& returnValue)
 {
-	// bool is pased as int.
+	// bool is passed as int.
 	if (size == 4) // DSP sends bool events as int.
 	{
 		returnValue = *((int*)data) != 0;
@@ -205,7 +204,7 @@ inline void VariableFromRaw<bool>(int size, const void* data, bool& returnValue)
 }
 
 template <>
-inline void VariableFromRaw<std::string>(int size, const void* data, std::string& returnValue)
+inline void valueFromData<std::string>(int size, const void* data, std::string& returnValue)
 {
 	returnValue.assign((const char*)data, size);
 }

@@ -113,19 +113,19 @@ public:
 	}
 	virtual void setValueRaw(int size, const void* data)
 	{
-		VariableFromRaw<T>(size, data, value_);
+		valueFromData<T>(size, data, value_);
 	}
 	virtual void setValueRaw(size_t size, const void* data)
 	{
-		VariableFromRaw<T>(static_cast<int>(size), data, value_);
+		valueFromData<T>(static_cast<int>(size), data, value_);
 	}
 	virtual int rawSize() const
 	{
-		return variableRawSize<T>(value_);
+		return dataSize<T>(value_);
 	}
 	virtual const void* rawData()
 	{
-		return variableRawData<T>(value_);
+		return dataPtr<T>(value_);
 	}
 	PinDatatype getDatatype() const override
 	{
