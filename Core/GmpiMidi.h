@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <functional>
 #include <math.h>
-#include "../shared/xp_simd.h"
+//#include "../shared/xp_simd.h"
 
 /*
 #include "../se_sdk3/mp_midi.h"
@@ -29,17 +29,17 @@ namespace gmpi
 			// convert a normalized float to 7-bit
 			inline uint8_t floatToU7(float f)
 			{
-				return static_cast<uint8_t>(FastRealToIntTruncateTowardZero(0.5f + f * 127.f));
+				return static_cast<uint8_t>(0.5f + f * 127.f);
 			}
 
-			// converts a 14-bit bipolar controler to a normalized value (between 0.0 and 1.0)
+			// converts a 14-bit bipolar controller to a normalized value (between 0.0 and 1.0)
 			inline float bipoler14bitToNormalized(uint8_t msb, uint8_t lsb)
 			{
 				constexpr int centerInt = 0x2000;
 				constexpr float scale = 0.5f / (centerInt - 1); // -0.5 -> +0.5
 
 				const int controllerInt = (static_cast<int>(lsb) + (static_cast<int>(msb) << 7)) - centerInt;
-				// bender range is 0 -> 8192 (center) -> 16383
+				// bender range is 0 -> 8192 (centre) -> 16383
 				// which is lopsided (8192 values negative, 8191 positive). So we scale by the smaller number, then clamp any out-of-range value.
 				return (std::max)(0.0f, 0.5f + controllerInt * scale);
 			}
