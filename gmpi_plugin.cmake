@@ -45,7 +45,7 @@ endif()
 endif()
 
 if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
-set(sdk_srcs ${sdk_srcs} ${GMPI_ADAPTORS}/VST3/wrapperVst3.cpp)
+set(sdk_srcs ${sdk_srcs} ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
 endif()
 
 # organise SDK file into folders/groups in IDE
@@ -72,6 +72,10 @@ if(${GMPI_PLUGIN_BUILD_VST3_WRAPPER})
 target_compile_definitions(${GMPI_PLUGIN_PROJECT_NAME} PRIVATE 
   $<$<CONFIG:Debug>:DEBUG=1>
   $<$<CONFIG:Release>:DEBUG=0>
+)
+
+include_directories(
+    ${GMPI_ADAPTORS}
 )
 
 TARGET_LINK_LIBRARIES( ${GMPI_PLUGIN_PROJECT_NAME} ${COREFOUNDATION_LIBRARY} )
