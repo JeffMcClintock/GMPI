@@ -91,8 +91,58 @@ public:
     { 0x7d5ad528, 0xa035, 0x44e5, { 0x82, 0xa2, 0x4e, 0x3a, 0x70, 0xae, 0xa0, 0x99 } };
 };
 
+// Controller interface.
+class IController : public IParameterObserver
+{
+public:
+    // Establish connection to host.
+    virtual ReturnCode setHost(gmpi::api::IUnknown* host) = 0;
+#if 0
+    // Patch-Manager -> plugin.
+    virtual ReturnCode preSaveState() = 0;
+    virtual ReturnCode open() = 0;
+
+    // Pins.
+    virtual ReturnCode setPinDefault(int32_t pinType, int32_t pinId, const char* defaultValue) = 0;
+    virtual ReturnCode setPin(int32_t pinId, int32_t voice, int64_t size, const void* data) = 0;
+    virtual ReturnCode notifyPin(int32_t pinId, int32_t voice) = 0;
+
+    virtual ReturnCode onDelete() = 0;
+#endif
+
+    // {B379BA45-E486-4545-8D91-4CE11C4811DE}
+    inline static const Guid guid =
+    { 0xb379ba45, 0xe486, 0x4545, { 0x8d, 0x91, 0x4c, 0xe1, 0x1c, 0x48, 0x11, 0xde } };
+};
+
+class IControllerHost : public IUnknown
+{
+public:
+#if 0
+    // Each plugin instance has a host-assigned unique handle shared by UI and Audio class.
+    virtual ReturnCode getHandle(int32_t& returnHandle) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, int32_t paramFieldType, int32_t voice, const void* data, int32_t size) = 0;
+    virtual void updateParameter(int32_t parameterHandle, int32_t paramFieldType, int32_t voice) = 0;
+    virtual ReturnCode getParameterHandle(int32_t moduleHandle, int32_t moduleParameterId) = 0;
+    virtual ReturnCode getParameterModuleAndParamId(int32_t parameterHandle, int32_t* returnModuleHandle, int32_t* returnModuleParameterId) = 0;
+    //?	virtual ReturnCode setPinDefault(int32_t pinIndex, int32_t paramFieldType, const char* utf8Value) = 0;
+    virtual ReturnCode setLatency(int32_t latency) = 0;
+
+    // Backdoor to Audio class. Not recommended. Use Parameters instead to support proper automation.
+    //virtual ReturnCode sendMessageToAudio(int32_t id, int32_t size, const void* messageData) = 0;
+    virtual ReturnCode createControllerIterator(gmpi::IMpControllerIterator** returnIterator) = 0;
+    virtual ReturnCode pinTransmit(int32_t pinId, int32_t voice, int64_t size, const void* data) = 0;
+#endif
+
+    // {CD0F9C61-E546-47E2-A31C-09B3FBC8F5D0}
+    inline static const Guid guid =
+    { 0xcd0f9c61, 0xe546, 0x47e2, { 0xa3, 0x1c, 0x9, 0xb3, 0xfb, 0xc8, 0xf5, 0xd0 } };
+};
+
 using IEditor = IEditor_x;
 using IEditorHost = IEditorHost_x;
+
+
 
 // Platform specific definitions.
 #pragma pack(pop)

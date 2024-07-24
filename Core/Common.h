@@ -26,7 +26,6 @@
 
 namespace gmpi
 {
-
 typedef api::IUnknown* (*CreatePluginPtr)();
 
 gmpi::ReturnCode RegisterPlugin(api::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create);
@@ -44,11 +43,11 @@ class Register
 	{
 		return api::MP_SUB_TYPE_GUI2;
 	}
-	inline static int subType(api::IMpController* /*unused*/)
-	{
-		return api::MP_SUB_TYPE_CONTROLLER;
-	}
 #endif
+	inline static api::PluginSubtype subType(api::IController*)
+	{
+		return api::PluginSubtype::Controller;
+	}
 	inline static api::PluginSubtype subType(api::IProcessor*)
 	{
 		return api::PluginSubtype::Audio;
@@ -69,12 +68,15 @@ class Register
 	}
 #endif
 
-	inline static api::IUnknown* toUnknown(api::IEditor* object) // Editor classes.
+	inline static api::IUnknown* toUnknown(api::IEditor* object)
 	{
 		return static_cast<api::IUnknown*>(object);
 	}
-
-	inline static api::IUnknown* toUnknown(api::IProcessor* object) // Processor classes.
+	inline static api::IUnknown* toUnknown(api::IProcessor* object)
+	{
+		return static_cast<api::IUnknown*>(object);
+	}
+	inline static api::IUnknown* toUnknown(api::IController* object)
 	{
 		return static_cast<api::IUnknown*>(object);
 	}
