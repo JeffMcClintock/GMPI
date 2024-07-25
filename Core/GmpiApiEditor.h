@@ -26,22 +26,22 @@ namespace gmpi
 {
     enum class Field
     {
-        MP_FT_VALUE
-        , MP_FT_SHORT_NAME
-        , MP_FT_LONG_NAME
-        , MP_FT_MENU_ITEMS
-        , MP_FT_MENU_SELECTION
-        , MP_FT_RANGE_LO
-        , MP_FT_RANGE_HI
-        , MP_FT_ENUM_LIST
-        , MP_FT_FILE_EXTENSION
-        , MP_FT_IGNORE_PROGRAM_CHANGE
-        , MP_FT_PRIVATE
-        , MP_FT_AUTOMATION				// int
-        , MP_FT_AUTOMATION_SYSEX			// STRING
-        , MP_FT_DEFAULT					// same type as parameter
-        , MP_FT_GRAB						// (mouse down) bool
-        , MP_FT_NORMALIZED				// float
+          Value
+        , ShortName
+        , LongName
+        , MenuItems
+        , MenuSelection
+        , RangeLo
+        , RangeHi
+        , EnumList
+        , FileExtension
+        , IgnoreProgramChange
+        , Private
+        , Automation				// int
+        , AutomationSysex			// STRING
+        , Default					// same type as parameter
+        , Grab						// (mouse down) bool
+        , Normalized				// float
     };
 
 namespace api
@@ -92,11 +92,11 @@ public:
 };
 
 // Controller interface.
-class IController : public IParameterObserver
+class IController_x : public IParameterObserver
 {
 public:
     // Establish connection to host.
-    virtual ReturnCode setHost(gmpi::api::IUnknown* host) = 0;
+    virtual ReturnCode initialize(gmpi::api::IUnknown* host, int32_t handle) = 0;
 #if 0
     // Patch-Manager -> plugin.
     virtual ReturnCode preSaveState() = 0;
@@ -115,13 +115,14 @@ public:
     { 0xb379ba45, 0xe486, 0x4545, { 0x8d, 0x91, 0x4c, 0xe1, 0x1c, 0x48, 0x11, 0xde } };
 };
 
-class IControllerHost : public IUnknown
+class IControllerHost_x : public IUnknown
 {
 public:
+    virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
 #if 0
     // Each plugin instance has a host-assigned unique handle shared by UI and Audio class.
     virtual ReturnCode getHandle(int32_t& returnHandle) = 0;
-    virtual ReturnCode setParameter(int32_t parameterHandle, int32_t paramFieldType, int32_t voice, const void* data, int32_t size) = 0;
     virtual void updateParameter(int32_t parameterHandle, int32_t paramFieldType, int32_t voice) = 0;
     virtual ReturnCode getParameterHandle(int32_t moduleHandle, int32_t moduleParameterId) = 0;
     virtual ReturnCode getParameterModuleAndParamId(int32_t parameterHandle, int32_t* returnModuleHandle, int32_t* returnModuleParameterId) = 0;
@@ -141,6 +142,8 @@ public:
 
 using IEditor = IEditor_x;
 using IEditorHost = IEditorHost_x;
+using IController = IController_x;
+using IControllerHost = IControllerHost_x;
 
 
 
