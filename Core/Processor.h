@@ -393,7 +393,7 @@ public:
 		return blockPos_;
 	}
 	void midiHelper( const api::Event* e );
-	void OnPinStreamingChange(bool isStreaming);
+	void onPinStreamingChange(bool isStreaming);
 	void resetSleepCounter();
 	void nudgeSleepCounter()
 	{

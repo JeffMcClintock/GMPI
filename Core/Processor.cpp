@@ -320,7 +320,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 	if (isStreaming_ != isStreaming)
 	{
 		isStreaming_ = isStreaming;
-		plugin_->OnPinStreamingChange(isStreaming);
+		plugin_->onPinStreamingChange(isStreaming);
 	}
 
 	// Always reset sleep counter on streaming stop or one-off level changes.
@@ -431,7 +431,7 @@ void Processor::onGraphStart()	// called on very first sample.
 #endif
 }
 
-void Processor::OnPinStreamingChange(bool isStreaming)
+void Processor::onPinStreamingChange(bool isStreaming)
 {
 	if (isStreaming)
 	{
@@ -469,7 +469,7 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 		if (isStreaming_ != isStreaming)
 		{
 			isStreaming_ = isStreaming;
-			plugin_->OnPinStreamingChange(isStreaming_);
+			plugin_->onPinStreamingChange(isStreaming_);
 		}
 
 		// For modules with no output pins, it's important to process that one last sample after processing the event,
@@ -491,17 +491,14 @@ ReturnCode AudioPluginHostWrapper::Init(api::IUnknown* phost)
 	host = as<api::IProcessorHost>(phost);
 	return host ? ReturnCode::Ok : ReturnCode::NoSupport;
 }
-
 api::IProcessorHost* AudioPluginHostWrapper::get()
 {
 	return host.get();
 }
-
 ReturnCode AudioPluginHostWrapper::setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data)
 {
 	return host->setPin(timestamp, pinId, size, data);
 }
-
 ReturnCode AudioPluginHostWrapper::setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming)
 {
 	return host->setPinStreaming(timestamp, pinId, isStreaming);
