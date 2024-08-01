@@ -15,7 +15,6 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-// MpBase2 - implements the IMpPlugin2 interface.
 #if !defined(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
 #define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
 #endif
@@ -86,7 +85,6 @@ void Processor::process(int32_t count, const api::Event* events)
 			blockPos_ += delta_time;
 		}
 
-		//int cur_timeStamp = next_event->timeDelta;
 #if defined(_DEBUG)
 		blockPosExact_ = true;
 #endif

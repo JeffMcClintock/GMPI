@@ -68,9 +68,6 @@ public:
 	ControlPinBase()
 	{
 	}
-	ControlPinBase( T initialValue ) : value_( initialValue )
-	{
-	}
 	void sendPinUpdate(int blockPosition = -1)
 	{
 		PinBase::sendPinUpdate( rawSize(), rawData(), blockPosition );
