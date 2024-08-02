@@ -86,7 +86,6 @@ endif()
 endif()
 
 # organise SDK file into folders/groups in IDE
-source_group(sdk FILES ${sdk_srcs})
 
 foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
 	set(SUB_PROJECT_NAME ${PROJECT_NAME}_${kind} )
@@ -99,6 +98,8 @@ foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
             set(FORMAT_SDK_FILES ${FORMAT_SDK_FILES} ${VST3_SDK}/public.sdk/source/main/macmain.cpp)
         endif()
     endif()
+    
+    source_group(sdk FORMAT_SDK_FILES ${sdk_srcs})
 
     add_library(${SUB_PROJECT_NAME} MODULE ${GMPI_PLUGIN_SOURCE_FILES} ${FORMAT_SDK_FILES} ${resource_srcs} ${wrapper_srcs})
     gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
