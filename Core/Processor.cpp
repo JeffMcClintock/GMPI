@@ -15,22 +15,8 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#if !defined(_SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING)
-#define _SILENCE_CXX17_CODECVT_HEADER_DEPRECATION_WARNING
-#endif
-
 #include <assert.h>
 #include "Processor.h"
-
-using namespace gmpi;
-
-template<typename INTERFACE>
-INTERFACE* as(api::IUnknown* com_object)
-{
-	INTERFACE* result = {};
-	com_object->queryInterface(&INTERFACE::guid, (void**)&result);
-	return result;
-}
 
 namespace gmpi
 {
