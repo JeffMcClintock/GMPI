@@ -85,10 +85,6 @@ source_group(resources FILES ${resource_srcs})
 endif()
 endif()
 
-#if(${GMPI_PLUGIN_HAS_VST3})
-set(sdk_srcs_vst3 ${sdk_srcs} ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
-#endif()
-
 # organise SDK file into folders/groups in IDE
 source_group(sdk FILES ${sdk_srcs})
 
@@ -98,7 +94,7 @@ foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
     set(FORMAT_SDK_FILES ${sdk_srcs})
 
     if(kind STREQUAL "VST3")
-		set(FORMAT_SDK_FILES ${sdk_srcs_vst3})
+        set(FORMAT_SDK_FILES ${sdk_srcs} ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
     endif()
 
     add_library(${SUB_PROJECT_NAME} MODULE ${GMPI_PLUGIN_SOURCE_FILES} ${FORMAT_SDK_FILES} ${resource_srcs} ${wrapper_srcs})
@@ -111,9 +107,6 @@ list(FIND GMPI_PLUGIN_FORMATS_LIST "VST3" FIND_VST3_INDEX)
 
 if(FIND_VST3_INDEX GREATER_EQUAL 0)
 	set(SUB_PROJECT_NAME ${PROJECT_NAME}_VST3 )
-
-#add_library(${SUB_PROJECT_NAME} MODULE ${GMPI_PLUGIN_SOURCE_FILES} ${sdk_srcs_vst3} ${resource_srcs} ${wrapper_srcs})
-#gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
 
 if(APPLE)
   set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
