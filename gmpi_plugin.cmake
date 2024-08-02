@@ -95,6 +95,9 @@ foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
 
     if(kind STREQUAL "VST3")
         set(FORMAT_SDK_FILES ${sdk_srcs} ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
+        if(APPLE)
+            set(FORMAT_SDK_FILES ${FORMAT_SDK_FILES} ${VST3_SDK}/public.sdk/source/main/macmain.cpp)
+        endif()
     endif()
 
     add_library(${SUB_PROJECT_NAME} MODULE ${GMPI_PLUGIN_SOURCE_FILES} ${FORMAT_SDK_FILES} ${resource_srcs} ${wrapper_srcs})
