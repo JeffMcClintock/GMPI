@@ -63,10 +63,10 @@ private:
 };
 
 
-MpFactory* Factory()
+MpFactory& Factory()
 {
 	static MpFactory theFactory;
-	return &theFactory;
+	return theFactory;
 }
 
 // This is the DLL's main entry point.  It returns the factory.
@@ -83,7 +83,7 @@ extern "C"
 ReturnCode MP_GetFactory( void** returnInterface )
 {
 	// call queryInterface() to keep refcounting in sync
-    return Factory()->queryInterface( &IUnknown::guid, returnInterface );
+    return Factory().queryInterface( &IUnknown::guid, returnInterface );
 }
 
 namespace gmpi
@@ -91,11 +91,11 @@ namespace gmpi
 	// register a plugin component with the factory
     ReturnCode RegisterPlugin(PluginSubtype subType, const char* uniqueId, CreatePluginPtr create)
 	{
-		return Factory()->RegisterPlugin(uniqueId, subType, create);
+		return Factory().RegisterPlugin(uniqueId, subType, create);
 	}
     ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create)
 	{
-		return Factory()->RegisterPluginWithXml(subType, xml, create);
+		return Factory().RegisterPluginWithXml(subType, xml, create);
 	}
 }
 
