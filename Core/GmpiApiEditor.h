@@ -48,7 +48,7 @@ namespace api
 {
 
 // INTERFACE 'Editor' (experimental)
-struct DECLSPEC_NOVTABLE IEditor_x : public IUnknown
+struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
 {
     // Establish connection to host.
     virtual ReturnCode setHost(IUnknown* host) = 0;
@@ -71,7 +71,7 @@ struct DECLSPEC_NOVTABLE IEditor_x : public IUnknown
 };
 
 // INTERFACE 'IEditorHost' (experimental)
-struct DECLSPEC_NOVTABLE IEditorHost_x : public IUnknown
+struct DECLSPEC_NOVTABLE IEditorHost_x : IUnknown
 {
     virtual ReturnCode setPin(int32_t pinId, int32_t voice, int32_t size, const void* data) = 0;
     virtual int32_t getHandle() = 0;
@@ -81,7 +81,7 @@ struct DECLSPEC_NOVTABLE IEditorHost_x : public IUnknown
     { 0x8a8cf7dc, 0xbc36, 0x4743, { 0xa0, 0x9a, 0x96, 0x75, 0x71, 0x35, 0x5a, 0x1a } };
 };
 
-class IParameterObserver : public IUnknown
+struct DECLSPEC_NOVTABLE IParameterObserver : IUnknown
 {
 public:
     virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
@@ -92,7 +92,7 @@ public:
 };
 
 // Controller interface.
-class IController_x : public IParameterObserver
+struct DECLSPEC_NOVTABLE IController_x : IParameterObserver
 {
 public:
     // Establish connection to host.
@@ -115,7 +115,7 @@ public:
     { 0xb379ba45, 0xe486, 0x4545, { 0x8d, 0x91, 0x4c, 0xe1, 0x1c, 0x48, 0x11, 0xde } };
 };
 
-class IControllerHost_x : public IUnknown
+struct DECLSPEC_NOVTABLE IControllerHost_x : IUnknown
 {
 public:
     virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;

@@ -63,7 +63,7 @@ struct Event
 
 #pragma pack(pop)
 
-struct DECLSPEC_NOVTABLE IProcessor : public IUnknown
+struct DECLSPEC_NOVTABLE IProcessor : IUnknown
 {
     virtual ReturnCode open(IUnknown* host) = 0;
     virtual ReturnCode setBuffer(int32_t pinId, float* buffer) = 0;
@@ -74,7 +74,7 @@ struct DECLSPEC_NOVTABLE IProcessor : public IUnknown
     { 0x23835D7E, 0xDCEB, 0x4B08, { 0xA9, 0xE7, 0xB4, 0x3F, 0x84, 0x65, 0x93, 0x9E} };
 };
 
-struct DECLSPEC_NOVTABLE IProcessorHost : public IUnknown
+struct DECLSPEC_NOVTABLE IProcessorHost : IUnknown
 {
     virtual ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data) = 0;
     virtual ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming) = 0;
