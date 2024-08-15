@@ -4,7 +4,6 @@
 #include <assert.h>
 #include <functional>
 #include <math.h>
-//#include "../shared/xp_simd.h"
 
 /*
 #include "../se_sdk3/mp_midi.h"
