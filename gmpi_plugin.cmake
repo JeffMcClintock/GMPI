@@ -57,6 +57,10 @@ if(${GMPI_PLUGIN_HAS_DSP})
     ${gmpi_sdk_folder}/Core/Processor.h
     ${gmpi_sdk_folder}/Core/Processor.cpp
     )
+
+    include_directories(
+        ${gmpi_sdk_folder}/Core
+    )
 endif()
 
 if(${GMPI_PLUGIN_HAS_GUI})
