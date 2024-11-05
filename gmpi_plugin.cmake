@@ -59,6 +59,7 @@ if(${GMPI_PLUGIN_HAS_DSP})
     )
 
     include_directories(
+        ${gmpi_sdk_folder}
         ${gmpi_sdk_folder}/Core
     )
 endif()
