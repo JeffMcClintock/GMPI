@@ -42,6 +42,7 @@ namespace gmpi
         , Default					// same type as parameter
         , Grab						// (mouse down) bool
         , Normalized				// float
+        , Stateful				    // bool
     };
 
 namespace api
