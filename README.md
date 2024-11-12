@@ -66,6 +66,13 @@ GMPI plugins by default require no locks (e.g. `std::mutex`) and require no atom
 This is because the GMPI framework includes a wait-free, lock-free message-passing mechanism. This feature alone eliminates a large
 class of common bugs which are found in audio plugins.
 
+# Single Source of Truth
+
+A plugin contains several parts, like the User-Interface and the Audio-Processor. These objects often have different lifetimes, may run on different threads, and might be paused or suspended at various times.
+All of these parts need to by synchronized with each other and with the DAW. When a parameter changes on the UI that change is communicated to both the Processor and the DAW. And when a Parameter is changed or automated by the DAW, that change is syncronised with the plugins UI and with it's Processor.
+  A common source of bugs and odd behaviors like parameter jitter is when a plugin API is not clear about which part 'owns' the state of the parameters. GMPI takes a different approach by assigning the 'single source of truth' to the DAW. In GMPI both the plugin UI and the Processor are 'listeners' on the plugin state. And the plugin state is owned by the DAW.
+  This solves the problem of keeping the UI in sync with the state, even when the UI can be closed and reopened. It keeps the Processor in sync with the state, even when the processor can be suspended and resumed, and it eliminates the need for the DAW to explicitly keep querying/setting the plugin state when saving/loading a DAW sessions, when automating parameters and when performing undo/redo operations. This system radically simplifies the serialisation of the plugins state and presets. GMPI plugins don't even need explicit handling of serialisation....
+
 # Serialization by default
 
 The GMPI framework provides saving and loading of the plugin state by default. You don't have to provide any 'getStateInformation' or 'setStateInformation' type of methods. It's automatic.
