@@ -64,7 +64,7 @@ Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as 
 With GMPI, all Processor and Editor methods are thread-safe. i.e. the DAW does not ever call GUI components from the real-time thread, or vice versa.
 GMPI plugins by default require no locks (e.g. `std::mutex`) and require no atomic values (e.g. `std::atomic`) when communicating between the various components.
 This is because the GMPI framework includes a wait-free, lock-free message-passing mechanism. This feature alone eliminates a large
-class of common bugs which are found in audio plugins.
+class of common bugs and data-races which are found in audio plugins.
 
 # Single Source of Truth
 
