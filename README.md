@@ -4,9 +4,9 @@ Generalized Music Plugin Interface
 
 In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Software Instruments and Effects.
 
-The GMPI project was started to gather the best parts of existing specifications and bring them together into an easy to use, open, powerful, and cross-platform alternative to the proprietary standards offered by Steinberg, Apple, and other vendors.
+The GMPI project was started to gather the best parts of existing specifications and bring them together into an easy-to-use, open, powerful, and cross-platform alternative to the proprietary standards offered by Steinberg, Apple, and other vendors.
 
-GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavoured to adhere to the specification as closely as is practical.
+GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavored to adhere to the specification as closely as is practical.
 
 # Features
 
@@ -14,25 +14,25 @@ GMPI:
 * Supports Instruments, Audio Effects, and MIDI plugins
 * Has a permissive open-source license (No fees, contracts or NDAs)
 * Has cross-platform support
-* MIDI 1.0, MPE and MIDI 2.0 support
-* Thread-safe by default
-* Supports a cross-platform drawing option [GMPI UI](https://github.com/JeffMcClintock/gmpi_ui)
+* MIDI 1.0, MPE, and MIDI 2.0 support
+* Thread-safe and race-condition-free by default
+* Supports an optional cross-platform drawing option [GMPI UI](https://github.com/JeffMcClintock/gmpi_ui)
 * A clean and bloat-free API surface
 * Provides all APIs in pure portable 'C' for maximum compatibility
-* Supports sample-accurate automation, tempo and song-position
-* VST3 and AudioUnit adaptors are under development.
+* Supports sample-accurate automation, tempo, and song-position
+* Supports non-destructive Parameter modulation
 * Supports plugin latency compensation
-* Supports 'silent' buffer optimisations
+* Supports 'silent' buffer optimizations
 * Supports musical timing information 
-* Supports polyphonic parameters
 * Plugin meta-data is plain XML
 * Supports 'extensions'. It's easy to add new or DAW-specific features
-* Stable, finalized and tested. GMPI has been in active use and refined over 10 years.
+* Stable and tested. GMPI has been in active use and refined over 10 years.
+* VST3 and AudioUnit adaptors are under development
 
 # A clean, simple audio plugin API.
 
-Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin. Below are source-code examples which roughly illustrate
- how much overhead is required by other formats compared to GMPI. The plugins are all simple gain plugins. 
+Other plugin APIs require a lot of confusing 'boilerplate' code in every plugin. Below are source-code examples that roughly illustrate
+how much overhead other formats require compared to GMPI. The plugins are all simple gain plugins. 
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
@@ -42,7 +42,7 @@ But don't be fooled by the simplicity, even this basic GMPI plugin supports samp
 *sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. And you can easily override the defaults when you need to.
 
 # Metadata in XML
-Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future proof than the rigid fixed 'descriptors'
+Rather than writing a lot of repetitive code to describe the plugin, GMPI uses a concise plain text format (XML). This is more future-proof than the rigid fixed 'descriptors'
 of other plugin APIs, because you can add new features or flags without breaking any existing plugins or DAWs. Here's the description of the example gain plugin...
 
 ```XML
@@ -57,23 +57,23 @@ of other plugin APIs, because you can add new features or flags without breaking
     </Audio>
   </Plugin>
 ```
-Every plugin has a unique-identifier (the 'id') this can be a URI, a GUID or as in this example, the manufacturer and plugins names. Then the XML lists the plugins parameters, and then its I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections, and any number of MIDI connections. The third pin provides access to the parameter.
+Every plugin has a unique identifier (the 'id'). This can be a URI, a GUID, or, as in this example, the manufacturer and plugin names. Then, the XML lists the plugin's parameters and its I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections and any number of MIDI connections. The third pin provides access to the parameter.
 
 # Thread safe by default
 
 With GMPI, all Processor and Editor methods are thread-safe. i.e. the DAW does not ever call GUI components from the real-time thread, or vice versa.
-GMPI plugins by default require no locks (e.g. `std::mutex`) and require no atomic values (e.g. `std::atomic`) when communicating between the various components.
+GMPI plugins by default require no locks (e.g. `std::mutex`) and requires no atomic values (e.g. `std::atomic`) when communicating between the various components.
 This is because the GMPI framework includes a wait-free, lock-free message-passing mechanism. This feature alone eliminates a large
-class of common bugs and data-races which are found in audio plugins, and makes it trivial to run the audio processor out-of-process.
+class of common bugs and data-races found in audio plugins makes it trivial to run the audio processor out-of-process.
 
 # Single Source of Truth
 
-A plugin contains several parts, like the User-Interface and the Audio-Processor. These objects often have different lifetimes, may run on different threads, and might be paused or suspended at various times.
-All of these parts need to by synchronized with each other and with the DAW. When a parameter changes on the UI that change is communicated to both the Processor and the DAW. And when a Parameter is changed or automated by the DAW, that change is syncronised with the plugins UI and with it's Processor.
+A plugin contains several parts, like the User Interface and the Audio Processor. These objects often have different lifetimes, may run on different threads, and might be paused or suspended at various times.
+All of these parts need to by synchronized with each other and with the DAW. When a parameter changes on the UI that change is communicated to both the Processor and the DAW. And when a Parameter is changed or automated by the DAW, that change is synchronised with the plugin's UI and with its Processor.
 
   A common source of bugs and odd behaviors like parameter jitter is when a plugin API is not clear about which part 'owns' the state of the parameters. GMPI takes a different approach by assigning the 'single source of truth' to the DAW. In GMPI both the plugin UI and the Processor are 'listeners' on the plugin state. And the plugin state is owned by the DAW.
   
-  This solves the problem of keeping the UI in sync with the state, even when the UI can be closed and reopened. It keeps the Processor in sync with the state, even when the processor can be suspended and resumed, and it eliminates the need for the DAW to explicitly keep querying/setting the plugin state when saving/loading a DAW sessions, when automating parameters and when performing undo/redo operations. This system radically simplifies the serialisation of the plugins state and presets. GMPI plugins don't even need explicit handling of serialisation....
+  This solves the problem of keeping the UI in sync with the state, even when the UI can be closed and reopened. It keeps the Processor in sync with the state, even when the processor can be suspended and resumed, and it eliminates the need for the DAW to explicitly keep querying/setting the plugin state when saving/loading a DAW session, when automating parameters and when performing undo/redo operations. This system radically simplifies the serialization of the plugin's state and presets. GMPI plugins don't even need explicit handling of serialisation....
 
 # Serialization by default
 
@@ -83,7 +83,7 @@ How it works: You describe the parameters and state of your plugin in the XML me
 ```XML
 <Parameter id="0" name="Gain" datatype="float" default="0.8"/>
 ```
-Then associate this metadata with your plugins variables in the plugin constructor.
+Then associate this metadata with your plugin variables in the plugin constructor.
 
 ```C
 Gain()
@@ -100,14 +100,14 @@ Supported datatypes are: 32 and 64-bit integer and float, bool, std::string, BLO
 
 # Syncronisation by default
 
-Synchronizing a plugins state between the GUI and Audio thread in other APIs is a common source of bugs and confusion. In GMPI it's simple. Here is how the GUI can update the plugins gain parameter.
+Synchronizing a plugin's state between the GUI and Audio thread in other APIs is a common source of bugs and confusion. In GMPI it's simple. Here is how the GUI can update the plugin's gain parameter.
 
 ```C
 pinGain = 3.5;
 ```
 That's it. The framework will notify both the host and also the Processor (on the audio thread) of the new value.
 
-And if you want to synchronize a non-atomic datatype with the real-time thread, it's exactly the same:
+And if you want to synchronize a non-atomic datatype with the real-time thread, it's the same:
 ```C
 pinSampleFilenameString = "C:\SomeFolder\SomeSample.wav"; // this is thread-safe
 ```
@@ -116,13 +116,13 @@ pinSampleFilenameString = "C:\SomeFolder\SomeSample.wav"; // this is thread-safe
 
 # Sample-accurate automation and MIDI by default
 
-The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled half-way through a process-block, the framework will process the first half of the samples, notify the plugin of the event, and then process the remaining samples.
+The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled halfway through a process-block, the framework will process the first half of the samples, notify the plugin of the event, and then process the remaining samples.
 
 This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time (and it's easy to override if you prefer to handle events manually).
 
 # Simultaneous parameter changes
 
-A subtle cause of bugs and flaky behaviour in other plugin APIs is the handling of simultaneous parameter changes.
+A subtle cause of bugs and flaky behavior in other plugin APIs is the handling of simultaneous parameter changes.
 What if two parameters change at the exact same time? Is the API going to notify the Processor one-at-a-time in some random order?
 GMPI allows you to detect simultaneous parameter changes and handle them in a deterministic way.
 
@@ -161,4 +161,4 @@ This is just one example of how GMPI takes away the drudgery for you by providin
 
 [detailed GMPI specs](Docs/GMPI_Specs.md) This is the original specification document which was created by the MMA. It's a bit out of date, but it's still a good reference.
 
-[full working group discussion](https://www.freelists.org/archive/gmpi) This is the original discussion where you can find the rationale behind the design decisions.
+[full working group discussion](https://www.freelists.org/archive/gmpi) This is the original discussion which explains the rationale behind the design decisions.
