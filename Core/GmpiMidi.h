@@ -6,15 +6,22 @@
 #include <math.h>
 
 /*
-#include "../se_sdk3/mp_midi.h"
+#include "Core/GmpiMidi.h"
 
-using namespace GmpiMidi;
-using namespace GmpiMidiHdProtocol;
+using namespace gmpi::midi;
 
 */
 
 namespace gmpi
 {
+	namespace midi_2_0
+	{
+		struct rawMessage64
+		{
+			uint8_t m[8];
+		};
+	}
+
 	namespace midi
 	{
 		namespace utils
@@ -125,6 +132,11 @@ namespace gmpi
 				: ptr_{ ptr }, len_{ static_cast<size_t>(len) }
 			{}
 
+			message_view(const gmpi::midi_2_0::rawMessage64& msg) noexcept
+				: ptr_{ msg.m }, len_{ sizeof(msg.m)}
+			{
+			}
+			
 			// init from uint8_t array, deduce size.
 			template <int N>
 			message_view(const uint8_t(&data)[N]) noexcept
@@ -563,12 +575,6 @@ namespace gmpi
 				static_cast<uint32_t>((msg[4] << 6) | (msg[5] >> 2)) // lower 6 bits are in upper 6 of msg[5]
 			};
 		}
-
-
-		struct rawMessage64
-		{
-			uint8_t m[8];
-		};
 
 		inline rawMessage64 makeController(uint8_t controller, float value, uint8_t channel = 0, uint8_t channelGroup = 0)
 		{
