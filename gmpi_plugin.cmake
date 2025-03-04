@@ -93,7 +93,12 @@ endif()
 # organise SDK file into folders/groups in IDE
 
 foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
-	set(SUB_PROJECT_NAME ${PROJECT_NAME}_${kind} )
+#	set(SUB_PROJECT_NAME ${PROJECT_NAME}_${kind} )
+    if(${kind} STREQUAL "GMPI")
+        set(SUB_PROJECT_NAME ${PROJECT_NAME})
+    else()
+        set(SUB_PROJECT_NAME ${PROJECT_NAME}_${kind})
+    endif()
 
     set(FORMAT_SDK_FILES ${sdk_srcs})
 
@@ -158,7 +163,7 @@ SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME}_VST3 PROPERTIES FOLDER "VST3 p
 endif()
 
 if(FIND_GMPI_INDEX GREATER_EQUAL 0)
-    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_GMPI
+    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
     POST_BUILD
     COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\$(TargetName)$(TargetExt)"
     COMMENT "Copy to GMPI folder"
@@ -170,7 +175,7 @@ endif()
 
 # all individual modules should be groups under "modules" solution folder
 if(FIND_GMPI_INDEX GREATER_EQUAL 0)
-    SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME}_GMPI PROPERTIES FOLDER "GMPI plugins")
+    SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES FOLDER "GMPI plugins")
 endif()
 
 endfunction()
