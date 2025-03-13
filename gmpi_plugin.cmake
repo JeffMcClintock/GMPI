@@ -41,7 +41,7 @@ endfunction()
 ################################################################
 
 function(gmpi_plugin)
-set(options HAS_DSP HAS_GUI HAS_XML)
+set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE)
 set(oneValueArgs PROJECT_NAME)
 set(multiValueArgs FORMATS_LIST SOURCE_FILES)
 cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
@@ -163,12 +163,22 @@ SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME}_VST3 PROPERTIES FOLDER "VST3 p
 endif()
 
 if(FIND_GMPI_INDEX GREATER_EQUAL 0)
+if(${GMPI_PLUGIN_IS_OFFICIAL_MODULE})
+    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
+    # Run after all other rules within the target have been executed
+    POST_BUILD
+    COMMAND xcopy /c /y "\"$(OutDir)$(TargetName)$(TargetExt)\"" "\"C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win\\\""
+    COMMENT "Copy to SynthEdit plugin folder"
+    )
+else()
     add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
     POST_BUILD
     COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\$(TargetName)$(TargetExt)"
     COMMENT "Copy to GMPI folder"
     VERBATIM
-)
+    )
+endif()
+
 endif()
 endif()
 endif()

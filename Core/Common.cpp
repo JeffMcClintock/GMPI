@@ -62,7 +62,6 @@ private:
 	std::vector< std::string > xmls;
 };
 
-
 MpFactory& Factory()
 {
 	static MpFactory theFactory;
