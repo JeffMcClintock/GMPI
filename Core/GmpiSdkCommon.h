@@ -198,20 +198,9 @@ private: // need em?
 };
 
 // Helper for returning strings.
-class ReturnString : public gmpi::api::IString
+struct ReturnString : public gmpi::api::IString
 {
 	std::string cppString;
-
-public:
-/*
-	MpString() {}
-	MpString(const std::string& other) : cppString(other)
-	{
-	}
-	MpString(const char* pData, int32_t pSize) : cppString(pData, pSize)
-	{
-	}
-*/
 
 	gmpi::ReturnCode setData(const char* data, int32_t size) override
 	{
