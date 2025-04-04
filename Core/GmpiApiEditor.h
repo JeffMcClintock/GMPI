@@ -48,6 +48,16 @@ namespace gmpi
 namespace api
 {
 
+// INTERFACE (experimental)
+struct DECLSPEC_NOVTABLE IDeterministicUi : IUnknown
+{
+    virtual ReturnCode step() = 0;
+
+    // {51A635CA-7A2A-4BC8-8F4F-78BA9A574E25}
+    inline static const Guid guid =
+    { 0x51a635ca, 0x7a2a, 0x4bc8, { 0x8f, 0x4f, 0x78, 0xba, 0x9a, 0x57, 0x4e, 0x25 } };
+};
+
 // INTERFACE 'Editor' (experimental)
 struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
 {
@@ -70,6 +80,17 @@ struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
     inline static const Guid guid =
     { 0xe3942893, 0x69b2, 0x401c, { 0x8b, 0xca, 0x74, 0x65, 0xf, 0xaa, 0xe3, 0x1c } };
 };
+
+// experimental uni-directional signal-flow.
+struct DECLSPEC_NOVTABLE IEditor2_x : IUnknown
+{
+    virtual ReturnCode process() = 0;
+
+    // {593ABAD0-295A-419C-B34A-68D4B6ACF472}
+    inline static const Guid guid =
+    { 0x593abad0, 0x295a, 0x419c, { 0xb3, 0x4a, 0x68, 0xd4, 0xb6, 0xac, 0xf4, 0x72 } };
+};
+
 
 // INTERFACE 'IEditorHost' (experimental)
 struct DECLSPEC_NOVTABLE IEditorHost_x : IUnknown
@@ -139,6 +160,17 @@ public:
     // {CD0F9C61-E546-47E2-A31C-09B3FBC8F5D0}
     inline static const Guid guid =
     { 0xcd0f9c61, 0xe546, 0x47e2, { 0xa3, 0x1c, 0x9, 0xb3, 0xfb, 0xc8, 0xf5, 0xd0 } };
+};
+
+struct DECLSPEC_NOVTABLE IParameterSetter_x : IUnknown
+{
+public:
+    virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
+
+    // {CC7A7938-2CD0-4413-8CA8-11781B2E89B2}
+    inline static const Guid guid =
+    { 0xcc7a7938, 0x2cd0, 0x4413, { 0x8c, 0xa8, 0x11, 0x78, 0x1b, 0x2e, 0x89, 0xb2 } };
 };
 
 using IEditor = IEditor_x;

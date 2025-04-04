@@ -6,7 +6,7 @@
 // SynthEdit-specific.
 namespace synthedit
 {
-// extension to GMPI to provide support for loading files from the plugins resources (be they embedded or file-based).
+#if 0
 // Corrects error in IMpHost that there is a memory leak, due to having no way to free the file object, and no way to query file object for updated interfaces.
 struct DECLSPEC_NOVTABLE IEmbeddedFileSupport : public gmpi::api::IUnknown
 {
@@ -16,6 +16,21 @@ public:
 
 	// open a file, usually returns a IProtectedFile2 interface.
 	virtual gmpi::ReturnCode openUri(const char* fullUri, gmpi::api::IUnknown** returnStream) = 0;
+
+	// {B486F4DE-9010-4AA0-9D0C-DCD9F8879257}
+	inline static const gmpi::api::Guid guid =
+	{ 0xb486f4de, 0x9010, 0x4aa0, { 0x9d, 0x0c, 0xdc, 0xd9, 0xf8, 0x87, 0x92, 0x57 } };
+};
+#endif
+
+// SynthEdit-specific. Extension to GMPI to provide support for loading files from the plugins resources (be they embedded or file-based).
+// Locate skin resources and make SynthEdit imbedd them during save-as-vst.
+struct DECLSPEC_NOVTABLE IEmbeddedFileSupport : public gmpi::api::IUnknown
+{
+	virtual gmpi::ReturnCode findResourceUri(const char* fileName, /*const char* resourceType,*/ gmpi::api::IString* returnFullUri) = 0;
+	virtual gmpi::ReturnCode registerResourceUri(const char* fullUri) = 0;
+	virtual gmpi::ReturnCode openUri(const char* fullUri, gmpi::api::IUnknown** returnStream) = 0;
+	virtual gmpi::ReturnCode clearResourceUris() = 0;
 
 	// {B486F4DE-9010-4AA0-9D0C-DCD9F8879257}
 	inline static const gmpi::api::Guid guid =
