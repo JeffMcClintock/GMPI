@@ -32,6 +32,7 @@ using namespace gmpi;
 using namespace gmpi::api;
 
 //---------------FACTORY --------------------
+#ifndef GMPI_DISABLE_FACTORY
 
 // MpFactory - a singleton object.  The plugin registers it's ID with the factory.
 
@@ -192,3 +193,4 @@ ReturnCode MpFactory::getPluginInformation(int32_t index, IString* returnXml)
     return ReturnCode::Ok;
 }
 
+#endif // GMPI_DISABLE_FACTORY

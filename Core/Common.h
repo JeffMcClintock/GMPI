@@ -152,6 +152,12 @@ inline int dataSize<std::string>(const std::string& value)
 }
 
 template<>
+inline int dataSize<std::wstring>(const std::wstring& value)
+{
+	return static_cast<int>(value.size() * sizeof(wchar_t));
+}
+
+template<>
 inline int dataSize<Blob>(const Blob& value)
 {
 	return static_cast<int>(value.size());
@@ -166,6 +172,12 @@ inline const void* dataPtr(const T& value)
 
 template<>
 inline const void* dataPtr<std::string>(const std::string& value)
+{
+	return reinterpret_cast<const void*>(value.data());
+}
+
+template<>
+inline const void* dataPtr<std::wstring>(const std::wstring& value)
 {
 	return reinterpret_cast<const void*>(value.data());
 }

@@ -40,7 +40,7 @@ public:
 	virtual ~PinBase(){}
 	void initialize( Processor* plugin, int PinId, ProcessorMemberPtr handler = 0 );
 
-	// overrides for audio pins_
+	// overrides for audio pins
 	virtual void setBuffer( float* buffer ) = 0;
 	virtual void preProcessEvent( const api::Event* ){}
 
@@ -161,44 +161,9 @@ protected:
 	bool freshValue_ = false; // true = value_ has been updated by host on current sample_clock
 };
 
-template
-<typename T, PinDirection pinDirection_, PinDatatype pinDatatype = (PinDatatype) PinTypeTraits<T>::PinDataType>
-class ControlPin : public ControlPinBase< T, pinDatatype >
-{
-public:
-	ControlPin() : ControlPinBase< T, pinDatatype >()
-	{
-	}
-	ControlPin( T initialValue ) : ControlPinBase< T, pinDatatype >( initialValue )
-	{
-	}
-	PinDirection getDirection() const override
-	{
-		return pinDirection_;
-	}
-	const T& operator=(const T &value)
-	{
-		// GCC don't like using plugin_ in this scope. assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
-		return ControlPinBase< T, pinDatatype> ::operator=(value);
-	}
-	// todo: specialise for value_ vs ref types !!!
-
-	const T& operator=(const ControlPin<T, PinDirection::In, pinDatatype> &other)
-	{
-		return operator=(other.getValue());
-	}
-
-	const T& operator=(const ControlPin<T, PinDirection::Out, pinDatatype> &other)
-	{
-		return operator=(other.getValue());
-	}
-};
-
 class AudioPinBase : public PinBase
 {
 public:
-	AudioPinBase(){}
-	
 	void setBuffer( float* buffer ) override
 	{
 		buffer_ = buffer;
@@ -243,6 +208,12 @@ template
 class AudioPinBaseB : public AudioPinBase
 {
 public:
+	AudioPinBaseB()
+	{
+		// register with the plugin.
+		if (Processor::constructingProcessor)
+			Processor::constructingProcessor->init(*this);
+	}
 	PinDirection getDirection() const override
 	{
 		return pinDirection_;
@@ -293,25 +264,11 @@ public:
 	}
 };
 
-typedef ControlPin<int, PinDirection::In>				IntInPin;
-typedef ControlPin<int, PinDirection::Out>			IntOutPin;
-typedef ControlPin<float, PinDirection::In>			FloatInPin;
-typedef ControlPin<float, PinDirection::Out>			FloatOutPin;
-typedef ControlPin<Blob, PinDirection::In>			BlobInPin;
-typedef ControlPin<Blob, PinDirection::Out>			BlobOutPin;
-typedef ControlPin<std::string, PinDirection::In>		StringInPin;
-typedef ControlPin<std::string, PinDirection::Out>	StringOutPin;
-
-typedef ControlPin<bool, PinDirection::In>			BoolInPin;
-typedef ControlPin<bool, PinDirection::Out>			BoolOutPin;
-
-// enum (List) pin based on Int Pin
-typedef ControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;
-typedef ControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
-
 class MidiInPin : public PinBase
 {
 public:
+	MidiInPin();
+
 	PinDatatype getDatatype() const override
 	{
 		return PinDatatype::Midi;
@@ -320,8 +277,7 @@ public:
 	{
 		return PinDirection::In;
 	}
-
-	// These members not needed for MIDI.
+	// This member not needed for MIDI.
 	void setBuffer(float* /*buffer*/) override
 	{
 		assert( false && "MIDI pins_ don't have a buffer" );
@@ -330,9 +286,15 @@ public:
 	void sendFirstUpdate() override {}
 };
 
-class MidiOutPin : public MidiInPin
+class MidiOutPin final : public PinBase
 {
 public:
+	MidiOutPin();
+
+	PinDatatype getDatatype() const override
+	{
+		return PinDatatype::Midi;
+	}
 	PinDirection getDirection() const override
 	{
 		return PinDirection::Out;
@@ -340,10 +302,15 @@ public:
 	ProcessorMemberPtr getDefaultEventHandler() override
 	{
 		assert( false && "output pins don't need event handler" );
-		return 0;
+		return {};
+	}
+	// This member not needed for MIDI.
+	void setBuffer(float* /*buffer*/) override
+	{
+		assert(false && "MIDI pins_ don't have a buffer");
 	}
 
-	virtual void send(const unsigned char* data, int size, int blockPosition = -1);
+	void send(const unsigned char* data, int size, int blockPosition = -1);
 };
 
 class AudioPluginHostWrapper
@@ -371,6 +338,8 @@ class Processor : public api::IProcessor
 	friend class TempBlockPositionSetter;
 
 public:
+	inline static thread_local Processor* constructingProcessor = nullptr;
+
 	Processor();
 	virtual ~Processor() {}
 
@@ -400,7 +369,6 @@ public:
 		sleepCount_ = (std::max)(sleepCount_, 1);
 	}
 
-protected:
 	void init(int PinId, PinBase& pin, ProcessorMemberPtr handler = 0);
 	void init(PinBase& pin, ProcessorMemberPtr handler = 0)
 	{
@@ -412,6 +380,7 @@ protected:
 		init(idx, pin, handler); // Automatic indexing.
 	}
 
+protected:
 	const float* getBuffer(const AudioInPin& pin) const
 	{
 		return blockPos_ + pin.begin();
@@ -436,7 +405,7 @@ protected:
 		}
 	}
 
-	SubProcessPtr getSubProcess()
+	SubProcessPtr getSubProcess() const
 	{
 		return saveSubProcess_;
 	}
@@ -459,11 +428,11 @@ protected:
 	SubProcessPtr saveSubProcess_ = &Processor::subProcessNothing; // saves curSubProcess_ while sleeping
 	std::map<int, PinBase*> pins_;
 
-	int blockPos_;				// valid only during processEvent()
-	int sleepCount_;			// sleep countdown timer.
-	int streamingPinCount_;		// tracks how many pins streaming.
-	enum { SLEEP_AUTO = -1, SLEEP_DISABLE, SLEEP_ENABLE } canSleepManualOverride_;
-	bool eventsComplete_;		// Flag indicates all events have been dealt with, and module is safe to sleep.
+	int blockPos_{};				// valid only during processEvent()
+	int sleepCount_{};			// sleep countdown timer.
+	int streamingPinCount_{};		// tracks how many pins streaming.
+	enum { SLEEP_AUTO = -1, SLEEP_DISABLE, SLEEP_ENABLE } canSleepManualOverride_{ SLEEP_AUTO };
+	bool eventsComplete_{ true };		// Flag indicates all events have been dealt with, and module is safe to sleep.
 
 #if defined(_DEBUG)
 public:
@@ -472,6 +441,61 @@ public:
 	bool debugGraphStartCalled_ = false;
 #endif
 };
+
+template
+<typename T, PinDirection pinDirection_, PinDatatype pinDatatype = (PinDatatype)PinTypeTraits<T>::PinDataType>
+class ControlPin : public ControlPinBase< T, pinDatatype >
+{
+public:
+	ControlPin() : ControlPinBase< T, pinDatatype >()
+	{
+		// register with the plugin.
+		if (Processor::constructingProcessor)
+			Processor::constructingProcessor->init(*this);
+	}
+	ControlPin(T initialValue) : ControlPinBase< T, pinDatatype >(initialValue)
+	{
+		// register with the plugin.
+		if (Processor::constructingProcessor)
+			Processor::constructingProcessor->init(*this);
+	}
+	PinDirection getDirection() const override
+	{
+		return pinDirection_;
+	}
+	const T& operator=(const T& value)
+	{
+		// GCC don't like using plugin_ in this scope. assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
+		return ControlPinBase< T, pinDatatype> ::operator=(value);
+	}
+	// todo: specialise for value_ vs ref types !!!
+
+	const T& operator=(const ControlPin<T, PinDirection::In, pinDatatype>& other)
+	{
+		return operator=(other.getValue());
+	}
+
+	const T& operator=(const ControlPin<T, PinDirection::Out, pinDatatype>& other)
+	{
+		return operator=(other.getValue());
+	}
+};
+
+typedef ControlPin<int, PinDirection::In>			IntInPin;
+typedef ControlPin<int, PinDirection::Out>			IntOutPin;
+typedef ControlPin<float, PinDirection::In>			FloatInPin;
+typedef ControlPin<float, PinDirection::Out>		FloatOutPin;
+typedef ControlPin<Blob, PinDirection::In>			BlobInPin;
+typedef ControlPin<Blob, PinDirection::Out>			BlobOutPin;
+typedef ControlPin<std::string, PinDirection::In>	StringInPin;
+typedef ControlPin<std::string, PinDirection::Out>	StringOutPin;
+
+typedef ControlPin<bool, PinDirection::In>			BoolInPin;
+typedef ControlPin<bool, PinDirection::Out>			BoolOutPin;
+
+// enum (List) pin based on Int Pin
+typedef ControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;
+typedef ControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
 
 // When sending values out a pin, it's cleaner if the block-position is known,
 // however in subProcess(), we can't usually identify a specific block position automatically.
@@ -505,5 +529,4 @@ public:
 #endif
 	}
 };
-
 } // namespace

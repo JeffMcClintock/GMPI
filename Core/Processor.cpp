@@ -63,10 +63,10 @@ void Processor::process(int32_t count, const api::Event* events)
 			eventsComplete_ = true;
 
 			assert(remain != 0); // BELOW NEEDED?, seems non sense. If we are here, there is a event to process. Don't want to exit!
-			if (remain == 0) // done
-			{
-				return;
-			}
+			//if (remain == 0) // done
+			//{
+			//	return;
+			//}
 
 			blockPos_ += delta_time;
 		}
@@ -195,13 +195,23 @@ void Processor::midiHelper(const api::Event* e)
 		, e->size());
 }
 
-Processor::Processor() :
-	blockPos_(0)
-	, sleepCount_(0)
-	, streamingPinCount_(0)
-	, canSleepManualOverride_(SLEEP_AUTO)
-	, eventsComplete_(true)
+Processor::Processor()
 {
+	constructingProcessor = this;
+}
+
+MidiInPin::MidiInPin()
+{
+	// register with the plugin.
+	if (Processor::constructingProcessor)
+		Processor::constructingProcessor->init(*this);
+}
+
+MidiOutPin::MidiOutPin()
+{
+	// register with the plugin.
+	if (Processor::constructingProcessor)
+		Processor::constructingProcessor->init(*this);
 }
 
 // specialised for audio pins_
@@ -227,7 +237,7 @@ void PinBase::initialize(Processor* plugin, int PinId, ProcessorMemberPtr handle
 	plugin_ = plugin;
 	eventHandler_ = handler;
 
-	if (eventHandler_ == 0 && getDirection() == PinDirection::In)
+	if (!eventHandler_ && getDirection() == PinDirection::In)
 	{
 		eventHandler_ = getDefaultEventHandler();
 	}
@@ -260,6 +270,10 @@ ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
 
 void Processor::init(int PinId, PinBase& pin, ProcessorMemberPtr handler)
 {
+	assert(pins_.end() == std::find_if(pins_.begin(), pins_.end(), [&pin](const auto& pair) {
+		return pair.second == &pin;
+		})); // did you init the same pin twice?
+
 	pin.initialize(this, PinId, handler);
 
 	[[maybe_unused]] auto r = pins_.insert({ PinId, &pin });

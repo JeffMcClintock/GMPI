@@ -90,6 +90,15 @@ struct DECLSPEC_NOVTABLE IEditor2_x : IUnknown
     inline static const Guid guid =
     { 0x593abad0, 0x295a, 0x419c, { 0xb3, 0x4a, 0x68, 0xd4, 0xb6, 0xac, 0xf4, 0x72 } };
 };
+// and host
+struct DECLSPEC_NOVTABLE IEditorHost2_x : IUnknown
+{
+    virtual ReturnCode setDirty() = 0;
+
+    // {89C64A37-E10E-42A3-AC3D-44A58BC60674}
+    inline static const Guid guid =
+    { 0x89c64a37, 0xe10e, 0x42a3, { 0xac, 0x3d, 0x44, 0xa5, 0x8b, 0xc6, 0x6, 0x74 } };
+};
 
 
 // INTERFACE 'IEditorHost' (experimental)
