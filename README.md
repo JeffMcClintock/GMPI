@@ -83,12 +83,12 @@ How it works: You describe the parameters and state of your plugin in the XML me
 ```XML
 <Parameter id="0" name="Gain" datatype="float" default="0.8"/>
 ```
-Then associate this metadata with your plugin variables in the plugin constructor.
+To access the parameter value add a 'pin' member to the plugin.
 
 ```C
-Gain()
+struct Gain : public Processor
 {
-	init(pinGain);
+	FloatInPin pinGain;
 }
 ```
 
