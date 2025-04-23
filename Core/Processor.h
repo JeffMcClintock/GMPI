@@ -208,12 +208,6 @@ template
 class AudioPinBaseB : public AudioPinBase
 {
 public:
-	AudioPinBaseB()
-	{
-		// register with the plugin.
-		if (Processor::constructingProcessor)
-			Processor::constructingProcessor->init(*this);
-	}
 	PinDirection getDirection() const override
 	{
 		return pinDirection_;
@@ -223,7 +217,7 @@ public:
 class AudioInPin final : public AudioPinBaseB<PinDirection::In>
 {
 public:
-	AudioInPin(){}
+    AudioInPin();
 	void preProcessEvent( const api::Event* e ) override;
 	void postProcessEvent( const api::Event* e ) override
 	{
@@ -252,6 +246,8 @@ private:
 class AudioOutPin final : public AudioPinBaseB<PinDirection::Out>
 {
 public:
+    AudioOutPin();
+    
 	// Indicate output pin's value changed, but it's not streaming (a 'one-off' change).
 	void setUpdated(int blockPosition = -1)
 	{

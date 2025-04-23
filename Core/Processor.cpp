@@ -524,4 +524,17 @@ int32_t AudioPluginHostWrapper::getHandle() const
 	return host->getHandle();
 }
 
+AudioInPin::AudioInPin()
+{
+    // register with the plugin.
+    if (Processor::constructingProcessor)
+        Processor::constructingProcessor->init(*this);
+}
+
+AudioOutPin::AudioOutPin()
+{
+    // register with the plugin.
+    if (Processor::constructingProcessor)
+        Processor::constructingProcessor->init(*this);
+}
 } // namespace
