@@ -38,7 +38,7 @@ class PinBase
 public:
 	PinBase(){}
 	virtual ~PinBase(){}
-	void initialize( Processor* plugin, int PinId, ProcessorMemberPtr handler = 0 );
+	void initialize(Processor* plugin, int PinId, ProcessorMemberPtr handler = {});
 
 	// overrides for audio pins
 	virtual void setBuffer( float* buffer ) = 0;
@@ -47,7 +47,7 @@ public:
 	virtual void processEvent( const api::Event* e );
 	virtual void postProcessEvent( const api::Event* ){}
 
-	int getId(){return id_;}
+	int getIndex(){return idx_;}
 	virtual PinDatatype getDatatype() const = 0;
 	virtual PinDirection getDirection() const = 0;
 	virtual ProcessorMemberPtr getDefaultEventHandler() = 0;
@@ -55,7 +55,7 @@ public:
 
 protected:
 	void sendPinUpdate( int32_t rawSize, const void* rawData, int32_t blockPosition = - 1 );
-	int id_ = -1;
+	int idx_ = -1;
 	class Processor* plugin_ = {};
 	ProcessorMemberPtr eventHandler_ = {};
 };
@@ -78,12 +78,12 @@ public:
 	}
 	const T& getValue() const
 	{
-		assert( id_ != -1 && "remember init() in constructor?" );
+		assert( idx_ != -1 && "remember init() in constructor?" );
 		return value_;
 	}
 	operator T()
 	{
-		assert( id_ != -1 && "remember init() in constructor?" );
+		assert( idx_ != -1 && "remember init() in constructor?" );
 		return value_;
 	}
 	void setValue( const T &value, int blockPosition = -1 )
@@ -105,7 +105,7 @@ public:
 	}
 	bool operator==(T other)
 	{
-		assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
+		assert( plugin_ != nullptr && "Don't forget init() on each pin in your constructor." );
 		return other == value_;
 	}
 	virtual void setValueRaw(int size, const void* data)
@@ -141,7 +141,7 @@ public:
 		if(e->eventType == api::EventType::PinSet)
 		{
 			freshValue_ = false;
-		};
+		}
 	}
 	ProcessorMemberPtr getDefaultEventHandler() override
 	{
@@ -334,14 +334,14 @@ class Processor : public api::IProcessor
 	friend class TempBlockPositionSetter;
 
 public:
-	inline static thread_local Processor* constructingProcessor = nullptr;
+	inline static thread_local Processor* constructingProcessor{};
 
 	Processor();
 	virtual ~Processor() {}
 
 	// IAudioPlugin methods
 	gmpi::ReturnCode open(api::IUnknown* phost) override;
-	gmpi::ReturnCode setBuffer(int32_t pinId, float* buffer) override;
+	gmpi::ReturnCode setBuffer(int32_t PinIndex, float* buffer) override;
 	void process(int32_t count, const api::Event* events) override;
 
 	// overrides
@@ -365,15 +365,10 @@ public:
 		sleepCount_ = (std::max)(sleepCount_, 1);
 	}
 
-	void init(int PinId, PinBase& pin, ProcessorMemberPtr handler = 0);
-	void init(PinBase& pin, ProcessorMemberPtr handler = 0)
+	void init(int PinIndex, PinBase& pin, ProcessorMemberPtr handler = {});
+	void init(PinBase& pin, ProcessorMemberPtr handler = {})
 	{
-		int idx = 0;
-		if (!pins_.empty())
-		{
-			idx = pins_.rbegin()->first + 1;
-		}
-		init(idx, pin, handler); // Automatic indexing.
+		init(pins_.size(), pin, handler); // Automatic indexing.
 	}
 
 protected:
@@ -422,7 +417,7 @@ protected:
 protected:
 	SubProcessPtr curSubProcess_ = &Processor::subProcessPreSleep;
 	SubProcessPtr saveSubProcess_ = &Processor::subProcessNothing; // saves curSubProcess_ while sleeping
-	std::map<int, PinBase*> pins_;
+	std::vector<PinBase*> pins_;
 
 	int blockPos_{};				// valid only during processEvent()
 	int sleepCount_{};			// sleep countdown timer.
@@ -461,7 +456,7 @@ public:
 	}
 	const T& operator=(const T& value)
 	{
-		// GCC don't like using plugin_ in this scope. assert( plugin_ != 0 && "Don't forget init() on each pin in your constructor." );
+		// GCC don't like using plugin_ in this scope. assert( plugin_ != nullptr && "Don't forget init() on each pin in your constructor." );
 		return ControlPinBase< T, pinDatatype> ::operator=(value);
 	}
 	// todo: specialise for value_ vs ref types !!!

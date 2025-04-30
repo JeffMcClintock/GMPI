@@ -58,16 +58,11 @@ void Processor::process(int32_t count, const api::Event* events)
 			eventsComplete_ = false;
 
 			(this->*(curSubProcess_))(delta_time);
+
 			remain -= delta_time;
+			assert(remain != 0);
 
 			eventsComplete_ = true;
-
-			assert(remain != 0); // BELOW NEEDED?, seems non sense. If we are here, there is a event to process. Don't want to exit!
-			//if (remain == 0) // done
-			//{
-			//	return;
-			//}
-
 			blockPos_ += delta_time;
 		}
 
@@ -81,7 +76,7 @@ void Processor::process(int32_t count, const api::Event* events)
 		auto e = next_event;
 		do
 		{
-			preProcessEvent(e); // updates all pins_ values
+			preProcessEvent(e); // updates all pin values
 			pins_set_flag = pins_set_flag || e->eventType == api::EventType::PinSet || e->eventType == api::EventType::PinStreamingStart || e->eventType == api::EventType::PinStreamingStop;
 			e = e->next;
 		} while (e && e->timeDelta == blockPos_); // cur_timeStamp );
@@ -90,7 +85,7 @@ void Processor::process(int32_t count, const api::Event* events)
 		e = next_event;
 		do
 		{
-			processEvent(e); // notify all pins_ values
+			processEvent(e); // notify all pins values
 			e = e->next;
 		} while (e && e->timeDelta == blockPos_); //cur_timeStamp );
 
@@ -122,10 +117,7 @@ void Processor::processEvent(const api::Event* e)
 	case api::EventType::PinStreamingStop:
 	case api::EventType::Midi:
 	{
-		if (auto it = pins_.find(e->pinIdx); it != pins_.end())
-		{
-			(*it).second->processEvent(e);
-		}
+		pins_[e->pinIdx]->processEvent(e);
 	}
 	break;
 
@@ -149,10 +141,7 @@ void Processor::preProcessEvent(const api::Event* e)
 	case api::EventType::Midi:
 	{
 		// pin events redirect to pin
-		if (auto it = pins_.find(e->pinIdx); it != pins_.end())
-		{
-			(*it).second->preProcessEvent(e);
-		}
+		pins_[e->pinIdx]->preProcessEvent(e);
 	}
 
 	break;
@@ -172,10 +161,7 @@ void Processor::postProcessEvent(const api::Event* e)
 	case api::EventType::PinStreamingStop:
 	case api::EventType::Midi:
 	{
-		if (auto it = pins_.find(e->pinIdx); it != pins_.end())
-		{
-			(*it).second->postProcessEvent(e);
-		}
+		pins_[e->pinIdx]->postProcessEvent(e);
 	}
 	break;
 
@@ -229,11 +215,11 @@ float AudioPinBase::getValue(int bufferPos) const
 	return *(begin() + bufferPos);
 }
 
-void PinBase::initialize(Processor* plugin, int PinId, ProcessorMemberPtr handler)
+void PinBase::initialize(Processor* plugin, int PinIndex, ProcessorMemberPtr handler)
 {
-	assert(id_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
+	assert(idx_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
 
-	id_ = PinId;
+	idx_ = PinIndex;
 	plugin_ = plugin;
 	eventHandler_ = handler;
 
@@ -260,7 +246,7 @@ void PinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockP
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.setValue( value, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host.setPin(blockPosition, getId(), rawSize, rawData);
+	plugin_->host.setPin(blockPosition, getIndex(), rawSize, rawData);
 }
 
 ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
@@ -268,28 +254,27 @@ ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
 	return &Processor::midiHelper;
 }
 
-void Processor::init(int PinId, PinBase& pin, ProcessorMemberPtr handler)
+void Processor::init(int PinIndex, PinBase& pin, ProcessorMemberPtr handler)
 {
-	assert(pins_.end() == std::find_if(pins_.begin(), pins_.end(), [&pin](const auto& pair) {
-		return pair.second == &pin;
-		})); // did you init the same pin twice?
+	assert(0 <= PinIndex); // pin index must be positive.
+	assert(pins_.size() <= PinIndex); // did you init the same pin twice?
 
-	pin.initialize(this, PinId, handler);
+	pin.initialize(this, PinIndex, handler);
 
-	[[maybe_unused]] auto r = pins_.insert({ PinId, &pin });
-
-	assert(r.second && "Did you init() with the same index twice?");
+	pins_.resize(PinIndex + 1);
+	pins_[PinIndex] = &pin;
 }
 
-ReturnCode Processor::setBuffer(int32_t pinId, float* buffer)
+ReturnCode Processor::setBuffer(int32_t PinIndex, float* buffer)
 {
-	if (auto it = pins_.find(pinId); it != pins_.end())
+	if (PinIndex < 0 || PinIndex >= pins_.size())
 	{
-		(*it).second->setBuffer(buffer);
-		return ReturnCode::Ok;
+		assert(0 && "PinIndex out of range");
+		return ReturnCode::Fail;
 	}
 
-	return ReturnCode::Fail;
+	pins_[PinIndex]->setBuffer(buffer);
+	return ReturnCode::Ok;
 }
 
 void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
@@ -300,7 +285,7 @@ void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
 		assert(plugin_->blockPosExact_ && "err: Please use - midiPin.send( data, size, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host.setPin(blockPosition, getId(), size, data);
+	plugin_->host.setPin(blockPosition, getIndex(), size, data);
 }
 
 void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
@@ -330,7 +315,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 		plugin_->resetSleepCounter();
 	}
 
-	plugin_->host.setPinStreaming(blockPosition, getId(), (int)isStreaming_);
+	plugin_->host.setPinStreaming(blockPosition, getIndex(), (int)isStreaming_);
 };
 
 void Processor::setSleep(bool isOkToSleep)
@@ -417,9 +402,8 @@ void Processor::subProcessPreSleep(int sampleFrames)
 void Processor::onGraphStart()	// called on very first sample.
 {
 	// Send initial update on all output pins.
-	for (auto& it : pins_)
+	for (auto& pin : pins_)
 	{
-		auto pin = it.second;
 		if (pin->getDirection() == PinDirection::Out)
 		{
 			pin->sendFirstUpdate();

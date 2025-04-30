@@ -68,13 +68,13 @@ struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
     virtual ReturnCode initialize() = 0;
 
     // Host setting a pin due to patch-change or automation.
-    virtual ReturnCode setPin(int32_t pinId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const void* data) = 0;
 
     // During initialisation it's nesc to notify all input pins.
     // setPin() will not do so in the case where the pin is already set to that value by default (i.e. zero).
     // A second reason is self-notification, which needs to happen only on input pins only, when the module updates them.
     // Given that the module can only detect input pins though costly iteration, better that host handles this case.
-    virtual ReturnCode notifyPin(int32_t pinId, int32_t voice) = 0;
+    virtual ReturnCode notifyPin(int32_t PinIndex, int32_t voice) = 0;
 
     // {E3942893-69B2-401C-8BCA-74650FAAE31C}
     inline static const Guid guid =
@@ -104,7 +104,7 @@ struct DECLSPEC_NOVTABLE IEditorHost2_x : IUnknown
 // INTERFACE 'IEditorHost' (experimental)
 struct DECLSPEC_NOVTABLE IEditorHost_x : IUnknown
 {
-    virtual ReturnCode setPin(int32_t pinId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const void* data) = 0;
     virtual int32_t getHandle() = 0;
 
     // {8A8CF7DC-BC36-4743-A09A-967571355A1A}
