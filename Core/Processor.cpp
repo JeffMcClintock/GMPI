@@ -26,7 +26,9 @@ ReturnCode Processor::open(IUnknown* phost)
 	debugIsOpen_ = true;
 #endif
 
-	return host.Init(phost);
+	host = as<api::IProcessorHost>(phost);
+
+	return host ? ReturnCode::Ok : ReturnCode::Fail;
 }
 
 void Processor::process(int32_t count, const api::Event* events)
@@ -109,66 +111,27 @@ void Processor::process(int32_t count, const api::Event* events)
 
 void Processor::processEvent(const api::Event* e)
 {
-	switch (e->eventType)
+	if (api::EventType::GraphStart == e->eventType)
 	{
-	// pin events redirect to pin
-	case api::EventType::PinSet:
-	case api::EventType::PinStreamingStart:
-	case api::EventType::PinStreamingStop:
-	case api::EventType::Midi:
+		onGraphStart();
+		assert(debugGraphStartCalled_ && "Please call the base class's MpBase2::onGraphStart(); from your overloaded member.");
+	}
+	else
 	{
 		pins_[e->pinIdx]->processEvent(e);
 	}
-	break;
-
-	case api::EventType::GraphStart:
-		onGraphStart();
-		assert(debugGraphStartCalled_ && "Please call the base class's MpBase2::onGraphStart(); from your overloaded member.");
-		break;
-
-	default:
-		break;
-	};
 }
 
 void Processor::preProcessEvent(const api::Event* e)
 {
-	switch (e->eventType)
-	{
-	case api::EventType::PinStreamingStart:
-	case api::EventType::PinStreamingStop:
-	case api::EventType::PinSet:
-	case api::EventType::Midi:
-	{
-		// pin events redirect to pin
+	if (api::EventType::GraphStart != e->eventType)
 		pins_[e->pinIdx]->preProcessEvent(e);
-	}
-
-	break;
-	case api::EventType::GraphStart:
-	default:
-		break;
-	};
 }
 
 void Processor::postProcessEvent(const api::Event* e)
 {
-	switch (e->eventType)
-	{
-	// pin events redirect to pin
-	case api::EventType::PinSet:
-	case api::EventType::PinStreamingStart:
-	case api::EventType::PinStreamingStop:
-	case api::EventType::Midi:
-	{
+	if(api::EventType::GraphStart != e->eventType)
 		pins_[e->pinIdx]->postProcessEvent(e);
-	}
-	break;
-
-	case api::EventType::GraphStart:
-	default:
-		break;
-	};
 }
 
 void Processor::midiHelper(const api::Event* e)
@@ -176,7 +139,7 @@ void Processor::midiHelper(const api::Event* e)
 	assert(e->eventType == api::EventType::Midi);
 
 	onMidiMessage(
-		e->pinIdx
+		  e->pinIdx
 		, e->data()
 		, e->size());
 }
@@ -210,7 +173,7 @@ float AudioPinBase::getValue(int bufferPos) const
 		bufferPos = plugin_->getBlockPosition();
 	}
 
-	assert(bufferPos < plugin_->host.getBlockSize() && "err: Don't access past end of buffer");
+	assert(bufferPos < plugin_->host->getBlockSize() && "err: Don't access past end of buffer");
 
 	return *(begin() + bufferPos);
 }
@@ -218,15 +181,11 @@ float AudioPinBase::getValue(int bufferPos) const
 void PinBase::initialize(Processor* plugin, int PinIndex, ProcessorMemberPtr handler)
 {
 	assert(idx_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
+	assert(PinDirection::In == getDirection() || !handler); // only input pins can have event handlers.
 
 	idx_ = PinIndex;
 	plugin_ = plugin;
-	eventHandler_ = handler;
-
-	if (!eventHandler_ && getDirection() == PinDirection::In)
-	{
-		eventHandler_ = getDefaultEventHandler();
-	}
+	eventHandler_ = handler ? handler : getDefaultEventHandler();
 }
 
 void PinBase::processEvent(const api::Event* e)
@@ -246,7 +205,7 @@ void PinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockP
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.setValue( value, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host.setPin(blockPosition, getIndex(), rawSize, rawData);
+	plugin_->host->setPin(blockPosition, getIndex(), rawSize, rawData);
 }
 
 ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
@@ -285,7 +244,7 @@ void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
 		assert(plugin_->blockPosExact_ && "err: Please use - midiPin.send( data, size, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host.setPin(blockPosition, getIndex(), size, data);
+	plugin_->host->setPin(blockPosition, getIndex(), size, data);
 }
 
 void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
@@ -299,7 +258,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 		blockPosition = plugin_->getBlockPosition();
 	}
 
-	assert(blockPosition >= 0 && blockPosition < plugin_->host.getBlockSize() && "block posistion must be within current block");
+	assert(blockPosition >= 0 && blockPosition < plugin_->host->getBlockSize() && "block posistion must be within current block");
 
 	// note if streaming has changed (not just repeated one-offs).
 	if (isStreaming_ != isStreaming)
@@ -315,7 +274,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 		plugin_->resetSleepCounter();
 	}
 
-	plugin_->host.setPinStreaming(blockPosition, getIndex(), (int)isStreaming_);
+	plugin_->host->setPinStreaming(blockPosition, getIndex(), (int)isStreaming_);
 };
 
 void Processor::setSleep(bool isOkToSleep)
@@ -366,7 +325,7 @@ void Processor::subProcessPreSleep(int sampleFrames)
 		{
 			if (eventsComplete_)
 			{
-				host.sleep();
+				host->sleep();
 				blockPos_ = saveBlockPos; // restore bufferOffset_, else may be incremented twice.
 				return;
 			}
@@ -438,7 +397,7 @@ void Processor::onPinStreamingChange(bool isStreaming)
 
 void Processor::resetSleepCounter()
 {
-	sleepCount_ = host.getBlockSize();
+	sleepCount_ = host->getBlockSize();
 }
 
 void AudioInPin::preProcessEvent(const api::Event* e)
@@ -468,44 +427,6 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 	default:
 		break;
 	};
-}
-
-ReturnCode AudioPluginHostWrapper::Init(api::IUnknown* phost)
-{
-	host = as<api::IProcessorHost>(phost);
-	return host ? ReturnCode::Ok : ReturnCode::NoSupport;
-}
-api::IProcessorHost* AudioPluginHostWrapper::get()
-{
-	return host.get();
-}
-ReturnCode AudioPluginHostWrapper::setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data)
-{
-	return host->setPin(timestamp, pinId, size, data);
-}
-ReturnCode AudioPluginHostWrapper::setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming)
-{
-	return host->setPinStreaming(timestamp, pinId, isStreaming);
-}
-ReturnCode AudioPluginHostWrapper::setLatency(int32_t latency)
-{
-	return host->setLatency(latency);
-}
-ReturnCode AudioPluginHostWrapper::sleep()
-{
-	return host->sleep();
-}
-int32_t AudioPluginHostWrapper::getBlockSize() const
-{
-	return host->getBlockSize();
-}
-int32_t AudioPluginHostWrapper::getSampleRate() const
-{
-	return host->getSampleRate();
-}
-int32_t AudioPluginHostWrapper::getHandle() const
-{
-	return host->getHandle();
 }
 
 AudioInPin::AudioInPin()

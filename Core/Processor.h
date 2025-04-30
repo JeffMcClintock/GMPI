@@ -2,7 +2,7 @@
 
 /*
   GMPI - Generalized Music Plugin Interface specification.
-  Copyright 2007-2024 Jeff McClintock.
+  Copyright 2007-2025 Jeff McClintock.
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -17,7 +17,6 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#include <map>
 #include "Common.h"
 #include "GmpiApiAudio.h"
 #include "GmpiSdkCommon.h"
@@ -47,7 +46,7 @@ public:
 	virtual void processEvent( const api::Event* e );
 	virtual void postProcessEvent( const api::Event* ){}
 
-	int getIndex(){return idx_;}
+	int getIndex() const {return idx_;}
 	virtual PinDatatype getDatatype() const = 0;
 	virtual PinDirection getDirection() const = 0;
 	virtual ProcessorMemberPtr getDefaultEventHandler() = 0;
@@ -134,7 +133,7 @@ public:
 		{
 			setValueRaw(e->size(), e->data());
 			freshValue_ = true;
-		};
+		}
 	}
 	void postProcessEvent( const api::Event* e ) override
 	{
@@ -309,24 +308,6 @@ public:
 	void send(const unsigned char* data, int size, int blockPosition = -1);
 };
 
-class AudioPluginHostWrapper
-{
-	gmpi::shared_ptr<api::IProcessorHost> host;
-
-public:
-	ReturnCode Init(api::IUnknown* phost);
-	api::IProcessorHost* get();
-
-	// IAudioPluginHost
-	ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data);
-	ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming);
-	ReturnCode setLatency(int32_t latency);
-	ReturnCode sleep();
-	int32_t getBlockSize() const;
-	int32_t getSampleRate() const;
-	int32_t getHandle() const;
-};
-
 class TempBlockPositionSetter;
 
 class Processor : public api::IProcessor
@@ -350,7 +331,7 @@ public:
 	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
 
 	// access to the DAW
-	AudioPluginHostWrapper host;
+	gmpi::shared_ptr<api::IProcessorHost> host;
 
 	// Communication with pins.
 	int getBlockPosition() const
@@ -444,12 +425,14 @@ public:
 		if (Processor::constructingProcessor)
 			Processor::constructingProcessor->init(*this);
 	}
+#if 0
 	ControlPin(T initialValue) : ControlPinBase< T, pinDatatype >(initialValue)
 	{
 		// register with the plugin.
 		if (Processor::constructingProcessor)
 			Processor::constructingProcessor->init(*this);
 	}
+#endif
 	PinDirection getDirection() const override
 	{
 		return pinDirection_;

@@ -48,6 +48,7 @@ namespace gmpi
 namespace api
 {
 
+#if 0 // ref: IEditor2_x
 // INTERFACE (experimental)
 struct DECLSPEC_NOVTABLE IDeterministicUi : IUnknown
 {
@@ -57,6 +58,7 @@ struct DECLSPEC_NOVTABLE IDeterministicUi : IUnknown
     inline static const Guid guid =
     { 0x51a635ca, 0x7a2a, 0x4bc8, { 0x8f, 0x4f, 0x78, 0xba, 0x9a, 0x57, 0x4e, 0x25 } };
 };
+#endif
 
 // INTERFACE 'Editor' (experimental)
 struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
