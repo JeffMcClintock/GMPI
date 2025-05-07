@@ -176,7 +176,7 @@ public:
 	{
 		return getValue();
 	}
-	bool operator==(float other)
+	bool operator==(float other) const
 	{
 		return other == getValue();
 	}
@@ -192,7 +192,7 @@ public:
 	{
 		return {};
 	}
-	bool isStreaming()
+	bool isStreaming() const
 	{
 		return isStreaming_;
 	}
@@ -239,7 +239,7 @@ public:
 	void sendFirstUpdate() override {} // N/A.
 
 private:
-	bool freshValue_ = true; // true = value_ has been updated on current sample_clock
+	bool freshValue_ = true; // has value_been updated on current sample_clock?
 };
 
 class AudioOutPin final : public AudioPinBaseB<PinDirection::Out>
@@ -306,6 +306,7 @@ public:
 	}
 
 	void send(const unsigned char* data, int size, int blockPosition = -1);
+	void sendFirstUpdate() override {} // N/A.
 };
 
 class TempBlockPositionSetter;
