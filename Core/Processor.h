@@ -350,7 +350,7 @@ public:
 	void init(int PinIndex, PinBase& pin, ProcessorMemberPtr handler = {});
 	void init(PinBase& pin, ProcessorMemberPtr handler = {})
 	{
-		init(pins_.size(), pin, handler); // Automatic indexing.
+		init(static_cast<int32_t>(pins_.size()), pin, handler); // Automatic indexing.
 	}
 
 protected:
