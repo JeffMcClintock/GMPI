@@ -394,7 +394,7 @@ protected:
 
 	// identification and reference counting
 	GMPI_QUERYINTERFACE_METHOD(IProcessor);
-	GMPI_REFCOUNT;
+	GMPI_REFCOUNT
 
 protected:
 	SubProcessPtr curSubProcess_ = &Processor::subProcessPreSleep;
