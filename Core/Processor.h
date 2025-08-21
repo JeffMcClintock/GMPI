@@ -53,7 +53,7 @@ public:
 	virtual void sendFirstUpdate() = 0;
 
 protected:
-	void sendPinUpdate( int32_t rawSize, const void* rawData, int32_t blockPosition = - 1 );
+	void sendPinUpdate( int32_t rawSize, const uint8_t* rawData, int32_t blockPosition = - 1 );
 	int idx_ = -1;
 	class Processor* plugin_ = {};
 	ProcessorMemberPtr eventHandler_ = {};
@@ -107,11 +107,11 @@ public:
 		assert( plugin_ != nullptr && "Don't forget init() on each pin in your constructor." );
 		return other == value_;
 	}
-	virtual void setValueRaw(int size, const void* data)
+	virtual void setValueRaw(int size, const uint8_t* data)
 	{
 		valueFromData<T>(size, data, value_);
 	}
-	virtual void setValueRaw(size_t size, const void* data)
+	virtual void setValueRaw(size_t size, const uint8_t* data)
 	{
 		valueFromData<T>(static_cast<int>(size), data, value_);
 	}
@@ -119,7 +119,7 @@ public:
 	{
 		return dataSize<T>(value_);
 	}
-	virtual const void* rawData()
+	virtual const uint8_t* rawData()
 	{
 		return dataPtr<T>(value_);
 	}
@@ -180,7 +180,7 @@ public:
 	{
 		return other == getValue();
 	}
-	virtual void setValueRaw(int /*size*/, void* /*data*/)
+	virtual void setValueRaw(int /*size*/, const uint8_t* /*data*/)
 	{
 		assert(false && "Audio-rate pins_ don't support setValueRaw");
 	}

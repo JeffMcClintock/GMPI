@@ -15,18 +15,18 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
-#define	GMPI_SDK_REVISION 9000 // 0.90
+#define GMPI_SDK_REVISION 9000 // 0.90
 /* Version History
-* 	 12/25/2021 - V0.90 : Draft release
+*    12/25/2021 - V0.90 : Draft release
 */
 
 #include <map>
-#include <sstream>
 #include <vector>
-#include <memory.h>
+#include <string>
+#include <cstring> // std::strlen
+#include <cassert>
 #include "Common.h"
 #include "RefCountMacros.h"
-#include "GmpiSdkCommon.h"
 
 using namespace gmpi;
 using namespace gmpi::api;
@@ -36,54 +36,57 @@ using namespace gmpi::api;
 
 // MpFactory - a singleton object.  The plugin registers it's ID with the factory.
 
-class MpFactory: public IPluginFactory
+class MpFactory : public IPluginFactory
 {
 public:
-	MpFactory( void ){}
-	virtual ~MpFactory( void ){}
+    MpFactory() {}
+    virtual ~MpFactory() {}
 
-	// IMpPluginFactory methods
+    // IMpPluginFactory methods
     ReturnCode createInstance(
-		const char* uniqueId,
-		PluginSubtype subType,
-		void** returnInterface ) override;
+        const char* uniqueId,
+        PluginSubtype subType,
+        void** returnInterface) override;
 
     ReturnCode getPluginInformation(int32_t index, IString* returnXml) override;
 
-    ReturnCode RegisterPlugin( const char* uniqueId, PluginSubtype subType, CreatePluginPtr create );
+    ReturnCode RegisterPlugin(const char* uniqueId, PluginSubtype subType, CreatePluginPtr create);
     ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create);
 
-	// IUnknown methods
-	GMPI_QUERYINTERFACE_METHOD(IPluginFactory);
-	GMPI_REFCOUNT_NO_DELETE
+    // IUnknown methods
+    GMPI_QUERYINTERFACE_METHOD(IPluginFactory);
+    GMPI_REFCOUNT_NO_DELETE
 
 private:
-	// a map of all registered IIDs.
-    std::map< std::pair<PluginSubtype, std::string>, CreatePluginPtr> pluginMap;
-	std::vector< std::string > xmls;
+    // a map of all registered IIDs.
+    std::map<std::pair<PluginSubtype, std::string>, CreatePluginPtr> pluginMap;
+    std::vector<std::string> xmls;
 };
 
 MpFactory& Factory()
 {
-	static MpFactory theFactory;
-	return theFactory;
+    static MpFactory theFactory;
+    return theFactory;
 }
 
 // This is the DLL's main entry point.  It returns the factory.
 extern "C"
 
 #ifdef _WIN32
-	__declspec (dllexport)
+    __declspec (dllexport)
 #else
 #if defined (__GNUC__)
-	__attribute__ ((visibility ("default")))
+    __attribute__ ((visibility ("default")))
 #endif
 #endif
 
-ReturnCode MP_GetFactory( void** returnInterface )
+ReturnCode MP_GetFactory(void** returnInterface)
 {
-	// call queryInterface() to keep refcounting in sync
-    return Factory().queryInterface( &IUnknown::guid, returnInterface );
+    if (!returnInterface)
+        return ReturnCode::Fail;
+
+    // call queryInterface() to keep refcounting in sync
+    return Factory().queryInterface(&IUnknown::guid, returnInterface);
 }
 
 namespace gmpi
@@ -100,13 +103,13 @@ namespace gmpi
 }
 
 // Factory methods
-ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, PluginSubtype subType, CreatePluginPtr create )
+ReturnCode MpFactory::RegisterPlugin(const char* uniqueId, PluginSubtype subType, CreatePluginPtr create)
 {
-    if (!create)
+    if (!create || !uniqueId)
         return ReturnCode::Fail;
 
-	// already registered this plugin?
-	assert( pluginMap.find({ subType, uniqueId }) == pluginMap.end());
+    // already registered this plugin?
+    assert(pluginMap.find({ subType, uniqueId }) == pluginMap.end());
 
 	pluginMap[{ subType, uniqueId }] = create;
 
@@ -115,16 +118,16 @@ ReturnCode MpFactory::RegisterPlugin( const char* uniqueId, PluginSubtype subTyp
 
 ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create)
 {
-    if (!create)
+    if (!create || !xml)
         return ReturnCode::Fail;
 
 	std::string xmlstr{xml};
 
 	size_t p{};
 	for (auto s : { "<Plugin", " id", "\"" })
-	{
+    {
 		p = xmlstr.find(s, p) + strlen(s);
-	}
+    }
 
 	const auto p2 = xmlstr.find("\"", p);
 
@@ -134,62 +137,67 @@ ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* x
 	const auto uniqueId = xmlstr.substr(p, p2 - p);
 
 	pluginMap[{ subType, uniqueId }] = create;
-	
+
 	xmls.push_back(xmlstr);
 
     return ReturnCode::Ok;
 }
 
-ReturnCode MpFactory::createInstance( const char* uniqueId, PluginSubtype subType, void** returnInterface )
+ReturnCode MpFactory::createInstance(const char* uniqueId, PluginSubtype subType, void** returnInterface)
 {
-	*returnInterface = nullptr; // if we fail for any reason, default return-val to nullptr
+    if (!returnInterface || !uniqueId)
+        return ReturnCode::Fail;
+
+    *returnInterface = nullptr; // default to nullptr on failure
 
     // search m_pluginMap for the requested ID
-	auto it = pluginMap.find({ subType, uniqueId });
-	if (it == pluginMap.end())
-	{
+    auto it = pluginMap.find({ subType, uniqueId });
+    if (it == pluginMap.end())
+    {
         return ReturnCode::NoSupport;
-	}
+    }
 
-	auto create = (*it).second;
+    auto create = it->second;
+    if (!create)
+    {
+        return ReturnCode::NoSupport;
+    }
 
-	if( create == nullptr )
-	{
-		return gmpi::ReturnCode::NoSupport;
-	}
-
-	try
-	{
-		auto m = create();
-		*returnInterface = m;
+    try
+    {
+        auto m = create();
+        *returnInterface = m;
 #ifdef _DEBUG
-		{
-			m->addRef();
-			int refcount = m->release();
-			assert(refcount == 1);
-		}
+        {
+            m->addRef();
+            const auto refcount = m->release();
+            assert(refcount == 1);
+        }
 #endif
-	}
-
-	// the new function will throw a std::bad_alloc exception if the memory allocation fails.
-	// the constructor will throw a char* if host don't support required interfaces.
-	catch( ... )
-	{
+    }
+    // the new function will throw a std::bad_alloc exception if the memory allocation fails.
+    // the constructor will throw a char* if host don't support required interfaces.
+    catch (...)
+    {
         return ReturnCode::Fail;
-	}
+    }
 
     return ReturnCode::Ok;
 }
 
 ReturnCode MpFactory::getPluginInformation(int32_t index, IString* returnXml)
 {
-	if (index < 0 || index >= xmls.size())
-	{
-		returnXml->setData(nullptr, 0);
+    if (!returnXml)
         return ReturnCode::Fail;
-	}
 
-	returnXml->setData(xmls[index].data(), xmls[index].size());
+    if (index < 0 || static_cast<size_t>(index) >= xmls.size())
+    {
+        returnXml->setData(nullptr, 0);
+        return ReturnCode::Fail;
+    }
+
+    returnXml->setData(xmls[static_cast<size_t>(index)].data(),
+                       static_cast<int32_t>(xmls[static_cast<size_t>(index)].size()));
     return ReturnCode::Ok;
 }
 

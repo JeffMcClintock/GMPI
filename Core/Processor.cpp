@@ -195,7 +195,7 @@ void PinBase::processEvent(const api::Event* e)
 }
 
 // Pins
-void PinBase::sendPinUpdate(int32_t rawSize, const void* rawData, int32_t blockPosition)
+void PinBase::sendPinUpdate(int32_t rawSize, const uint8_t* rawData, int32_t blockPosition)
 {
 	assert(plugin_ != nullptr && "err: Please don't forgot to call init(pinWhatever) in contructor.");
 	assert(plugin_->debugIsOpen_ && "err: Please don't update output pins in constructor or open().");

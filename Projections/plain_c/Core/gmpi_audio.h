@@ -57,7 +57,7 @@ typedef struct GMPI_IAudioPluginHostMethods
     int32_t (*addRef)(GMPI_IUnknown*);
     int32_t (*release)(GMPI_IUnknown*);
 
-    int32_t (*setPin)(GMPI_IAudioPluginHost*, int32_t timestamp, int32_t pinId, int32_t size, const void* data);
+    int32_t (*setPin)(GMPI_IAudioPluginHost*, int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data);
     int32_t (*setPinStreaming)(GMPI_IAudioPluginHost*, int32_t timestamp, int32_t pinId, bool isStreaming);
     int32_t (*setLatency)(GMPI_IAudioPluginHost*, int32_t latency);
     int32_t (*sleep)(GMPI_IAudioPluginHost*);

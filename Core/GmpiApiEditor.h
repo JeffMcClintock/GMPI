@@ -70,7 +70,7 @@ struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
     virtual ReturnCode initialize() = 0;
 
     // Host setting a pin due to patch-change or automation.
-    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) = 0;
 
     // During initialisation it's nesc to notify all input pins.
     // setPin() will not do so in the case where the pin is already set to that value by default (i.e. zero).
@@ -106,7 +106,7 @@ struct DECLSPEC_NOVTABLE IEditorHost2_x : IUnknown
 // INTERFACE 'IEditorHost' (experimental)
 struct DECLSPEC_NOVTABLE IEditorHost_x : IUnknown
 {
-    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) = 0;
     virtual int32_t getHandle() = 0;
 
     // {8A8CF7DC-BC36-4743-A09A-967571355A1A}
@@ -117,7 +117,7 @@ struct DECLSPEC_NOVTABLE IEditorHost_x : IUnknown
 struct DECLSPEC_NOVTABLE IParameterObserver : IUnknown
 {
 public:
-    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
 
     // {7D5AD528-A035-44E5-82A2-4E3A70AEA099}
     inline static const Guid guid =
@@ -137,7 +137,7 @@ public:
 
     // Pins.
     virtual ReturnCode setPinDefault(int32_t pinType, int32_t pinId, const char* defaultValue) = 0;
-    virtual ReturnCode setPin(int32_t pinId, int32_t voice, int64_t size, const void* data) = 0;
+    virtual ReturnCode setPin(int32_t pinId, int32_t voice, int64_t size, const uint8_t* data) = 0;
     virtual ReturnCode notifyPin(int32_t pinId, int32_t voice) = 0;
 
     virtual ReturnCode onDelete() = 0;
@@ -152,7 +152,7 @@ struct DECLSPEC_NOVTABLE IControllerHost_x : IUnknown
 {
 public:
     virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;
-    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
 #if 0
     // Each plugin instance has a host-assigned unique handle shared by UI and Audio class.
     virtual ReturnCode getHandle(int32_t& returnHandle) = 0;
@@ -165,7 +165,7 @@ public:
     // Backdoor to Audio class. Not recommended. Use Parameters instead to support proper automation.
     //virtual ReturnCode sendMessageToAudio(int32_t id, int32_t size, const void* messageData) = 0;
     virtual ReturnCode createControllerIterator(gmpi::IMpControllerIterator** returnIterator) = 0;
-    virtual ReturnCode pinTransmit(int32_t pinId, int32_t voice, int64_t size, const void* data) = 0;
+    virtual ReturnCode pinTransmit(int32_t pinId, int32_t voice, int64_t size, const uint8_t* data) = 0;
 #endif
 
     // {CD0F9C61-E546-47E2-A31C-09B3FBC8F5D0}
@@ -177,7 +177,7 @@ struct DECLSPEC_NOVTABLE IParameterSetter_x : IUnknown
 {
 public:
     virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;
-    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const void* data) = 0;
+    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
 
     // {CC7A7938-2CD0-4413-8CA8-11781B2E89B2}
     inline static const Guid guid =

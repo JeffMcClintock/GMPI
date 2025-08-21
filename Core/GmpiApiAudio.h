@@ -76,7 +76,7 @@ struct DECLSPEC_NOVTABLE IProcessor : IUnknown
 
 struct DECLSPEC_NOVTABLE IProcessorHost : IUnknown
 {
-    virtual ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const void* data) = 0;
+    virtual ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data) = 0;
     virtual ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming) = 0;
     virtual ReturnCode setLatency(int32_t latency) = 0;
     virtual ReturnCode sleep() = 0;

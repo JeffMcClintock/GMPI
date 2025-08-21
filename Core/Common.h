@@ -21,6 +21,8 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <cstring> // for std::memcpy
+#include <type_traits> // for std::is_trivially_copyable
 #include "GmpiApiAudio.h"
 #include "GmpiApiEditor.h"
 
@@ -114,23 +116,23 @@ private:
 	};
 	template<int N> struct PinDataTypeTraits<int, N>
 	{
-		enum { result = static_cast<int>(PinDatatype::Int32) };
+		enum { result = static_cast<int>(gmpi::PinDatatype::Int32) };
 	};
 	template<int N> struct PinDataTypeTraits<bool, N>
 	{
-		enum { result = static_cast<int>(PinDatatype::Bool) };
+		enum { result = static_cast<int>(gmpi::PinDatatype::Bool) };
 	};
 	template<int N> struct PinDataTypeTraits<float, N>
 	{
-		enum { result = static_cast<int>(PinDatatype::Float32) };
+		enum { result = static_cast<int>(gmpi::PinDatatype::Float32) };
 	};
 	template<int N> struct PinDataTypeTraits<std::string, N>
 	{
-		enum { result = static_cast<int>(PinDatatype::String) };
+		enum { result = static_cast<int>(gmpi::PinDatatype::String) };
 	};
 	template<int N> struct PinDataTypeTraits<Blob, N>
 	{
-		enum { result = static_cast<int>(PinDatatype::Blob) };
+		enum { result = static_cast<int>(gmpi::PinDatatype::Blob) };
 	};
 
 public:
@@ -165,62 +167,54 @@ inline int dataSize<Blob>(const Blob& value)
 
 // Serialize variable's value as bytes.
 template <typename T>
-inline const void* dataPtr(const T& value)
+inline const uint8_t* dataPtr(const T& value)
 {
-	return reinterpret_cast<const void*>(&value);
+	return reinterpret_cast<const uint8_t*>(&value);
 }
 
 template<>
-inline const void* dataPtr<std::string>(const std::string& value)
+inline const uint8_t* dataPtr<std::string>(const std::string& value)
 {
-	return reinterpret_cast<const void*>(value.data());
+	return reinterpret_cast<const uint8_t*>(value.data());
 }
 
 template<>
-inline const void* dataPtr<std::wstring>(const std::wstring& value)
+inline const uint8_t* dataPtr<std::wstring>(const std::wstring& value)
 {
-	return reinterpret_cast<const void*>(value.data());
+	return reinterpret_cast<const uint8_t*>(value.data());
 }
 
 template<>
-inline const void* dataPtr<Blob>(const Blob& value)
+inline const uint8_t* dataPtr<Blob>(const Blob& value)
 {
-	return reinterpret_cast<const void*>(value.data());
+	return reinterpret_cast<const uint8_t*>(value.data());
 }
 
 // De-serialize type.
 template <typename T>
-inline void valueFromData(int size, const void* data, T& returnValue)
+inline void valueFromData(int size, const uint8_t* data, T& returnValue)
 {
 	assert(size == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
-	memcpy(&returnValue, data, size);
+	static_assert(std::is_trivially_copyable<T>::value, "T must be trivially copyable");
+	std::memcpy(&returnValue, data, size);
 }
 
 template <>
-inline void valueFromData<Blob>(int size, const void* data, Blob& returnValue)
+inline void valueFromData<Blob>(int size, const uint8_t* data, Blob& returnValue)
 {
-	returnValue.assign((uint8_t*)data, (uint8_t*)data + size);
+	returnValue.assign(data, data + size);
 }
 
 template <>
-inline void valueFromData<bool>(int size, const void* data, bool& returnValue)
+inline void valueFromData<std::string>(int size, const uint8_t* data, std::string& returnValue)
 {
-	// bool is passed as int.
-	if (size == 4) // DSP sends bool events as int.
-	{
-		returnValue = *((int*)data) != 0;
-	}
-	else
-	{
-		assert(size == 1);
-		returnValue = *((bool*)data);
-	}
+	returnValue.assign(reinterpret_cast<const char*>(data), size);
 }
 
 template <>
-inline void valueFromData<std::string>(int size, const void* data, std::string& returnValue)
+inline void valueFromData<std::wstring>(int size, const uint8_t* data, std::wstring& returnValue)
 {
-	returnValue.assign((const char*)data, size);
+	returnValue.assign(reinterpret_cast<const wchar_t*>(data), size / sizeof(wchar_t));
 }
 
 } // namespace
