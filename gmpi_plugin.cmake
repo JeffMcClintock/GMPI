@@ -1,191 +1,202 @@
-# setting that apply to every plugin format
+# settings that apply to every plugin format
 
 function(gmpi_target)
-set(options CAT)
-set(oneValueArgs PROJECT_NAME)
-set(multiValueArgs DOGS)
-cmake_parse_arguments(GMPI_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    set(options)
+    set(oneValueArgs PROJECT_NAME)
+    set(multiValueArgs)
+    cmake_parse_arguments(GMPI_TARGET "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-target_compile_definitions(
-  ${GMPI_TARGET_PROJECT_NAME} PRIVATE 
-  $<$<CONFIG:Debug>:_DEBUG>
-  $<$<CONFIG:Release>:NDEBUG>
-)
+    if(NOT GMPI_TARGET_PROJECT_NAME)
+        message(FATAL_ERROR "gmpi_target(PROJECT_NAME <name>) is required.")
+    endif()
 
-if(APPLE)
-  set_target_properties(${GMPI_TARGET_PROJECT_NAME} PROPERTIES BUNDLE TRUE)
-  set_target_properties(${GMPI_TARGET_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "gmpi")
-else()
-  set_target_properties(${GMPI_TARGET_PROJECT_NAME} PROPERTIES SUFFIX ".gmpi")
-endif()
+    # Use target-based definitions and features
+    target_compile_definitions(
+        ${GMPI_TARGET_PROJECT_NAME} PRIVATE
+        $<$<CONFIG:Debug>:_DEBUG>
+        $<$<CONFIG:Release>:NDEBUG>
+    )
+    # Workspace uses C++14
+    target_compile_features(${GMPI_TARGET_PROJECT_NAME} PUBLIC cxx_std_17)
 
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${COREFOUNDATION_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${COCOA_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${CORETEXT_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${OPENGL_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${IMAGEIO_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${COREGRAPHICS_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${ACCELERATE_LIBRARY} )
-TARGET_LINK_LIBRARIES( ${GMPI_TARGET_PROJECT_NAME} ${QUARTZCORE_LIBRARY} )
+    if(APPLE)
+        set_target_properties(${GMPI_TARGET_PROJECT_NAME}
+            PROPERTIES
+                BUNDLE TRUE
+                BUNDLE_EXTENSION "gmpi"
+        )
+    else()
+        set_target_properties(${GMPI_TARGET_PROJECT_NAME}
+            PROPERTIES
+                SUFFIX ".gmpi"
+        )
+    endif()
 
-if(CMAKE_HOST_WIN32)
-target_link_libraries(${GMPI_TARGET_PROJECT_NAME} d3d11.lib d2d1 dwrite windowscodecs)
-endif()
+    if(APPLE)
+        # Guard Apple-specific frameworks
+        target_link_libraries(${GMPI_TARGET_PROJECT_NAME} PRIVATE
+            ${COREFOUNDATION_LIBRARY}
+            ${COCOA_LIBRARY}
+            ${CORETEXT_LIBRARY}
+            ${OPENGL_LIBRARY}
+            ${IMAGEIO_LIBRARY}
+            ${COREGRAPHICS_LIBRARY}
+            ${ACCELERATE_LIBRARY}
+            ${QUARTZCORE_LIBRARY}
+        )
+    endif()
 
-if(WIN32)
-target_link_options(${GMPI_TARGET_PROJECT_NAME} PRIVATE "/SUBSYSTEM:WINDOWS")
-endif()
-
+    if(WIN32)
+        # Prefer bare names; MSVC resolves .lib automatically
+        target_link_libraries(${GMPI_TARGET_PROJECT_NAME} PRIVATE d3d11 d2d1 dwrite windowscodecs)
+        target_link_options(${GMPI_TARGET_PROJECT_NAME} PRIVATE "/SUBSYSTEM:WINDOWS")
+    endif()
 endfunction()
 
 ################################################################
 
 function(gmpi_plugin)
-set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE)
-set(oneValueArgs PROJECT_NAME)
-set(multiValueArgs FORMATS_LIST SOURCE_FILES)
-cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN} )
+    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE)
+    set(oneValueArgs PROJECT_NAME)
+    set(multiValueArgs FORMATS_LIST SOURCE_FILES)
+    cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
 
-# add SDK files
-set(sdk_srcs
-${gmpi_sdk_folder}/Core/Common.h
-${gmpi_sdk_folder}/Core/Common.cpp
-)
-
-if(${GMPI_PLUGIN_HAS_DSP})
-    set(sdk_srcs ${sdk_srcs}
-    ${gmpi_sdk_folder}/Core/Processor.h
-    ${gmpi_sdk_folder}/Core/Processor.cpp
-    )
-
-    include_directories(
-        ${gmpi_sdk_folder}
-        ${gmpi_sdk_folder}/Core
-    )
-endif()
-
-if(${GMPI_PLUGIN_HAS_GUI})
-    set(sdk_srcs ${sdk_srcs}
-    ${gmpi_ui_folder}/GmpiApiDrawing.h
-    ${gmpi_ui_folder}/Drawing.h
-    )
-
-    # add include folder
-    include_directories(
-        ${gmpi_ui_folder}
-    )
-endif()
-
-if(${GMPI_PLUGIN_HAS_XML})
-set(resource_srcs
-${GMPI_PLUGIN_PROJECT_NAME}.xml
-)
-
-if(CMAKE_HOST_WIN32)
-set(resource_srcs
-    ${resource_srcs}
-    ${GMPI_PLUGIN_PROJECT_NAME}.rc
-)
-source_group(resources FILES ${resource_srcs})
-endif()
-endif()
-
-# organise SDK file into folders/groups in IDE
-
-foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
-#	set(SUB_PROJECT_NAME ${PROJECT_NAME}_${kind} )
-    if(${kind} STREQUAL "GMPI")
-        set(SUB_PROJECT_NAME ${PROJECT_NAME})
-    else()
-        set(SUB_PROJECT_NAME ${PROJECT_NAME}_${kind})
+    if(NOT GMPI_PLUGIN_PROJECT_NAME)
+        message(FATAL_ERROR "gmpi_plugin(PROJECT_NAME <name>) is required.")
+    endif()
+    if(NOT GMPI_PLUGIN_FORMATS_LIST)
+        # Default to GMPI if no formats were specified.
+        set(GMPI_PLUGIN_FORMATS_LIST GMPI)
     endif()
 
-    set(FORMAT_SDK_FILES ${sdk_srcs})
+    # add SDK files
+    set(sdk_srcs
+        ${gmpi_sdk_folder}/Core/Common.h
+        ${gmpi_sdk_folder}/Core/Common.cpp
+    )
 
-    if(kind STREQUAL "VST3")
-        set(FORMAT_SDK_FILES ${sdk_srcs} ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
-        if(APPLE)
-            set(FORMAT_SDK_FILES ${FORMAT_SDK_FILES} ${VST3_SDK}/public.sdk/source/main/macmain.cpp)
+    set(plugin_includes)
+    list(APPEND plugin_includes ${gmpi_sdk_folder} ${gmpi_sdk_folder}/Core)
+
+    if(GMPI_PLUGIN_HAS_DSP)
+        list(APPEND sdk_srcs
+            ${gmpi_sdk_folder}/Core/Processor.h
+            ${gmpi_sdk_folder}/Core/Processor.cpp
+        )
+    endif()
+
+    if(GMPI_PLUGIN_HAS_GUI)
+        list(APPEND sdk_srcs
+            ${gmpi_ui_folder}/GmpiApiDrawing.h
+            ${gmpi_ui_folder}/Drawing.h
+        )
+        list(APPEND plugin_includes ${gmpi_ui_folder})
+    endif()
+
+    if(GMPI_PLUGIN_HAS_XML)
+        set(resource_srcs
+            ${GMPI_PLUGIN_PROJECT_NAME}.xml
+        )
+
+        if(WIN32)
+            list(APPEND resource_srcs ${GMPI_PLUGIN_PROJECT_NAME}.rc)
+            source_group(resources FILES ${resource_srcs})
         endif()
     endif()
-    
-    source_group(sdk FORMAT_SDK_FILES ${sdk_srcs})
 
-    add_library(${SUB_PROJECT_NAME} MODULE ${GMPI_PLUGIN_SOURCE_FILES} ${FORMAT_SDK_FILES} ${resource_srcs} ${wrapper_srcs})
-    gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
+    foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
+        if(kind STREQUAL "GMPI")
+            set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME})
+        else()
+            set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_${kind})
+        endif()
 
-endforeach()
+        set(FORMAT_SDK_FILES ${sdk_srcs})
 
-list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
-list(FIND GMPI_PLUGIN_FORMATS_LIST "VST3" FIND_VST3_INDEX)
+        if(kind STREQUAL "VST3")
+            list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
+            if(APPLE)
+                list(APPEND FORMAT_SDK_FILES ${VST3_SDK}/public.sdk/source/main/macmain.cpp)
+            endif()
+        endif()
 
-if(FIND_VST3_INDEX GREATER_EQUAL 0)
-	set(SUB_PROJECT_NAME ${PROJECT_NAME}_VST3 )
+        # Organize SDK files in IDE
+        source_group(sdk FILES ${FORMAT_SDK_FILES})
 
-if(APPLE)
-  set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
+        add_library(${SUB_PROJECT_NAME} MODULE
+            ${GMPI_PLUGIN_SOURCE_FILES}
+            ${FORMAT_SDK_FILES}
+            ${resource_srcs}
+            ${wrapper_srcs}
+        )
 
-if(${GMPI_TARGET_HAS_XML})
-  # Place xml file in bundle 'Resources' folder.
-  set(xml_path "${SUB_PROJECT_NAME}.xml")
-  target_sources(${SUB_PROJECT_NAME} PUBLIC ${xml_path})
-  set_source_files_properties(${xml_path} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-endif() # HAS_XML
-else()
-  set_target_properties(${SUB_PROJECT_NAME} PROPERTIES SUFFIX ".vst3")
-endif() # APPLE
+        # Target-based includes
+        if(plugin_includes)
+            target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${plugin_includes})
+        endif()
+        # Adaptor headers
+        if(GMPI_ADAPTORS)
+            target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${GMPI_ADAPTORS})
+        endif()
 
-# LINK THE VST3 wrapper as a static library (I changed the wrapper CMakeLists.txt to "add_library(${PROJECT_NAME} STATIC"" to make this work)
-# TODO: rename as gmpi_vst3_adaptor)
-TARGET_LINK_LIBRARIES( ${SUB_PROJECT_NAME} base )
-TARGET_LINK_LIBRARIES( ${SUB_PROJECT_NAME} pluginterfaces )
-target_link_libraries(${SUB_PROJECT_NAME} VST3_Wrapper)
+        gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
+    endforeach()
 
-endif() # GMPI_PLUGIN_HAS_VST3
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "VST3" FIND_VST3_INDEX)
 
-include_directories(
-    ${GMPI_ADAPTORS}
-)
+    if(FIND_VST3_INDEX GREATER_EQUAL 0)
+        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
 
-if(CMAKE_HOST_WIN32)
+        if(APPLE)
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
 
-if (SE_LOCAL_BUILD)
+            if(GMPI_PLUGIN_HAS_XML)
+                # Place xml file in bundle 'Resources' folder.
+                set(xml_path "${SUB_PROJECT_NAME}.xml")
+                target_sources(${SUB_PROJECT_NAME} PUBLIC ${xml_path})
+                set_source_files_properties(${xml_path} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+            endif()
+        else()
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES SUFFIX ".vst3")
+        endif()
 
-# Run after all other rules within the target have been executed
-if(FIND_VST3_INDEX GREATER_EQUAL 0)
-    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_VST3
-    POST_BUILD
-    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName)$(TargetExt)"
-    COMMENT "Copy to VST3 folder"
-    VERBATIM
-)
-SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME}_VST3 PROPERTIES FOLDER "VST3 plugins")
-endif()
+        # Link the VST3 wrapper as static libs
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces VST3_Wrapper)
+    endif()
 
-if(FIND_GMPI_INDEX GREATER_EQUAL 0)
-if(${GMPI_PLUGIN_IS_OFFICIAL_MODULE})
-    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
-    # Run after all other rules within the target have been executed
-    POST_BUILD
-    COMMAND xcopy /c /y "\"$(OutDir)$(TargetName)$(TargetExt)\"" "\"C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win\\\""
-    COMMENT "Copy to SynthEdit plugin folder"
-    )
-else()
-    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
-    POST_BUILD
-    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\$(TargetName)$(TargetExt)"
-    COMMENT "Copy to GMPI folder"
-    VERBATIM
-    )
-endif()
+    if(WIN32 AND SE_LOCAL_BUILD)
+        if(FIND_VST3_INDEX GREATER_EQUAL 0)
+            add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_VST3
+                POST_BUILD
+                COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName)$(TargetExt)"
+                COMMENT "Copy to VST3 folder"
+                VERBATIM
+            )
+            set_target_properties(${GMPI_PLUGIN_PROJECT_NAME}_VST3 PROPERTIES FOLDER "VST3 plugins")
+        endif()
 
-endif()
-endif()
-endif()
+        if(FIND_GMPI_INDEX GREATER_EQUAL 0)
+            if(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
+                add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
+                    POST_BUILD
+                    COMMAND xcopy /c /y "\"$(OutDir)$(TargetName)$(TargetExt)\"" "\"C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win\\\""
+                    COMMENT "Copy to SynthEdit plugin folder"
+                    VERBATIM
+                )
+            else()
+                add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
+                    POST_BUILD
+                    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\$(TargetName)$(TargetExt)"
+                    COMMENT "Copy to GMPI folder"
+                    VERBATIM
+                )
+            endif()
+        endif()
+    endif()
 
-# all individual modules should be groups under "modules" solution folder
-if(FIND_GMPI_INDEX GREATER_EQUAL 0)
-    SET_TARGET_PROPERTIES(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES FOLDER "GMPI plugins")
-endif()
-
+    # Group modules under solution folders
+    if(FIND_GMPI_INDEX GREATER_EQUAL 0)
+        set_target_properties(${GMPI_PLUGIN_PROJECT_NAME} PROPERTIES FOLDER "GMPI plugins")
+    endif()
 endfunction()
