@@ -458,15 +458,14 @@ public:
 
 typedef ControlPin<int, PinDirection::In>			IntInPin;
 typedef ControlPin<int, PinDirection::Out>			IntOutPin;
-typedef ControlPin<float, PinDirection::In>			FloatInPin;
-typedef ControlPin<float, PinDirection::Out>		FloatOutPin;
 typedef ControlPin<Blob, PinDirection::In>			BlobInPin;
-typedef ControlPin<Blob, PinDirection::Out>			BlobOutPin;
-typedef ControlPin<std::string, PinDirection::In>	StringInPin;
-typedef ControlPin<std::string, PinDirection::Out>	StringOutPin;
-
 typedef ControlPin<bool, PinDirection::In>			BoolInPin;
 typedef ControlPin<bool, PinDirection::Out>			BoolOutPin;
+typedef ControlPin<Blob, PinDirection::Out>			BlobOutPin;
+typedef ControlPin<float, PinDirection::In>			FloatInPin;
+typedef ControlPin<float, PinDirection::Out>		FloatOutPin;
+typedef ControlPin<std::string, PinDirection::In>	StringInPin;
+typedef ControlPin<std::string, PinDirection::Out>	StringOutPin;
 
 // enum (List) pin based on Int Pin
 typedef ControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;

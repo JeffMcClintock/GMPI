@@ -136,7 +136,10 @@ ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* x
 
 	const auto uniqueId = xmlstr.substr(p, p2 - p);
 
-	pluginMap[{ subType, uniqueId }] = create;
+    // already registered this plugin?
+    assert(pluginMap.find({ subType, uniqueId }) == pluginMap.end());
+
+    pluginMap[{ subType, uniqueId }] = create;
 
 	xmls.push_back(xmlstr);
 
