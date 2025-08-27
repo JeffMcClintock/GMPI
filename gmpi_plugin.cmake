@@ -68,6 +68,10 @@ function(gmpi_plugin)
         # Default to GMPI if no formats were specified.
         set(GMPI_PLUGIN_FORMATS_LIST GMPI)
     endif()
+    if(WIN32)
+        # Remove AU only on Windows
+        list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU")
+    endif()
 
     # add SDK files
     set(sdk_srcs
@@ -144,9 +148,10 @@ function(gmpi_plugin)
 
     list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "VST3" FIND_VST3_INDEX)
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
 
     if(FIND_VST3_INDEX GREATER_EQUAL 0)
-        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
+#        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
 
         if(APPLE)
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
@@ -163,6 +168,11 @@ function(gmpi_plugin)
 
         # Link the VST3 wrapper as static libs
         target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces VST3_Wrapper)
+    endif()
+
+    if(FIND_AU_INDEX GREATER_EQUAL 0)
+        # Link the AU2 wrapper as static libs
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces AU2_Wrapper)
     endif()
 
     if(WIN32 AND SE_LOCAL_BUILD)
