@@ -20,19 +20,6 @@ function(gmpi_target)
     target_compile_features(${GMPI_TARGET_PROJECT_NAME} PUBLIC cxx_std_17)
 
     if(APPLE)
-        set_target_properties(${GMPI_TARGET_PROJECT_NAME}
-            PROPERTIES
-                BUNDLE TRUE
-                BUNDLE_EXTENSION "gmpi"
-        )
-    else()
-        set_target_properties(${GMPI_TARGET_PROJECT_NAME}
-            PROPERTIES
-                SUFFIX ".gmpi"
-        )
-    endif()
-
-    if(APPLE)
         # Guard Apple-specific frameworks
         target_link_libraries(${GMPI_TARGET_PROJECT_NAME} PRIVATE
             ${COREFOUNDATION_LIBRARY}
@@ -79,9 +66,11 @@ function(gmpi_plugin)
         ${gmpi_sdk_folder}/Core/Common.cpp
     )
 
-    set(plugin_includes)
-    list(APPEND plugin_includes ${gmpi_sdk_folder} ${gmpi_sdk_folder}/Core)
-
+    set(plugin_includes
+        ${gmpi_sdk_folder}
+        ${gmpi_sdk_folder}/Core
+    )
+   
     if(GMPI_PLUGIN_HAS_DSP)
         list(APPEND sdk_srcs
             ${gmpi_sdk_folder}/Core/Processor.h
@@ -120,10 +109,15 @@ function(gmpi_plugin)
         if(kind STREQUAL "VST3")
             list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/VST3/wrapperVst3.cpp)
             if(APPLE)
+                # TODO wrap this into wrapperVst3.cpp ?
                 list(APPEND FORMAT_SDK_FILES ${VST3_SDK}/public.sdk/source/main/macmain.cpp)
             endif()
         endif()
-
+        
+        if(kind STREQUAL "AU")
+            list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/AU2/wrapperAu2.cpp)
+        endif()
+        
         # Organize SDK files in IDE
         source_group(sdk FILES ${FORMAT_SDK_FILES})
 
@@ -144,6 +138,24 @@ function(gmpi_plugin)
         endif()
 
         gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
+        
+        set(TARGET_EXTENSION "${kind}")
+        if(kind STREQUAL "AU")
+            set(TARGET_EXTENSION "component")
+        endif()
+            
+        if(APPLE)
+            set_target_properties(${SUB_PROJECT_NAME}
+            PROPERTIES
+                BUNDLE TRUE
+                BUNDLE_EXTENSION "${TARGET_EXTENSION}"
+        )
+        else()
+            set_target_properties(${SUB_PROJECT_NAME}
+                PROPERTIES
+                SUFFIX ".${TARGET_EXTENSION}"
+            )
+        endif()
     endforeach()
 
     list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
@@ -151,7 +163,7 @@ function(gmpi_plugin)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
 
     if(FIND_VST3_INDEX GREATER_EQUAL 0)
-#        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
+        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
 
         if(APPLE)
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
@@ -171,8 +183,24 @@ function(gmpi_plugin)
     endif()
 
     if(FIND_AU_INDEX GREATER_EQUAL 0)
+        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_AU)
+        
         # Link the AU2 wrapper as static libs
-        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces AU2_Wrapper)
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces AU_Wrapper)
+        target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${AU_SDK_H})
+
+        # copy plugin to componenets folder. NOTE: Requires user to have read-write permissions on folder.
+        if(SE_LOCAL_BUILD)
+            SET(AU_DEST "/Library/Audio/Plug-Ins/Components")
+            add_custom_command(TARGET ${SUB_PROJECT_NAME}
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
+                    "${AU_DEST}/$<TARGET_FILE_NAME:${SUB_PROJECT_NAME}>.component"
+                COMMENT "Copy to AU folder"
+                VERBATIM
+            )
+        endif()
     endif()
 
     if(WIN32 AND SE_LOCAL_BUILD)
