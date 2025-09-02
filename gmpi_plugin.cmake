@@ -173,7 +173,6 @@ function(gmpi_plugin)
 
             # Drive the generation and make the AU target wait for it
             add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
-            add_dependencies(${SUB_PROJECT_NAME} ${SUB_PROJECT_NAME}_gen_plist)
         endif()
         
         # Organize SDK files in IDE
