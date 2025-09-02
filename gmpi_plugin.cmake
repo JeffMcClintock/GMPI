@@ -155,6 +155,9 @@ function(gmpi_plugin)
             # here is the plist output file
             set(PLIST_OUT "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}-Info.plist")
 
+            # Xcode’s intermediate Info.plist path (what Build Settings shows) Cmake secretly copies the generated plist here.
+            set(PLIST_DEST "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir/Info.plist")
+
             # Ensure a stub plist exists at configure time (avoids "file not found" during project generation)
             if(NOT EXISTS "${PLIST_OUT}")
                 file(WRITE "${PLIST_OUT}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict/>\n</plist>\n")
@@ -194,7 +197,7 @@ function(gmpi_plugin)
             add_custom_command(TARGET ${SUB_PROJECT_NAME} PRE_LINK
                 COMMAND $<TARGET_FILE:plist_util>
                         "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"  # scan input (GMPI bundle)
-                        "${PLIST_OUT}" 
+                        "$<SHELL_PATH:${PLIST_DEST}>"                       # write where Xcode expects
                 # ARGS "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>" "${PLIST_OUT}"  # input bundle to scan, output plist
                 # DEPENDS plist_util  ${GMPI_PLUGIN_PROJECT_NAME}                         # build tool and GMPI first                                                     
                 # BYPRODUCTS "${PLIST_OUT}"
@@ -204,7 +207,7 @@ function(gmpi_plugin)
             
             # Tell Xcode/Bundle step to use the generated plist
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
-                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
+                MACOSX_BUNDLE_INFO_PLIST "${PLIST_DEST}"
                 BUNDLE TRUE
                 BUNDLE_EXTENSION "component"
             )
