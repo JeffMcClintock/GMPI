@@ -74,26 +74,22 @@ function(gmpi_plugin)
 ################################ plist utility ##########################################
     if(FIND_AU_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util)
-            #add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../adapters/common ${CMAKE_CURRENT_BINARY_DIR}/adapters_common)
-
             set(plist_srcs
-            ${ADAPTORS_COMMON_FOLDER}/plist_util.cpp
-            ${ADAPTORS_COMMON_FOLDER}/dynamic_linking.h
-            ${ADAPTORS_COMMON_FOLDER}/dynamic_linking.cpp
-            ${ADAPTORS_COMMON_FOLDER}/tinyXml2/tinyxml2.h
-            ${ADAPTORS_COMMON_FOLDER}/tinyXml2/tinyxml2.cpp
+                ${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp
+                ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.h
+                ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.cpp
+                ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.h
+                ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp
             )
 
             add_executable(plist_util ${plist_srcs})
 
-            # Include paths ONLY for plist_util
             target_include_directories(plist_util PRIVATE
                 ${gmpi_sdk_folder}/Core
-                ${ADAPTORS_COMMON_FOLDER}
+                ${GMPI_ADAPTORS}/wrapper/common
             )
 
             target_link_libraries( plist_util ${COREFOUNDATION_LIBRARY} )
-
         endif()
     endif()
 ################################ plist utility ##########################################
@@ -170,14 +166,6 @@ function(gmpi_plugin)
 
             # Drive the generation and make the AU target wait for it
             add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
-            add_dependencies(${SUB_PROJECT_NAME} ${SUB_PROJECT_NAME}_gen_plist)
-
-            # Tell Xcode/Bundle step to use the generated plist
-            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
-                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
-                BUNDLE TRUE
-                BUNDLE_EXTENSION "component"
-            )
         endif()
         
         # Organize SDK files in IDE
@@ -204,6 +192,14 @@ function(gmpi_plugin)
         set(TARGET_EXTENSION "${kind}")
         if(kind STREQUAL "AU")
             set(TARGET_EXTENSION "component")
+            add_dependencies(${SUB_PROJECT_NAME} ${SUB_PROJECT_NAME}_gen_plist)
+            
+            # Tell Xcode/Bundle step to use the generated plist
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
+                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
+                BUNDLE TRUE
+                BUNDLE_EXTENSION "component"
+            )
         endif()
             
         if(APPLE)
