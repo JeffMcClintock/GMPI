@@ -155,17 +155,25 @@ function(gmpi_plugin)
             # here is the plist output file
             set(PLIST_OUT "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}-Info.plist")
 
+            # Ensure a stub plist exists at configure time (avoids "file not found" during project generation)
+            if(APPLE AND NOT EXISTS "${PLIST_OUT}")
+                file(WRITE "${PLIST_OUT}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict/>\n</plist>\n")
+            endif()
+
+            # Generate Info.plist using plist_util by scanning the GMPI bundle
             add_custom_command(
                 OUTPUT ${PLIST_OUT}
                 COMMAND $<TARGET_FILE:plist_util>
-                ARGS "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>" "${PLIST_OUT}"
-                DEPENDS plist_util
+                ARGS "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>" "${PLIST_OUT}"  # input bundle to scan, output plist
+                DEPENDS plist_util  ${GMPI_PLUGIN_PROJECT_NAME}                         # build tool and GMPI first                                                     
+                BYPRODUCTS "${PLIST_OUT}"
                 COMMENT "Generating ${PLIST_OUT}"
                 VERBATIM
             )
 
             # Drive the generation and make the AU target wait for it
             add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
+            add_dependencies(${SUB_PROJECT_NAME} ${SUB_PROJECT_NAME}_gen_plist)
         endif()
         
         # Organize SDK files in IDE
