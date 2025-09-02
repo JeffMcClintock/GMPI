@@ -192,28 +192,44 @@ function(gmpi_plugin)
             # Drive the generation and make the AU target wait for it
             #add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
 
+            # can't build the AU till we have the plist util and also the GMPI plugin (to scan it's XML)
             add_dependencies(${SUB_PROJECT_NAME} plist_util ${GMPI_PLUGIN_PROJECT_NAME}) # ensure plist util and GMPI plugin are built first.
 
-            # Generate Info.plist using plist_util by scanning the GMPI bundle
-            add_custom_command(TARGET ${SUB_PROJECT_NAME} PRE_LINK
-                COMMAND ${CMAKE_COMMAND} -E make_directory
-                        "$<SHELL_PATH:${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir>"
+            # this required me to run CMake, build the plugin, then re-run CMake to get the path correct.
+#            # Generate Info.plist using plist_util by scanning the GMPI bundle
+#            add_custom_command(TARGET ${SUB_PROJECT_NAME} PRE_LINK
+#                COMMAND ${CMAKE_COMMAND} -E make_directory
+#                        "$<SHELL_PATH:${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir>"
+#                COMMAND $<TARGET_FILE:plist_util>
+#                        "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"  # scan input (GMPI bundle)
+#                        "$<SHELL_PATH:${PLIST_DEST}>"                       # write where Xcode expects
+#                # ARGS "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>" "${PLIST_OUT}"  # input bundle to scan, output plist
+#                # DEPENDS plist_util  ${GMPI_PLUGIN_PROJECT_NAME}                         # build tool and GMPI first                                                     
+#                # BYPRODUCTS "${PLIST_OUT}"
+#                COMMENT "Generating Info.plist for AU plugin"
+#                VERBATIM
+#            )
+#            # Tell Xcode/Bundle step to use the generated plist
+#            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
+#                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
+#                BUNDLE TRUE
+#                BUNDLE_EXTENSION "component"
+#            )
+
+            # Path to the AU component bundle
+            set(AU_BUNDLE "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>")
+            # Path to the Info.plist inside the AU bundle
+            set(AU_PLIST "${AU_BUNDLE}/Contents/Info.plist")
+
+            add_custom_command(TARGET ${SUB_PROJECT_NAME}
+                POST_BUILD
                 COMMAND $<TARGET_FILE:plist_util>
-                        "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"  # scan input (GMPI bundle)
-                        "$<SHELL_PATH:${PLIST_DEST}>"                       # write where Xcode expects
-                # ARGS "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>" "${PLIST_OUT}"  # input bundle to scan, output plist
-                # DEPENDS plist_util  ${GMPI_PLUGIN_PROJECT_NAME}                         # build tool and GMPI first                                                     
-                # BYPRODUCTS "${PLIST_OUT}"
-                COMMENT "Generating Info.plist for AU plugin"
+                    "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"      # input: GMPI bundle to scan
+                    "${AU_PLIST}"                                           # output: Info.plist to overwrite
+                COMMENT "Overwriting Info.plist in AU component with plist_util"
                 VERBATIM
             )
-            
-            # Tell Xcode/Bundle step to use the generated plist
-            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
-                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
-                BUNDLE TRUE
-                BUNDLE_EXTENSION "component"
-            )
+
         endif()
             
         if(APPLE)
