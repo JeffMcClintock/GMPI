@@ -159,12 +159,12 @@ function(gmpi_plugin)
             set(PLIST_DEST "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir/Info.plist")
 
             # Ensure a stub plist exists at configure time (avoids "file not found" during project generation)
-            if(NOT EXISTS "${PLIST_OUT}")
-                file(WRITE "${PLIST_OUT}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict/>\n</plist>\n")
+            if(NOT EXISTS "${PLIST_DEST}")
+                file(WRITE "${PLIST_DEST}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict/>\n</plist>\n")
             endif()
 
             # Drive the generation and make the AU target wait for it
-            add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
+            #add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
         endif()
         
         # Organize SDK files in IDE
@@ -207,7 +207,7 @@ function(gmpi_plugin)
             
             # Tell Xcode/Bundle step to use the generated plist
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
-                MACOSX_BUNDLE_INFO_PLIST "${PLIST_DEST}"
+                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
                 BUNDLE TRUE
                 BUNDLE_EXTENSION "component"
             )
