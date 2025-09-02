@@ -150,21 +150,6 @@ function(gmpi_plugin)
         
         if(kind STREQUAL "AU")
             list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/AU2/wrapperAu2.cpp)
-
-            # handle the Info.plist generation for the AU plugin
-            # here is the plist output file
-            set(PLIST_OUT "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}-Info.plist")
-
-            # Xcode’s intermediate Info.plist path (what Build Settings shows) Cmake secretly copies the generated plist here.
-            set(PLIST_DEST "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir/Info.plist")
-
-            # Ensure a stub plist exists at configure time (avoids "file not found" during project generation)
-            if(NOT EXISTS "${PLIST_DEST}")
-                file(WRITE "${PLIST_DEST}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict/>\n</plist>\n")
-            endif()
-
-            # Drive the generation and make the AU target wait for it
-            #add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
         endif()
         
         # Organize SDK files in IDE
@@ -191,10 +176,28 @@ function(gmpi_plugin)
         set(TARGET_EXTENSION "${kind}")
         if(kind STREQUAL "AU")
             set(TARGET_EXTENSION "component")
+
+            # handle the Info.plist generation for the AU plugin
+            # here is the plist output file
+            set(PLIST_OUT "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}-Info.plist")
+
+            # Xcode’s intermediate Info.plist path (what Build Settings shows) Cmake secretly copies the generated plist here.
+            set(PLIST_DEST "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir/Info.plist")
+
+            # Ensure a stub plist exists at configure time (avoids "file not found" during project generation)
+            #if(NOT EXISTS "${PLIST_DEST}")
+            #    file(WRITE "${PLIST_DEST}" "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">\n<plist version=\"1.0\">\n<dict/>\n</plist>\n")
+            #endif()
+
+            # Drive the generation and make the AU target wait for it
+            #add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
+
             add_dependencies(${SUB_PROJECT_NAME} plist_util ${GMPI_PLUGIN_PROJECT_NAME}) # ensure plist util and GMPI plugin are built first.
 
             # Generate Info.plist using plist_util by scanning the GMPI bundle
             add_custom_command(TARGET ${SUB_PROJECT_NAME} PRE_LINK
+                COMMAND ${CMAKE_COMMAND} -E make_directory
+                        "$<SHELL_PATH:${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir>"
                 COMMAND $<TARGET_FILE:plist_util>
                         "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"  # scan input (GMPI bundle)
                         "$<SHELL_PATH:${PLIST_DEST}>"                       # write where Xcode expects
