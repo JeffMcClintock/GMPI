@@ -51,14 +51,52 @@ function(gmpi_plugin)
     if(NOT GMPI_PLUGIN_PROJECT_NAME)
         message(FATAL_ERROR "gmpi_plugin(PROJECT_NAME <name>) is required.")
     endif()
+
+    # Default to GMPI if no formats were specified.
     if(NOT GMPI_PLUGIN_FORMATS_LIST)
-        # Default to GMPI if no formats were specified.
         set(GMPI_PLUGIN_FORMATS_LIST GMPI)
     endif()
+
+    # never build AU on Windows
     if(WIN32)
-        # Remove AU only on Windows
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU")
     endif()
+
+    #if building an AU, we're gonna need the GMPI also (for scanning the plist)
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
+    if(FIND_AU_INDEX GREATER_EQUAL 0)
+        list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
+        if(FIND_GMPI_INDEX LESS 0)
+            list(APPEND GMPI_PLUGIN_FORMATS_LIST "GMPI")
+        endif()
+    endif()
+
+################################ plist utility ##########################################
+    if(FIND_AU_INDEX GREATER_EQUAL 0)
+        if(NOT TARGET plist_util)
+            #add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/../adapters/common ${CMAKE_CURRENT_BINARY_DIR}/adapters_common)
+
+            set(plist_srcs
+            ${ADAPTORS_COMMON_FOLDER}/plist_util.cpp
+            ${ADAPTORS_COMMON_FOLDER}/dynamic_linking.h
+            ${ADAPTORS_COMMON_FOLDER}/dynamic_linking.cpp
+            ${ADAPTORS_COMMON_FOLDER}/tinyXml2/tinyxml2.h
+            ${ADAPTORS_COMMON_FOLDER}/tinyXml2/tinyxml2.cpp
+            )
+
+            add_executable(plist_util ${plist_srcs})
+
+            # Include paths ONLY for plist_util
+            target_include_directories(plist_util PRIVATE
+                ${gmpi_sdk_folder}/Core
+                ${ADAPTORS_COMMON_FOLDER}
+            )
+
+            target_link_libraries( plist_util ${COREFOUNDATION_LIBRARY} )
+
+        endif()
+    endif()
+################################ plist utility ##########################################
 
     # add SDK files
     set(sdk_srcs
@@ -116,6 +154,30 @@ function(gmpi_plugin)
         
         if(kind STREQUAL "AU")
             list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/AU2/wrapperAu2.cpp)
+
+            # handle the Info.plist generation for the AU plugin
+            # here is the plist output file
+            set(PLIST_OUT "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}-Info.plist")
+
+            add_custom_command(
+                OUTPUT ${PLIST_OUT}
+                COMMAND $<TARGET_FILE:plist_util>
+                ARGS "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>" "${PLIST_OUT}"
+                DEPENDS plist_util
+                COMMENT "Generating ${PLIST_OUT}"
+                VERBATIM
+            )
+
+            # Drive the generation and make the AU target wait for it
+            add_custom_target(${SUB_PROJECT_NAME}_gen_plist DEPENDS "${PLIST_OUT}")
+            add_dependencies(${SUB_PROJECT_NAME} ${SUB_PROJECT_NAME}_gen_plist)
+
+            # Tell Xcode/Bundle step to use the generated plist
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
+                MACOSX_BUNDLE_INFO_PLIST "${PLIST_OUT}"
+                BUNDLE TRUE
+                BUNDLE_EXTENSION "component"
+            )
         endif()
         
         # Organize SDK files in IDE
@@ -189,7 +251,7 @@ function(gmpi_plugin)
         target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces AU_Wrapper)
         target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${AU_SDK_H})
 
-        # copy plugin to componenets folder. NOTE: Requires user to have read-write permissions on folder.
+        # copy plugin to components folder. NOTE: Requires user to have read-write permissions on folder.
         if(SE_LOCAL_BUILD)
             SET(AU_DEST "/Library/Audio/Plug-Ins/Components")
             add_custom_command(TARGET ${SUB_PROJECT_NAME}
