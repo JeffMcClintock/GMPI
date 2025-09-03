@@ -1,5 +1,4 @@
-#pragma once
-#include "Hosting/plugin_holder.h"
+#include "Hosting/processor_holder.h"
 
 #include <string>
 #include <vector>
