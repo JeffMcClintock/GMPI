@@ -5,8 +5,6 @@
 #include "xml_spec_reader.h"
 #include "Common.h"
 #include "tinyXml2/tinyxml2.h"
-//#include "wrapper/common/dynamic_linking.h"
-//#include "wrapper/common/HostControls.h"
 #include "GmpiSdkCommon.h"
 
 #if 0
