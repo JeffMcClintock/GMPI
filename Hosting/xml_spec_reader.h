@@ -3,15 +3,12 @@
 #include "Hosting/xml_spec_reader.h"
 */
 
-
 #include <string>
 #include <vector>
 #include <algorithm>
 #include <optional>
 #include "GmpiApiCommon.h"
 #include "GmpiApiEditor.h"
-//#include "wrapper/common/platform_string.h"
-//#include "wrapper/common/SemInfo.h"
 
 namespace tinyxml2
 {
@@ -22,22 +19,6 @@ namespace gmpi
 {
 namespace hosting
 {
-/*
-struct pluginInfo
-{
-	std::string name_;
-	std::string version_;
-	std::string vendorName_;
-	std::string vendorUrl_;
-	std::string vendorEmail_;
-	std::string subCategories_;
-	int ElatencyCompensation{};
-
-	bool outputsAsStereoPairs = true;
-	bool emulateIgnorePC = false;
-	std::string outputNames;
-};
-*/
 
 enum class HostControls : int
 {
@@ -154,7 +135,6 @@ struct paramInfo
 	std::string default_value;
 	//int32_t parameterId;
 	//int32_t flags;
-	//std::string hostConnect;
 	std::string enum_list;
 	double minimum = 0.0;
 	double maximum = 1.0;
@@ -194,15 +174,6 @@ inline int countPins(gmpi::hosting::pluginInfo const& plugin, gmpi::PinDirection
 	));
 }
 
-inline std::string calcSubCategories(gmpi::hosting::pluginInfo const& plugin)
-{
-	if (countPins(plugin, gmpi::PinDirection::In, gmpi::PinDatatype::Midi) > 0)
-	{
-		return "Instrument|Synth";
-	}
-	return "Fx";
-}
-
 inline auto getPinName(gmpi::hosting::pluginInfo const& plugin, gmpi::PinDirection direction, int index) -> std::string
 {
 	int i = 0;
@@ -218,28 +189,5 @@ inline auto getPinName(gmpi::hosting::pluginInfo const& plugin, gmpi::PinDirecti
 	return {};
 }
 
-#if 0
-class xml_spec_reader
-{
-public:
-	xml_spec_reader() = default;
-	~xml_spec_reader() = default;
-
-	std::string getVendorName();
-	bool GetOutputsAsStereoPairs();
-	std::vector<pluginInfoSem> plugins;
-
-private:
-	void initialize();
-	void RegisterXml(const /*platform_*/ std::string& pluginPath, const char* xml);
-	void RegisterPin(tinyxml2::XMLElement* pin, std::vector<pinInfoSem>* pinlist, gmpi::api::PluginSubtype plugin_sub_type,
-		int nextPinId);
-	bool initializeFactory();
-
-	std::string vendorName_;
-	std::string vendorUrl_;
-	std::string vendorEmail_;
-};
-#endif
 } // namespace hosting
 } // namespace gmpi
