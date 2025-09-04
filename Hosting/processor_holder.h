@@ -174,7 +174,7 @@ public:
 	}
 };
 
-struct gmpi_processor
+struct gmpi_processor // _holder ??
 {
 	gmpi::shared_ptr<gmpi::api::IProcessor> processor;
 	EventQue events;
