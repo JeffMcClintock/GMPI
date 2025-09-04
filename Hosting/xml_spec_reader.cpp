@@ -6,10 +6,10 @@
 #include "Common.h"
 #include "tinyXml2/tinyxml2.h"
 #include "GmpiSdkCommon.h"
+#include "BundleInfo.h"
 
 #if 0
 #include "it_enum_list.h"
-#include "BundleInfo.h"
 #include "FileFinder.h"
 #include "FileFinder.h"
 #include "GmpiApiAudio.h"
