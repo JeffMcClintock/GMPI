@@ -16,6 +16,14 @@ namespace gmpi
 namespace hosting
 {
 
+template<typename T>
+void copyValueToEvent(gmpi::api::Event& e, T value)
+{
+	const auto src = reinterpret_cast<const uint8_t*>(&value);
+	e.size_ = static_cast<int32_t>(sizeof(value));
+	std::copy(src, src + sizeof(value), e.data_);
+}
+
 bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info)
 {
 	events.clear();
@@ -77,7 +85,143 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 		);
 	}
 
+	// initialise parameter pinss.
+	{
+		gmpi::api::Event e
+		{
+			{},            // next (populated later)
+			0,				// timeDelta
+			gmpi::api::EventType::PinSet,
+			0,				// pinIdx
+			0,             // size_
+			{}             // data_/oversizeData_
+		};
+
+		MidiInputPinIdx = -1;
+
+		for (auto& pin : info.dspPins)
+		{
+			if (pin.datatype == gmpi::PinDatatype::Midi && pin.direction == gmpi::PinDirection::In && -1 == MidiInputPinIdx)
+			{
+				MidiInputPinIdx = pin.id;
+			}
+
+			if (pin.direction == gmpi::PinDirection::Out || pin.parameterId == -1)
+				continue;
+
+			auto param = patchManager.getParameter(pin.parameterId);
+			if (!param)
+				continue;
+
+			{
+				e.pinIdx = pin.id;
+
+				switch (pin.parameterFieldType)
+				{
+				case gmpi::Field::Normalized:
+				{
+					copyValueToEvent(e, static_cast<float>(param->normalisedValue()));
+					events.push(e);
+				}
+				break;
+
+				case gmpi::Field::Value:
+				{
+					switch (pin.datatype)
+					{
+					case gmpi::PinDatatype::Float32:
+					{
+						copyValueToEvent(e, static_cast<float>(param->valueReal));
+					}
+					break;
+
+					case gmpi::PinDatatype::Int32:
+					{
+						copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal)));
+					}
+					break;
+
+					case gmpi::PinDatatype::Bool:
+					{
+						copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal)));
+					}
+					break;
+					default:
+						assert(false); // unsupported type.
+					}
+					events.push(e);
+				}
+				break;
+				}
+			}
+		}
+	}
+
 	return true;
+}
+
+void gmpi_processor::setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double valueNormalized)
+{
+	auto param = patchManager.setParameterNormalised(id, valueNormalized);
+
+	if (param)
+	{
+		gmpi::api::Event e
+		{
+			{},            // next (populated later)
+			sampleOffset,  // timeDelta
+			gmpi::api::EventType::PinSet,
+			0,				// pinIdx
+			0,             // size_
+			{}             // data_/oversizeData_
+		};
+
+		for (auto& pin : info.dspPins)
+		{
+			if (pin.parameterId == id && pin.direction == gmpi::PinDirection::In)
+			{
+				e.pinIdx = pin.id;
+
+				switch (pin.parameterFieldType)
+				{
+				case gmpi::Field::Normalized:
+				{
+					copyValueToEvent(e, static_cast<float>(valueNormalized));
+					events.push(e);
+				}
+				break;
+
+				case gmpi::Field::Value:
+				{
+					switch (pin.datatype)
+					{
+					case gmpi::PinDatatype::Float32:
+					{
+						copyValueToEvent(e, static_cast<float>(param->valueReal));
+					}
+					break;
+
+					case gmpi::PinDatatype::Int32:
+					{
+						copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal)));
+					}
+					break;
+
+					case gmpi::PinDatatype::Bool:
+					{
+						copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal)));
+					}
+					break;
+					default:
+						assert(false); // unsupported type.
+					}
+					events.push(e);
+					break;
+				}
+				}
+			}
+		}
+	}
 }
 
 } // namespace hosting

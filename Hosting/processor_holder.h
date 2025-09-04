@@ -116,6 +116,24 @@ public:
 
 	PatchManager() = default;
 
+	void init(gmpi::hosting::pluginInfo const& info)
+	{
+		for (const auto& param : info.parameters)
+		{
+			assert(param.id != -1 || param.hostConnect != gmpi::hosting::HostControls::None);
+			//		if (param.id >= 0)
+			{
+				gmpi::hosting::DawParameter p;
+				p.id = param.id > -1 ? param.id : (-2 - (int)param.hostConnect);
+				p.valueReal = atof(param.default_value.c_str());
+				p.valueLo = param.minimum;
+				p.valueHi = param.maximum;
+
+				parameters[p.id] = p;
+			}
+		}
+	}
+
 	DawParameter* getParameter(int id)
 	{
 		if (auto it = parameters.find(id); it != parameters.end())
@@ -162,8 +180,10 @@ struct gmpi_processor
 	EventQue events;
 	PatchManager patchManager;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
+	int MidiInputPinIdx = -1;
 
 	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info);
+	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value);
 };
 
 //gmpi::shared_ptr<gmpi::api::IProcessor> gmpi_instansiate_processor();
