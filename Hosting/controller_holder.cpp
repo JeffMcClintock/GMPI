@@ -67,6 +67,8 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 						break;
 					}
 					}
+
+//					gmpi::hosting::my_msg_que_output_stream s(getQueueToDsp(), param->parameterHandle_, "ppc\0"); // "ppc"
 				}
 			}
 		}
@@ -135,6 +137,10 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 						if(changed)
 						{
 							// updateProcessor
+							
+//							gmpi::hosting::my_msg_que_output_stream s(queueToProcessor, param->id, "ppc3"); // "ppc3"
+							pendingControllerQueueClients.AddWaiter(param);
+
 							for (auto* gui : m_guis)
 							{
 								gui->setParameter(param->id, pin.parameterFieldType, voice, static_cast<int32_t>(data.size()), reinterpret_cast<const uint8_t*>(data.data()));

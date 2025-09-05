@@ -7,6 +7,7 @@
 //#include "GmpiApiCommon.h"
 //#include "GmpiApiEditor.h"
 //#include "GmpiSdkCommon.h"
+#include "Hosting/message_queues.h"
 
 extern "C"
 gmpi::ReturnCode MP_GetFactory(void** returnInterface);
@@ -24,8 +25,9 @@ void copyValueToEvent(gmpi::api::Event& e, T value)
 	std::copy(src, src + sizeof(value), e.data_);
 }
 
-bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info)
+bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& pinfo)
 {
+	info = &pinfo;
 	events.clear();
 	processor = {};
 
@@ -41,7 +43,7 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 	}
 
 	gmpi::shared_ptr<gmpi::api::IUnknown> pluginUnknown;
-	r2 = factory->createInstance(info.id.c_str(), gmpi::api::PluginSubtype::Audio, pluginUnknown.put_void());
+	r2 = factory->createInstance(info->id.c_str(), gmpi::api::PluginSubtype::Audio, pluginUnknown.put_void());
 	if (!pluginUnknown || r != gmpi::ReturnCode::Ok)
 	{
 		return false;
@@ -68,7 +70,7 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 	);
 
 	// initialise silence flags.
-	for (auto& pin : info.dspPins)
+	for (auto& pin : info->dspPins)
 	{
 		if (pin.datatype != gmpi::PinDatatype::Audio || pin.direction != gmpi::PinDirection::In)
 			continue;
@@ -99,7 +101,7 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 
 		MidiInputPinIdx = -1;
 
-		for (auto& pin : info.dspPins)
+		for (auto& pin : info->dspPins)
 		{
 			if (pin.datatype == gmpi::PinDatatype::Midi && pin.direction == gmpi::PinDirection::In && -1 == MidiInputPinIdx)
 			{
@@ -162,66 +164,92 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 
 void gmpi_processor::setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double valueNormalized)
 {
-	auto param = patchManager.setParameterNormalised(id, valueNormalized);
-
-	if (param)
+	if (auto param = patchManager.setParameterNormalised(id, valueNormalized); param)
 	{
-		gmpi::api::Event e
-		{
-			{},            // next (populated later)
-			sampleOffset,  // timeDelta
-			gmpi::api::EventType::PinSet,
-			0,				// pinIdx
-			0,             // size_
-			{}             // data_/oversizeData_
-		};
+		sendParameterToProcessor(info, param, sampleOffset);
+	}
+}
 
-		for (auto& pin : info.dspPins)
+void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset)
+{
+	gmpi::api::Event e
+	{
+		{},            // next (populated later)
+		sampleOffset,  // timeDelta
+		gmpi::api::EventType::PinSet,
+		0,				// pinIdx
+		0,             // size_
+		{}             // data_/oversizeData_
+	};
+
+	for (auto& pin : info.dspPins)
+	{
+		if (pin.parameterId == param->id && pin.direction == gmpi::PinDirection::In)
 		{
-			if (pin.parameterId == id && pin.direction == gmpi::PinDirection::In)
+			e.pinIdx = pin.id;
+
+			switch (pin.parameterFieldType)
 			{
-				e.pinIdx = pin.id;
+			case gmpi::Field::Normalized:
+			{
+				copyValueToEvent(e, static_cast<float>(param->normalisedValue()));
+				events.push(e);
+			}
+			break;
 
-				switch (pin.parameterFieldType)
+			case gmpi::Field::Value:
+			{
+				switch (pin.datatype)
 				{
-				case gmpi::Field::Normalized:
+				case gmpi::PinDatatype::Float32:
 				{
-					copyValueToEvent(e, static_cast<float>(valueNormalized));
-					events.push(e);
+					copyValueToEvent(e, static_cast<float>(param->valueReal));
 				}
 				break;
 
-				case gmpi::Field::Value:
+				case gmpi::PinDatatype::Int32:
 				{
-					switch (pin.datatype)
-					{
-					case gmpi::PinDatatype::Float32:
-					{
-						copyValueToEvent(e, static_cast<float>(param->valueReal));
-					}
-					break;
-
-					case gmpi::PinDatatype::Int32:
-					{
-						copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal)));
-					}
-					break;
-
-					case gmpi::PinDatatype::Bool:
-					{
-						copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal)));
-					}
-					break;
-					default:
-						assert(false); // unsupported type.
-					}
-					events.push(e);
-					break;
+					copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal)));
 				}
+				break;
+
+				case gmpi::PinDatatype::Bool:
+				{
+					copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal)));
 				}
+				break;
+				default:
+					assert(false); // unsupported type.
+				}
+				events.push(e);
+				break;
+			}
 			}
 		}
 	}
+}
+
+bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& strm)
+{
+	switch (msg_id)
+	{
+	case id_to_long("ppc2"): // "ppc2" Patch parameter change, always sent as a double
+	{
+		double val{};
+		strm >> val;
+
+		if (auto param = patchManager.setParameterReal(handle, val); param)
+		{
+			constexpr int sampleOffset{};
+			sendParameterToProcessor(*info, param, sampleOffset);
+		}
+
+		return true;
+	}
+	break;
+	};
+
+	return false; // failed to consume message.
 }
 
 } // namespace hosting

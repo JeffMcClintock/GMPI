@@ -16,8 +16,9 @@ namespace gmpi
 namespace hosting
 {
 
-inline int32_t id_to_long(const char* id)
+inline constexpr uint32_t id_to_long(const char* id)
 {
+	/*
 	assert(id);
 	const auto length = strlen(id);
 
@@ -26,6 +27,17 @@ inline int32_t id_to_long(const char* id)
 		| (length > 1 ? ((int)id[1]) << 16 : 0)
 		| (length > 2 ? ((int)id[2]) <<  8 : 0)
 		| (length > 3 ?       id[3]        : 0);
+
+	if (!id)
+		return 0;
+	*/
+
+	uint32_t v = 0;
+	for (int i = 0; i < 4 && id[i] != '\0'; ++i)
+	{
+		v |= static_cast<uint32_t>(static_cast<unsigned char>(id[i])) << (8 * (3 - i));
+	}
+	return v;
 }
 
 class IWriteableQue

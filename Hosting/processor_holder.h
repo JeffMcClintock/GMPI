@@ -174,8 +174,10 @@ public:
 	}
 };
 
-struct gmpi_processor // _holder ??
+struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 {
+	gmpi::hosting::pluginInfo const* info{};
+
 	gmpi::shared_ptr<gmpi::api::IProcessor> processor;
 	EventQue events;
 	PatchManager patchManager;
@@ -184,6 +186,9 @@ struct gmpi_processor // _holder ??
 
 	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info);
 	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value);
+	void sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset);
+
+	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
 };
 
 //gmpi::shared_ptr<gmpi::api::IProcessor> gmpi_instansiate_processor();

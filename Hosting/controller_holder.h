@@ -156,16 +156,19 @@ public:
 class gmpi_controller_holder : public gmpi::api::IEditorHost, public gmpi::api::IParameterObserver
 {
 	gmpi::hosting::pluginInfo* info{};
+//	IWriteableQue* queueToProcessor{};
 
 public:
-	gmpi_controller_holder() :
+	gmpi_controller_holder() : //IWriteableQue* processorQueue) :
 		message_que_dsp_to_ui(0x500000) // 5MB. see also AUDIO_MESSAGE_QUE_SIZE
+//		queueToProcessor(processorQueue)
 	{
 	}
 
 	ControllerPatchManager patchManager;
 	std::vector<gmpi::api::IParameterObserver*> m_guis;
-	gmpi::hosting::interThreadQue message_que_dsp_to_ui;
+gmpi::hosting::interThreadQue message_que_dsp_to_ui;
+	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 
 
 
