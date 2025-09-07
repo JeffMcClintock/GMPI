@@ -58,27 +58,27 @@ static const std::unordered_map<std::string, gmpi::PinDatatype> pinDatatypeInfo 
 static const std::unordered_map<std::string, HostControls> hostControlsInfo =
 {
 	{"None",					HostControls::None},
-	{"TimeBpm",					HostControls::TimeBpm},
-	{"TimeBarStart",			HostControls::TimeBarStart},
-	{"TimeNumerator",			HostControls::TimeNumerator},
-	{"TimeDenominator",			HostControls::TimeDenominator},
-	{"TimeTransportPlaying",	HostControls::TimeTransportPlaying},
-	{"TimeQuarterNotePosition",	HostControls::TimeQuarterNotePosition},
+	{"Time/BPM",				HostControls::TimeBpm},
+	{"Time/BarStart",			HostControls::TimeBarStart},
+	{"Time/Numerator",			HostControls::TimeNumerator},
+	{"Time/Denominator",		HostControls::TimeDenominator},
+	{"Time/TransportPlaying",	HostControls::TimeTransportPlaying},
+	{"Time/SongPosition",		HostControls::TimeQuarterNotePosition},
 
-	{"ProcessBypass",			HostControls::ProcessBypass },
-	{"ProcessRendermode",		HostControls::ProcessRendermode},
+	{"Process/Bypass",			HostControls::ProcessBypass },
+	{"Process/Rendermode",		HostControls::ProcessRendermode},
 };
 
 static std::array< gmpi::PinDatatype, 8 > hostControlDatatypes = {
-	  gmpi::PinDatatype::Float32 // TimeBpm
-	, gmpi::PinDatatype::Float32 // TimeBarStart
-	, gmpi::PinDatatype::Int32   // TimeNumerator
-	, gmpi::PinDatatype::Int32   // TimeDenominator
-	, gmpi::PinDatatype::Bool    // TimeTransportPlaying
-	, gmpi::PinDatatype::Float32 // TimeQuarterNotePosition
+	  gmpi::PinDatatype::Float32 // Time/Bpm
+	, gmpi::PinDatatype::Float32 // Time/BarStart
+	, gmpi::PinDatatype::Int32   // Time/Numerator
+	, gmpi::PinDatatype::Int32   // Time/Denominator
+	, gmpi::PinDatatype::Bool    // Time/TransportPlaying
+	, gmpi::PinDatatype::Float32 // Time/QuarterNotePosition
 
-	, gmpi::PinDatatype::Int32   // ProcessRendermode
-	, gmpi::PinDatatype::Bool    // ProcessBypass
+	, gmpi::PinDatatype::Int32   // Process/Rendermode
+	, gmpi::PinDatatype::Bool    // Process/Bypass
 };
 
 static std::array< const char*, 8 > hostControlNiceNames = {
@@ -99,6 +99,8 @@ std::optional<E> lookup(std::string s, const std::unordered_map<std::string, E>&
 	{
 		return it->second;
 	}
+
+	assert(s.empty()); // Unknown enum string!
 	return {};
 }
 

@@ -158,5 +158,68 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 	}
 }
 
+bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& strm)
+{
+	switch (msg_id)
+	{
+	case gmpi::hosting::id_to_long("ppc2"): // "ppc2" Patch parameter change, always sent as a double
+	{
+		constexpr int voice{};
+
+		double val{};
+		strm >> val;
+
+		if (auto param = patchManager.setParameterReal(handle, val); param)
+		{
+			//sendParameterToProcessor(*info, param, sampleOffset);
+			for (auto& pin : info->guiPins)
+			{
+				if (pin.parameterId == param->id)
+				{
+					for (auto* gui : m_guis)
+					{
+						const float valueNormalized = static_cast<float>(param->normalisedValue());
+						gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
+
+//						gui->setParameter(param->id, pin.parameterFieldType, voice, static_cast<int32_t>(data.size()), reinterpret_cast<const uint8_t*>(data.data()));
+						switch (pin.datatype)
+						{
+						case gmpi::PinDatatype::Float32:
+						{
+							const float value = static_cast<float>(param->valueReal);
+							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&value));
+						}
+						break;
+
+						case gmpi::PinDatatype::Int32:
+						{
+							const int32_t value = static_cast<int32_t>(std::round(param->valueReal));
+							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(int32_t), reinterpret_cast<const uint8_t*>(&value));
+						}
+						break;
+
+						case gmpi::PinDatatype::Bool:
+						{
+							const bool value = static_cast<bool>(std::round(param->valueReal));
+							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
+						}
+						break;
+						default:
+							assert(false); // unsupported type.
+						}
+						break;
+					}
+				}
+			}
+		}
+
+		return true;
+	}
+	break;
+	};
+
+	return false; // failed to consume message.
+}
+
 } // namespace hosting
 } // namespace gmpi

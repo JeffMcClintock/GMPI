@@ -153,7 +153,7 @@ public:
 
 };
 
-class gmpi_controller_holder : public gmpi::api::IEditorHost, public gmpi::api::IParameterObserver
+class gmpi_controller_holder : public gmpi::api::IEditorHost, public gmpi::api::IParameterObserver, public gmpi::hosting::interThreadQueUser
 {
 	gmpi::hosting::pluginInfo* info{};
 //	IWriteableQue* queueToProcessor{};
@@ -210,6 +210,9 @@ gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 	{
 		return gmpi::ReturnCode::Ok;
 	}
+
+	// interThreadQueUser
+	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
 
 	gmpi::ReturnCode queryInterface(const gmpi::api::Guid* iid, void** returnInterface) override
 	{
