@@ -967,8 +967,8 @@ tresult xml_spec_reader::createInstance(FIDString cid, FIDString iid, void** obj
 	{
 		Steinberg::TUID procUUid{};
 		Steinberg::TUID ctrlUUid{};
-		textIdtoUuid(sem.id, false, procUUid);
-		textIdtoUuid(sem.id, true, ctrlUUid);
+		textIdtoUuid(plugin->id, false, procUUid);
+		textIdtoUuid(plugin->id, true, ctrlUUid);
 
 		if (/*interfaceId == IComponent::iid ||*/ classId == Steinberg::FUID(procUUid))
 		{

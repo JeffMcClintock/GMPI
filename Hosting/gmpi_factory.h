@@ -1,8 +1,8 @@
 #pragma once
 /*
-#include "Hosting/controller_holder.h"
+#include "Hosting/gmpi_factory.h"
 
-gmpi::hosting::gmpi_processor plugin;
+auto& info = gmpi::hosting::factory::getInstance().getPluginInfo();
 */
 
 #include <unordered_map>
@@ -30,6 +30,7 @@ public:
 		return instance;
 	}
 
+	int getPlugincount();
 	gmpi::hosting::pluginInfo* getPluginInfo(int index = 0);
 
 //	gmpi::shared_ptr<gmpi::api::IUnknown> createInstance(gmpi::api::PluginSubtype sub_type);

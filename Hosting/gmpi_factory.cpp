@@ -43,6 +43,11 @@ factory::factory()
 	}
 }
 
+int factory::getPlugincount()
+{
+	return static_cast<int>(plugins.size());
+}
+
 gmpi::hosting::pluginInfo* factory::getPluginInfo(int index)
 {
 	if (index < 0 || index >= static_cast<int>(plugins.size()))
