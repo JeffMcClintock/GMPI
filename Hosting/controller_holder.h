@@ -199,6 +199,7 @@ gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 	// IEditorHost
 	gmpi::ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) override
 	{
+        setPinFromUi(PinIndex, voice, { (std::byte*) data, (std::byte*) data + size });
 		return gmpi::ReturnCode::Ok;
 	}
 	int32_t getHandle() override {
