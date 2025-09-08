@@ -167,7 +167,8 @@ public:
 
 	ControllerPatchManager patchManager;
 	std::vector<gmpi::api::IParameterObserver*> m_guis;
-gmpi::hosting::interThreadQue message_que_dsp_to_ui;
+	std::vector<gmpi::api::IEditor*> m_editors;
+	gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 
 
@@ -190,11 +191,13 @@ gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 		return gmpi::ReturnCode::Ok;
 	}
 
-	void initUi(gmpi::api::IParameterObserver* gui);
-
 	// send initial value of all parameters to GUI
-	void setPinFromUi(int32_t pinId, int32_t voice, std::span<const std::byte> data);
+	void initUi(gmpi::api::IParameterObserver* gui); // old, needs aditional translation params->pins
 
+	void initUi(gmpi::api::IEditor* gui);
+	gmpi::ReturnCode unRegisterGui(gmpi::api::IEditor* gui);
+	
+	void setPinFromUi(int32_t pinId, int32_t voice, std::span<const std::byte> data);
 
 	// IEditorHost
 	gmpi::ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) override
@@ -202,6 +205,7 @@ gmpi::hosting::interThreadQue message_que_dsp_to_ui;
         setPinFromUi(PinIndex, voice, { (std::byte*) data, (std::byte*) data + size });
 		return gmpi::ReturnCode::Ok;
 	}
+
 	int32_t getHandle() override {
 		return 0;
 	}
