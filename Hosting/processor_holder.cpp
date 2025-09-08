@@ -170,6 +170,16 @@ void gmpi_processor::setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo con
 	}
 }
 
+void gmpi_processor::setHostControlFromDaw(gmpi::hosting::HostControls hc, double value)
+{
+    const auto id = -2 - (int)hc;
+
+    if (auto param = patchManager.setParameterReal(id, value); param)
+    {
+        pendingControllerQueueClients.AddWaiter(param);
+    }
+}
+
 void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset)
 {
 	gmpi::api::Event e

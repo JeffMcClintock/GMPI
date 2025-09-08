@@ -171,8 +171,6 @@ public:
 	gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 
-
-
 	void init(gmpi::hosting::pluginInfo& info);
 
 	gmpi::ReturnCode registerGui(gmpi::api::IParameterObserver* gui)

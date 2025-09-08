@@ -24,11 +24,11 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 
 	for (auto& pin : info->guiPins)
 	{
-		for (auto& param_info : info->parameters)
+//		for (auto& param_info : info->parameters)
 		{
-			if (param_info.id == pin.parameterId)
+//			if (param_info.id == pin.parameterId)
 			{
-				if (auto* param = patchManager.getParameter(param_info.id); param)
+				if (auto* param = patchManager.getParameter(pin.parameterId); param)
 				{
 					switch (pin.parameterFieldType)
 					{
@@ -306,7 +306,7 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 
 		if (auto param = patchManager.setParameterReal(handle, val); param)
 		{
-			//sendParameterToProcessor(*info, param, sampleOffset);
+			// parameter watchers
 			for (auto& pin : info->guiPins)
 			{
 				if (pin.parameterId == param->id)
@@ -346,6 +346,67 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 					}
 				}
 			}
+            
+            constexpr int32_t voice{0};
+            
+            // editors too.
+            for (auto* gui : m_editors)
+            {
+                for (auto& pin : info->guiPins)
+                {
+                    if (param->id != pin.parameterId)
+                        continue;
+
+                    switch (pin.parameterFieldType)
+                    {
+                    case gmpi::Field::Normalized:
+                    {
+                        const float valueNormalized = static_cast<float>(param->normalisedValue());
+                        gui->setPin(pin.id, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
+                        
+                        gui->notifyPin(pin.id, voice);
+                        //gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
+                    }
+                    break;
+
+                    case gmpi::Field::Value:
+                    {
+                        switch (pin.datatype)
+                        {
+                        case gmpi::PinDatatype::Float32:
+                        {
+                            const float value = static_cast<float>(param->valueReal);
+                            gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+                            gui->notifyPin(pin.id, voice);
+                            //                            gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&value));
+                        }
+                        break;
+
+                        case gmpi::PinDatatype::Int32:
+                        {
+                            const int32_t value = static_cast<int32_t>(std::round(param->valueReal));
+                            gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+                            gui->notifyPin(pin.id, voice);
+                            //                            gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(int32_t), reinterpret_cast<const uint8_t*>(&value));
+                        }
+                        break;
+
+                        case gmpi::PinDatatype::Bool:
+                        {
+                            const bool value = static_cast<bool>(std::round(param->valueReal));
+                            gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+                            gui->notifyPin(pin.id, voice);
+                            //                            gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
+                        }
+                        break;
+                        default:
+                            assert(false); // unsupported type.
+                        }
+                        break;
+                    }
+                    }
+                }
+            }
 		}
 
 		return true;
