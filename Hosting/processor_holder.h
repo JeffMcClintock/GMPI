@@ -190,6 +190,8 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	void sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset);
 
 	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
+
+	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data);
 };
 
 //gmpi::shared_ptr<gmpi::api::IProcessor> gmpi_instansiate_processor();

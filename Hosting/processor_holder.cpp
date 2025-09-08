@@ -262,5 +262,63 @@ bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my
 	return false; // failed to consume message.
 }
 
+// data from Processor to host (eg MIDI out).
+gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data)
+{
+	for (auto& pin : info->dspPins)
+	{
+		// only output parameter pins.
+		if (pinId != pin.id || pin.direction != gmpi::PinDirection::Out || pin.parameterId == -1)
+			continue;
+
+		auto param = patchManager.getParameter(pin.parameterId);
+		if (!param)
+			continue;
+
+		switch (pin.parameterFieldType)
+		{
+		case gmpi::Field::Normalized:
+		{
+			assert(size == sizeof(float));
+
+			if (param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data))))
+				pendingControllerQueueClients.AddWaiter(param);
+		}
+		break;
+
+		case gmpi::Field::Value:
+		{
+			switch (pin.datatype)
+			{
+			case gmpi::PinDatatype::Float32:
+			{
+				if (param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::Int32:
+			{
+				if (param->setReal(static_cast<double>(*reinterpret_cast<const int32_t*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::Bool:
+			{
+				if (param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			default:
+				assert(false); // unsupported type.
+			}
+		}
+		break;
+		}
+	}
+
+	return gmpi::ReturnCode::Ok;
+}
+
+
 } // namespace hosting
 } // namespace gmpi
