@@ -16,6 +16,16 @@ void gmpi_controller_holder::init(gmpi::hosting::pluginInfo& pinfo)
 {
 	info = &pinfo;
 	patchManager.init(pinfo);
+
+	// create a list of native params. the index must line up strictly with the parameter DAW tag
+	for (auto& paramInfo : pinfo.parameters)
+	{
+		if (paramInfo.dawTag > -1)
+		{
+			assert(paramInfo.dawTag == nativeParams.size());
+			nativeParams.push_back(&patchManager.parameters[paramInfo.id]);
+		}
+	}
 }
 
 void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)

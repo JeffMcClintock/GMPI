@@ -208,6 +208,8 @@ public:
 #endif
 
 	ControllerPatchManager patchManager;
+	std::vector<gmpi::hosting::GmpiParameter*> nativeParams;
+
 	std::vector<gmpi::api::IEditor*> m_editors;
 	gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
