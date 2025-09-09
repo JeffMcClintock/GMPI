@@ -641,10 +641,70 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 //	calcHash();
 }
 
-//std::string gmpi_controller_holder::getPreset()
-//{
-//
-//}
+std::string gmpi_controller_holder::getPreset()
+{
+	tinyxml2::XMLDocument doc;
+	// TiXmlDeclaration* decl = new TiXmlDeclaration("1.0", "", "");
+	doc.LinkEndChild(doc.NewDeclaration());
+
+	auto element = doc.NewElement("Preset");
+	doc.LinkEndChild(element);
+
+#if 0 // TODO
+	{
+		char txt[20];
+#if defined(_MSC_VER)
+		sprintf_s(txt, "%08x", pluginId);
+#else
+		snprintf(txt, std::size(txt), "%08x", pluginId);
+#endif
+		element->SetAttribute("pluginId", txt);
+	}
+
+	if (!presetNameOverride.empty())
+	{
+		element->SetAttribute("name", presetNameOverride.c_str());
+	}
+	else if (!name.empty())
+	{
+		element->SetAttribute("name", name.c_str());
+	}
+
+	if (!category.empty())
+		element->SetAttribute("category", category.c_str());
+#endif
+
+	for (auto& [handle, parameter] : patchManager.parameters)
+	{
+		auto paramElement = doc.NewElement("Param");
+		element->LinkEndChild(paramElement);
+		paramElement->SetAttribute("id", handle);
+
+		//const int voice = 0;
+		//auto& raw = parameter.rawValues_[voice];
+
+		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
+
+		paramElement->SetAttribute("val", parameter.valueReal);
+
+#if 0  // TODO??
+		// MIDI learn.
+		if (parameter->MidiAutomation != -1)
+		{
+			paramElement->SetAttribute("MIDI", parameter->MidiAutomation);
+
+			if (!parameter->MidiAutomationSysex.empty())
+				paramElement->SetAttribute("MIDI_SYSEX", WStringToUtf8(parameter->MidiAutomationSysex));
+		}
+#endif
+	}
+
+	tinyxml2::XMLPrinter printer;
+	// printer.SetIndent(" ");
+	doc.Accept(&printer);
+
+	return printer.CStr();
+}
 
 
 } // namespace hosting

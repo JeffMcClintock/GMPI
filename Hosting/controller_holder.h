@@ -239,7 +239,7 @@ public:
 
 	void notifyGui(GmpiParameter* param);
 
-//	std::string getPreset();
+	std::string getPreset();
 	void setPresetXmlFromDaw(const std::string& xml);
 
 	// IParameterObserver
