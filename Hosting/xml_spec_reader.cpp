@@ -565,7 +565,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 				// Default.
 //				param.default_value = QueryStringAttribute(paramE, "default");
-				if(auto defaultE = paramE->Attribute("Default"); defaultE)
+				if(auto defaultE = paramE->Attribute("default"); defaultE)
 				{
 					param.default_value = atof(defaultE);
 				}
@@ -591,6 +591,9 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 					if (gmpi::PinDatatype::Enum == param.datatype)
 						param.datatype = gmpi::PinDatatype::Int32; // store as int32.
+                    
+                    if (gmpi::PinDatatype::Bool == param.datatype)
+                        param.maximum = 1.0;
 				}
 				else
 				{
