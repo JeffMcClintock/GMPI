@@ -75,13 +75,15 @@ function(gmpi_plugin)
 #    if(FIND_AU_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
             set(plist_srcs
+                ${gmpi_sdk_folder}/Hosting/xml_spec_reader.h
+                ${gmpi_sdk_folder}/Hosting/xml_spec_reader.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.h
                 ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.cpp
-                ${gmpi_sdk_folder}/Hosting/xml_spec_reader.h
-                ${gmpi_sdk_folder}/Hosting/xml_spec_reader.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.h
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp
+                ${GMPI_ADAPTORS}/wrapper/common/it_enum_list.h
+                ${GMPI_ADAPTORS}/wrapper/common/it_enum_list.cpp
             )
 
             add_executable(plist_util ${plist_srcs})
