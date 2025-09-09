@@ -120,12 +120,12 @@ public:
 	{
 		for (const auto& param : info.parameters)
 		{
-			assert(param.id != -1 || param.hostConnect != gmpi::hosting::HostControls::None);
+			//assert(param.id != -1 || param.hostConnect != gmpi::hosting::HostControls::None);
 			//		if (param.id >= 0)
 			{
 				gmpi::hosting::DawParameter p;
-				p.id = param.id > -1 ? param.id : (-2 - (int)param.hostConnect);
-				p.valueReal = atof(param.default_value.c_str());
+				p.id = param.id; // > -1 ? param.id : (-2 - (int)param.hostConnect);
+				p.valueReal = param.default_value; // atof(param.default_value.c_str());
 				p.valueLo = param.minimum;
 				p.valueHi = param.maximum;
 

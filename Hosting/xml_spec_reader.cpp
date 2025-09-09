@@ -564,8 +564,11 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 				}
 
 				// Default.
-				param.default_value = QueryStringAttribute(paramE, "default");
-
+//				param.default_value = QueryStringAttribute(paramE, "default");
+				if(auto defaultE = paramE->Attribute("Default"); defaultE)
+				{
+					param.default_value = atof(defaultE);
+				}
 #if 0
 				// Automation.
 				int controllerType = ControllerType::None;

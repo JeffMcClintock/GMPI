@@ -105,7 +105,7 @@ public:
 
 				GmpiParameter p(
 					  &paramInfo
-					, atof(paramInfo.default_value.c_str())
+					, paramInfo.default_value // atof(paramInfo.default_value.c_str())
 					, paramInfo.minimum
 					, paramInfo.maximum
 				);

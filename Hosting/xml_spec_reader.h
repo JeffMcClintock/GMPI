@@ -134,12 +134,13 @@ struct paramInfo
 
 	std::string name;
 	gmpi::PinDatatype datatype;
-	std::string default_value;
+//	std::string default_value;
 	//int32_t parameterId;
 	//int32_t flags;
 	std::string enum_list;
 	double minimum = 0.0;
 	double maximum = 1.0;
+	double default_value = 0.0;
 	bool is_private{};
 };
 
