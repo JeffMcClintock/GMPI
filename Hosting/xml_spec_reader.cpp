@@ -69,27 +69,38 @@ static const std::unordered_map<std::string, HostControls> hostControlsInfo =
 	{"Process/Rendermode",		HostControls::ProcessRendermode},
 };
 
-static std::array< gmpi::PinDatatype, 8 > hostControlDatatypes = {
-	  gmpi::PinDatatype::Float32 // Time/Bpm
-	, gmpi::PinDatatype::Float32 // Time/BarStart
-	, gmpi::PinDatatype::Int32   // Time/Numerator
-	, gmpi::PinDatatype::Int32   // Time/Denominator
-	, gmpi::PinDatatype::Bool    // Time/TransportPlaying
-	, gmpi::PinDatatype::Float32 // Time/QuarterNotePosition
+/*
+	TimeBpm,
+	TimeQuarterNotePosition,
+	TimeTransportPlaying,
+	TimeBarStart,
+	TimeNumerator,
+	TimeDenominator,
 
-	, gmpi::PinDatatype::Int32   // Process/Rendermode
-	, gmpi::PinDatatype::Bool    // Process/Bypass
-};
-
+	ProcessRendermode,
+	ProcessBypass,
+*/
 static std::array< const char*, 8 > hostControlNiceNames = {
 	  "BPM"
+	, "Song Position"
+	, "Transport Playing"
 	, "Bar Start"
 	, "Numerator"
 	, "Denominator"
-	, "Transport Playing"
-	, "Quarter Note Position"
-	, "Bypass"
 	, "Render Mode"
+	, "Bypass"
+};
+
+static std::array< gmpi::PinDatatype, 8 > hostControlDatatypes = {
+	  gmpi::PinDatatype::Float32 // Time/Bpm
+	, gmpi::PinDatatype::Float32 // Time/QuarterNotePosition
+	, gmpi::PinDatatype::Bool    // Time/TransportPlaying
+	, gmpi::PinDatatype::Float32 // Time/BarStart
+	, gmpi::PinDatatype::Int32   // Time/Numerator
+	, gmpi::PinDatatype::Int32   // Time/Denominator
+
+	, gmpi::PinDatatype::Int32   // Process/Rendermode
+	, gmpi::PinDatatype::Bool    // Process/Bypass
 };
 
 template <typename E>
@@ -253,6 +264,18 @@ void RegisterPin(
 				default:
 					assert(false); // Missing enum!!
 				};
+
+				if (pind.name.empty())
+				{
+					for (auto& param : info.parameters)
+					{
+						if (param.id == pind.parameterId)
+						{
+							pind.name = param.name;
+							break;
+						}
+					}
+				}
 			}
 			else // host-connect pin
 			{
@@ -279,6 +302,11 @@ void RegisterPin(
 				//{
 				//	expectedPinDatatype = (int)gmpi::PinDatatype::Int32;
 				//}
+
+				if (pind.name.empty())
+				{
+					pind.name = hostControlNiceNames[(int)pind.hostConnect];
+				}
 			}
 		}
 	}
@@ -512,6 +540,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 				// I.D.
 				paramE->QueryIntAttribute("id", &(param.id));
+
 				// Datatype.
 				std::string pin_datatype = QueryStringAttribute(paramE, "datatype");
 				// Name.
@@ -679,7 +708,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 					continue;
 
 				paramInfo param{};
-				//param.id = - 1 - (int)hc; // ID becomes negative, derived from HC enum.
+				param.id = -2 - (int)hc; // ID becomes negative, derived from HC enum.
 				param.hostConnect = hc;
 				param.name = hostControlNiceNames[(int) hc];
 				param.datatype = hostControlDatatypes[(int)hc];
@@ -698,6 +727,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 					// treat it like a standard parameter at the end of the list.
 					param.id = bypassParamId;
+					param.is_private = false;
 
 					// update all pins to use the new parameter id.
 					for (auto& pin : info.dspPins)
@@ -717,6 +747,16 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 				}
 
 				info.parameters.push_back(param);
+			}
+		}
+
+		// assign DAW tags.
+		{
+			int32_t dawTag{ 0 };
+			for (auto& param : info.parameters)
+			{
+				if (!param.is_private && param.datatype != gmpi::PinDatatype::String && param.datatype != gmpi::PinDatatype::Blob && param.datatype != gmpi::PinDatatype::Midi)
+					param.dawTag = dawTag++;
 			}
 		}
 	}

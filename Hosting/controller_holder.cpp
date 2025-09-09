@@ -107,7 +107,7 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 					case gmpi::Field::Normalized:
 					{
 						const float valueNormalized = static_cast<float>(param->normalisedValue());
-						gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
+						gui->setParameter(param->info->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
 					}
 					break;
 
@@ -118,21 +118,21 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 						case gmpi::PinDatatype::Float32:
 						{
 							const float value = static_cast<float>(param->valueReal);
-							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&value));
+							gui->setParameter(param->info->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&value));
 						}
 						break;
 
 						case gmpi::PinDatatype::Int32:
 						{
 							const int32_t value = static_cast<int32_t>(std::round(param->valueReal));
-							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(int32_t), reinterpret_cast<const uint8_t*>(&value));
+							gui->setParameter(param->info->id, pin.parameterFieldType, 0, sizeof(int32_t), reinterpret_cast<const uint8_t*>(&value));
 						}
 						break;
 
 						case gmpi::PinDatatype::Bool:
 						{
 							const bool value = static_cast<bool>(std::round(param->valueReal));
-							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
+							gui->setParameter(param->info->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
 						}
 						break;
 						default:
@@ -144,6 +144,64 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 
 //					gmpi::hosting::my_msg_que_output_stream s(getQueueToDsp(), param->parameterHandle_, "ppc\0"); // "ppc"
 				}
+			}
+		}
+	}
+}
+
+void gmpi_controller_holder::notifyGui(GmpiParameter* param)
+{
+	constexpr int voice{};
+
+	for (auto& pin : info->guiPins)
+	{
+		if (pin.parameterId != param->info->id)
+			continue;
+
+		for (auto* gui : m_editors)
+		{
+			switch (pin.parameterFieldType)
+			{
+			case gmpi::Field::Normalized:
+			{
+				const float valueNormalized = static_cast<float>(param->normalisedValue());
+				gui->setPin(pin.id, voice, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
+				gui->notifyPin(pin.id, voice);
+			}
+			break;
+
+			case gmpi::Field::Value:
+			{
+				switch (pin.datatype)
+				{
+				case gmpi::PinDatatype::Float32:
+				{
+					const float value = static_cast<float>(param->valueReal);
+					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					gui->notifyPin(pin.id, voice);
+				}
+				break;
+
+				case gmpi::PinDatatype::Int32:
+				{
+					const int32_t value = static_cast<int32_t>(std::round(param->valueReal));
+					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					gui->notifyPin(pin.id, voice);
+				}
+				break;
+
+				case gmpi::PinDatatype::Bool:
+				{
+					const bool value = static_cast<bool>(std::round(param->valueReal));
+					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					gui->notifyPin(pin.id, voice);
+				}
+				break;
+				default:
+					assert(false); // unsupported type.
+				}
+				break;
+			}
 			}
 		}
 	}
@@ -213,12 +271,13 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 							// updateProcessor
 							pendingControllerQueueClients.AddWaiter(param);
 
+#if 0 // not used currently
 							// update parameter-watchers
 							for (auto* gui : m_guis)
 							{
 								gui->setParameter(param->id, pin.parameterFieldType, voice, static_cast<int32_t>(data.size()), reinterpret_cast<const uint8_t*>(data.data()));
 							}
-
+#endif
 							// editors too.
 							for (auto* gui : m_editors)
 							{
@@ -280,6 +339,9 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 									}
 								}
 							}
+
+							// update DAW
+							notifyDaw(param);
 						}
 					}
 
@@ -306,11 +368,13 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 
 		if (auto param = patchManager.setParameterReal(handle, val); param)
 		{
+#if 0 // not used currently
 			// parameter watchers
 			for (auto& pin : info->guiPins)
 			{
 				if (pin.parameterId == param->id)
 				{
+
 					for (auto* gui : m_guis)
 					{
 						const float valueNormalized = static_cast<float>(param->normalisedValue());
@@ -346,7 +410,7 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 					}
 				}
 			}
-            
+#endif
             constexpr int32_t voice{0};
             
             // editors too.
@@ -354,7 +418,7 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
             {
                 for (auto& pin : info->guiPins)
                 {
-                    if (param->id != pin.parameterId)
+                    if (param->info->id != pin.parameterId)
                         continue;
 
                     switch (pin.parameterFieldType)

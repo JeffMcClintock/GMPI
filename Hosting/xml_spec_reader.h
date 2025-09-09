@@ -127,7 +127,9 @@ struct pinInfo
 struct paramInfo
 {
 	// parameter can have id or host control, the special VST3 BYPASS parameter can be both.
-	int32_t id{ -1 };
+	int32_t id{ -1 };		// identifier for parameter on the GMPI side.
+	int32_t dawTag{ -1 };	// identifier for parameter on the DAW side. (e.g. VST3 param index).
+
 	HostControls hostConnect{ HostControls::None };
 
 	std::string name;
