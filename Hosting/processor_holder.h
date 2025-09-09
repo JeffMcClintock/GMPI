@@ -185,7 +185,9 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	PatchManager patchManager;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 	int MidiInputPinIdx = -1;
+    std::vector<gmpi::hosting::DawParameter*> nativeParams;
 
+    void init(gmpi::hosting::pluginInfo const& info);
 	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info);
 	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value);
     void setHostControlFromDaw(gmpi::hosting::HostControls hc, double value);

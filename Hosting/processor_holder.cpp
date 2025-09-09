@@ -28,9 +28,27 @@ void copyValueToEvent(gmpi::api::Event& e, T value)
 	std::copy(src, src + sizeof(value), e.data_);
 }
 
+void gmpi_processor::init(gmpi::hosting::pluginInfo const& info)
+{
+    // init PatchManager parameters
+    patchManager.init(info);
+    
+    // create a list of native params. the index must line up strictly with the parameter DAW tag
+    nativeParams.clear();
+    for (auto& paramInfo : info.parameters)
+    {
+        if (paramInfo.dawTag > -1)
+        {
+            assert(paramInfo.dawTag == nativeParams.size());
+            nativeParams.push_back(&patchManager.parameters[paramInfo.id]);
+        }
+    }
+}
+
 bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& pinfo)
 {
 	info = &pinfo;
+    
 	events.clear();
 	processor = {};
 
