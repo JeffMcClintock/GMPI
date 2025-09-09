@@ -101,7 +101,7 @@ public:
 			assert(paramInfo.id != -1 || paramInfo.hostConnect != gmpi::hosting::HostControls::None);
 			//		if (param.id >= 0)
 			{
-				auto parameterId = paramInfo.id > -1 ? paramInfo.id : (-2 - (int)paramInfo.hostConnect);
+//				auto parameterId = paramInfo.id > -1 ? paramInfo.id : (-2 - (int)paramInfo.hostConnect);
 
 				GmpiParameter p(
 					  &paramInfo
@@ -110,7 +110,7 @@ public:
 					, paramInfo.maximum
 				);
 
-				parameters[parameterId] = p;
+				parameters[paramInfo.id] = p;
 			}
 		}
 	}
