@@ -9,6 +9,7 @@
 #include <optional>
 #include "GmpiApiCommon.h"
 #include "GmpiApiEditor.h"
+#include "parse_enum.h"
 
 namespace tinyxml2
 {
@@ -138,6 +139,8 @@ struct paramInfo
 	//int32_t parameterId;
 	//int32_t flags;
 	std::string enum_list;
+	std::vector<enum_entry> enum_entries; // parsed from enum_list.
+
 	double minimum = 0.0;
 	double maximum = 1.0;
 	double default_value = 0.0;

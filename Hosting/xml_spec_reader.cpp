@@ -3,6 +3,7 @@
 #include <array>
 
 #include "xml_spec_reader.h"
+#include "parse_enum.h"
 #include "Common.h"
 #include "tinyXml2/tinyxml2.h"
 #include "GmpiSdkCommon.h"
@@ -555,9 +556,9 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 				{
 					// File extension, enum list or range.
 					param.enum_list = metadataPtr;
-                    
-                    it_enum_list it( wrapper::Utf8ToWstring(param.enum_list) );
-                    param.maximum = it.size() - 1;
+					param.enum_entries = parse_enum_list(metadataPtr);
+//                    it_enum_list it( wrapper::Utf8ToWstring(param.enum_list) );
+                    param.maximum = param.enum_entries.size() - 1;
 				}
 				else
 				{

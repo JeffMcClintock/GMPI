@@ -82,8 +82,6 @@ function(gmpi_plugin)
                 ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.h
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp
-                ${GMPI_ADAPTORS}/wrapper/common/it_enum_list.h
-                ${GMPI_ADAPTORS}/wrapper/common/it_enum_list.cpp
             )
 
             add_executable(plist_util ${plist_srcs})
