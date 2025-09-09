@@ -2,7 +2,9 @@
 
 #include <string>
 #include <vector>
+#include <unordered_set>
 #include <algorithm>
+#include "tinyXml2/tinyxml2.h"
 
 extern "C"
 gmpi::ReturnCode MP_GetFactory(void** returnInterface);
@@ -490,6 +492,160 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 
 	return false; // failed to consume message.
 }
+
+void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
+{
+	std::string name, category;
+
+	tinyxml2::XMLDocument doc;
+	doc.Parse(chunk.c_str());
+
+	auto* parentXml = &doc;
+
+	auto presetXml = parentXml->FirstChildElement("Preset");
+
+	if (!presetXml)
+		return;
+
+	tinyxml2::XMLNode* parametersE{};
+	parametersE = presetXml;
+
+	auto presetXmlElement = presetXml->ToElement();
+
+	// Query plugin's 4-char code. Presence Indicates also that preset format supports MIDI learn.
+	int32_t fourCC = -1;
+	int formatVersion = 0;
+	{
+		const char* hexcode{};
+		if (tinyxml2::XML_SUCCESS == presetXmlElement->QueryStringAttribute("pluginId", &hexcode))
+		{
+			formatVersion = 1;
+			try
+			{
+				fourCC = std::stoul(hexcode, nullptr, 16);
+			}
+			catch (...)
+			{
+				// who gives a f*ck
+			}
+		}
+	}
+
+	// !!! TODO: Check 4-char ID correct.
+
+	const char* temp{};
+	if (tinyxml2::XML_SUCCESS == presetXmlElement->QueryStringAttribute("category", &temp))
+	{
+		category = temp;
+	}
+	//presetXmlElement->QueryStringAttribute("name", &name);
+	if (tinyxml2::XML_SUCCESS == presetXmlElement->QueryStringAttribute("name", &temp))
+	{
+		name = temp;
+	}
+
+	std::unordered_set<int32_t> parametersInPreset;
+
+	// assuming we are passed "Preset.Parameters" node.
+	for (auto ParamElement = presetXml->FirstChildElement("Param"); ParamElement; ParamElement = ParamElement->NextSiblingElement("Param"))
+	{
+		int paramHandle = -1;
+		ParamElement->QueryIntAttribute("id", &paramHandle);
+
+		assert(paramHandle != -1);
+
+		// ignore unrecognised parameters
+		auto it = patchManager.parameters.find(paramHandle);
+		if (it == patchManager.parameters.end())
+			continue;
+
+		auto& param = (*it).second;
+
+		parametersInPreset.insert(paramHandle);
+
+		//??			if (info.ignoreProgramChange)
+		//				continue;
+
+		//auto& values = params[paramHandle];
+		/* no stateful parameters in preset we assume
+					if (!parameter.stateful_) // For VST2 wrapper aeffect ptr. prevents it being inadvertently zeroed.
+						continue;
+
+					// possibly need to handle elsewhere
+					if (parameter.ignorePc_ && ignoreProgramChange) // a short time period after plugin loads, ignore-PC parameters will no longer overwrite existing value.
+						continue;
+
+		*/
+		auto v = ParamElement->Attribute("val"); // todo instead of constructing a pointless string, what about just passing the char* to ParseToRaw()?
+
+		if (!v)
+			continue;
+
+		const double value = std::stod(v);
+		param.setReal(value);
+
+		// This block seems messy. Should updating a parameter be a single function call?
+					// (would need to pass 'updateProcessor')
+		{
+			// calls controller_->updateGuis(this, voice)
+//				parameter->setParameterRaw(gmpi::Field::Value, (int32_t)raw.size(), raw.data(), voiceId);
+
+			/* todo elsewhere
+			// updated cached value.
+			parameter->upDateImmediateValue();
+			*/
+		}
+
+		// MIDI learn. part of a preset?????
+		if (formatVersion > 0)
+		{
+			// TODO
+			int32_t midiController = -1;
+			ParamElement->QueryIntAttribute("MIDI", &midiController);
+
+			const char* sysexU{};
+			ParamElement->QueryStringAttribute("MIDI_SYSEX", &sysexU);
+		}
+	}
+
+	// set any parameters missing from the preset to their default
+	// except for preset name and category
+	for (auto& [paramHandle, param] : patchManager.parameters)
+	{
+#if 0
+		if (info.hostControl == HC_PROGRAM_NAME || HC_PROGRAM_CATEGORY == info.hostControl)
+			continue;
+#endif
+
+		if (parametersInPreset.find(paramHandle) == parametersInPreset.end())
+		{
+//			auto& values = params[paramHandle];
+
+//			values.dataType = info.dataType;
+//			for (const auto& v : info.defaultRaw)
+			{
+//				values.rawValues_.push_back(v);
+
+				param.setReal(param.info->default_value);
+			}
+		}
+	}
+
+//#ifdef _DEBUG
+//	for (auto& p : params)
+//	{
+//		assert(p.second.rawValues_.size() == 1);
+//	}
+//#endif
+
+//	calcHash();
+}
+
+//std::string gmpi_controller_holder::getPreset()
+//{
+//
+//}
+
 
 } // namespace hosting
 } // namespace gmpi

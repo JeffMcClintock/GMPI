@@ -59,7 +59,8 @@ public:
 
 struct DawParameter : public QueClient // also host-controls, might need to rename it.
 {
-	int32_t id{};
+	const paramInfo* info{};
+
 	double valueReal = 0.0;
 	double valueLo = 0.0;
 	double valueHi = 1.0;
@@ -101,7 +102,7 @@ struct DawParameter : public QueClient // also host-controls, might need to rena
 		const bool hostNeedsParameterUpdate{};
 		const int32_t voice{};
 
-		outStream << id;
+		outStream << info->id;
 		outStream << id_to_long("ppc2");
 		outStream << messageLength;
 
@@ -124,12 +125,13 @@ public:
 			//		if (param.id >= 0)
 			{
 				gmpi::hosting::DawParameter p;
-				p.id = param.id; // > -1 ? param.id : (-2 - (int)param.hostConnect);
+//				p.id = param.id; // > -1 ? param.id : (-2 - (int)param.hostConnect);
+				p.info = &param;
 				p.valueReal = param.default_value; // atof(param.default_value.c_str());
 				p.valueLo = param.minimum;
 				p.valueHi = param.maximum;
 
-				parameters[p.id] = p;
+				parameters[param.id] = p;
 			}
 		}
 	}
@@ -192,9 +194,10 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
 
 	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data);
-};
 
-//gmpi::shared_ptr<gmpi::api::IProcessor> gmpi_instansiate_processor();
+	void setPresetUnsafe(std::string& chunk);
+	std::string getPresetUnsafe();
+};
 
 } // namespace hosting
 } // namespace gmpi

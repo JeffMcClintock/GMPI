@@ -4,10 +4,13 @@
 #include <vector>
 #include <algorithm>
 #include <optional>
+#include <unordered_set>
+
 //#include "GmpiApiCommon.h"
 //#include "GmpiApiEditor.h"
 //#include "GmpiSdkCommon.h"
 #include "Hosting/message_queues.h"
+#include "tinyXml2/tinyxml2.h"
 
 extern "C"
 gmpi::ReturnCode MP_GetFactory(void** returnInterface);
@@ -194,7 +197,7 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 
 	for (auto& pin : info.dspPins)
 	{
-		if (pin.parameterId == param->id && pin.direction == gmpi::PinDirection::In)
+		if (pin.parameterId == param->info->id && pin.direction == gmpi::PinDirection::In)
 		{
 			e.pinIdx = pin.id;
 
@@ -318,6 +321,214 @@ gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_
 
 	return gmpi::ReturnCode::Ok;
 }
+
+void gmpi_processor::setPresetUnsafe(std::string& chunk)
+{
+	std::string name, category;
+
+	tinyxml2::XMLDocument doc;
+	doc.Parse(chunk.c_str());
+
+	auto* parentXml = &doc;
+
+	auto presetXml = parentXml->FirstChildElement("Preset");
+
+	if (!presetXml)
+		return;
+
+	tinyxml2::XMLNode* parametersE{};
+	parametersE = presetXml;
+
+//	auto presetXmlElement = presetXml->ToElement();
+
+	// Query plugin's 4-char code. Presence Indicates also that preset format supports MIDI learn.
+	int32_t fourCC = -1;
+	int formatVersion = 0;
+	{
+		const char* hexcode{};
+		if (tinyxml2::XML_SUCCESS == presetXml->QueryStringAttribute("pluginId", &hexcode))
+		{
+			formatVersion = 1;
+			try
+			{
+				fourCC = std::stoul(hexcode, nullptr, 16);
+			}
+			catch (...)
+			{
+				// who gives a f*ck
+			}
+		}
+	}
+
+	// !!! TODO: Check 4-char ID correct.
+
+	const char* temp{};
+	if (tinyxml2::XML_SUCCESS == presetXml->QueryStringAttribute("category", &temp))
+	{
+		category = temp;
+	}
+	//presetXmlElement->QueryStringAttribute("name", &name);
+	if (tinyxml2::XML_SUCCESS == presetXml->QueryStringAttribute("name", &temp))
+	{
+		name = temp;
+	}
+
+	std::unordered_set<int32_t> parametersInPreset;
+
+	// assuming we are passed "Preset.Parameters" node.
+	for (auto ParamElement = presetXml->FirstChildElement("Param"); ParamElement; ParamElement = ParamElement->NextSiblingElement("Param"))
+	{
+		int paramHandle = -1;
+		ParamElement->QueryIntAttribute("id", &paramHandle);
+
+		assert(paramHandle != -1);
+
+		// ignore unrecognised parameters
+		auto it = patchManager.parameters.find(paramHandle);
+		if (it == patchManager.parameters.end())
+			continue;
+
+		auto& param = (*it).second;
+
+		parametersInPreset.insert(paramHandle);
+
+		//??			if (info.ignoreProgramChange)
+		//				continue;
+
+		//auto& values = params[paramHandle];
+		/* no stateful parameters in preset we assume
+					if (!parameter.stateful_) // For VST2 wrapper aeffect ptr. prevents it being inadvertently zeroed.
+						continue;
+
+					// possibly need to handle elsewhere
+					if (parameter.ignorePc_ && ignoreProgramChange) // a short time period after plugin loads, ignore-PC parameters will no longer overwrite existing value.
+						continue;
+
+		*/
+		auto v = ParamElement->Attribute("val"); // todo instead of constructing a pointless string, what about just passing the char* to ParseToRaw()?
+
+		if(!v)
+			continue;
+
+		//		values.dataType = param.info->datatype;
+		//		values.rawValues_.push_back(ParseToRaw(param.dataType, v));
+
+		const double value = std::stod(v);
+		param.setReal(value);
+
+		// This block seems messy. Should updating a parameter be a single function call?
+					// (would need to pass 'updateProcessor')
+		{
+			// calls controller_->updateGuis(this, voice)
+//				parameter->setParameterRaw(gmpi::Field::Value, (int32_t)raw.size(), raw.data(), voiceId);
+
+			/* todo elsewhere
+			// updated cached value.
+			parameter->upDateImmediateValue();
+			*/
+		}
+
+		// MIDI learn. part of a preset?????
+		if (formatVersion > 0)
+		{
+			// TODO
+			int32_t midiController = -1;
+			ParamElement->QueryIntAttribute("MIDI", &midiController);
+
+			const char* sysexU{};
+			ParamElement->QueryStringAttribute("MIDI_SYSEX", &sysexU);
+		}
+	}
+
+	// set any parameters missing from the preset to their default
+	// except for preset name and category
+	for (auto& [paramHandle, param] : patchManager.parameters)
+	{
+#if 0
+		if (info.hostControl == HC_PROGRAM_NAME || HC_PROGRAM_CATEGORY == info.hostControl)
+			continue;
+#endif
+
+		if (parametersInPreset.find(paramHandle) == parametersInPreset.end())
+		{
+			//			auto& values = params[paramHandle];
+
+			//			values.dataType = info.dataType;
+			//			for (const auto& v : info.defaultRaw)
+			{
+				//				values.rawValues_.push_back(v);
+
+				param.setReal(param.info->default_value);
+			}
+		}
+	}
+}
+
+std::string gmpi_processor::getPresetUnsafe()
+{
+	tinyxml2::XMLDocument doc;
+	// TiXmlDeclaration* decl = new TiXmlDeclaration("1.0", "", "");
+	doc.LinkEndChild(doc.NewDeclaration());
+
+	auto element = doc.NewElement("Preset");
+	doc.LinkEndChild(element);
+
+#if 0 // TODO
+	{
+		char txt[20];
+#if defined(_MSC_VER)
+		sprintf_s(txt, "%08x", pluginId);
+#else
+		snprintf(txt, std::size(txt), "%08x", pluginId);
+#endif
+		element->SetAttribute("pluginId", txt);
+	}
+
+	if (!presetNameOverride.empty())
+	{
+		element->SetAttribute("name", presetNameOverride.c_str());
+	}
+	else if (!name.empty())
+	{
+		element->SetAttribute("name", name.c_str());
+	}
+
+	if (!category.empty())
+		element->SetAttribute("category", category.c_str());
+#endif
+
+	for (auto& [handle, parameter] : patchManager.parameters)
+	{
+		auto paramElement = doc.NewElement("Param");
+		element->LinkEndChild(paramElement);
+		paramElement->SetAttribute("id", handle);
+
+		//const int voice = 0;
+		//auto& raw = parameter.rawValues_[voice];
+
+		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
+
+		paramElement->SetAttribute("val", parameter.valueReal);
+
+#if 0  // TODO??
+		// MIDI learn.
+		if (parameter->MidiAutomation != -1)
+		{
+			paramElement->SetAttribute("MIDI", parameter->MidiAutomation);
+
+			if (!parameter->MidiAutomationSysex.empty())
+				paramElement->SetAttribute("MIDI_SYSEX", WStringToUtf8(parameter->MidiAutomationSysex));
+		}
+#endif
+	}
+
+	tinyxml2::XMLPrinter printer;
+	// printer.SetIndent(" ");
+	doc.Accept(&printer);
+
+	return printer.CStr();
+}
+
 
 
 } // namespace hosting

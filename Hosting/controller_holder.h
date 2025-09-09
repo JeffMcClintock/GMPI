@@ -239,6 +239,9 @@ public:
 
 	void notifyGui(GmpiParameter* param);
 
+//	std::string getPreset();
+	void setPresetXmlFromDaw(const std::string& xml);
+
 	// IParameterObserver
 	gmpi::ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) override
 	{
