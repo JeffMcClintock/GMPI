@@ -158,6 +158,10 @@ function(gmpi_plugin)
             list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/AU2/wrapperAu2.cpp)
         endif()
         
+        if(kind STREQUAL "CLAP")
+            list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/CLAP/wrapperClap.cpp)
+        endif()
+        
         # Organize SDK files in IDE
         source_group(sdk FILES ${FORMAT_SDK_FILES})
 
@@ -257,6 +261,7 @@ function(gmpi_plugin)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "VST3" FIND_VST3_INDEX)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "CLAP" FIND_CLAP_INDEX)
 
     if(FIND_VST3_INDEX GREATER_EQUAL 0)
         set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
@@ -282,7 +287,7 @@ function(gmpi_plugin)
         set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_AU)
         
         # Link the AU2 wrapper as static libs
-        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces AU_Wrapper)
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE AU_Wrapper)
         target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${AU_SDK_H})
 
         # copy plugin to components folder. NOTE: Requires user to have read-write permissions on folder.
@@ -294,6 +299,40 @@ function(gmpi_plugin)
                     "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
                     "${AU_DEST}/$<TARGET_FILE_NAME:${SUB_PROJECT_NAME}>.component"
                 COMMENT "Copy to AU folder"
+                VERBATIM
+            )
+        endif()
+    endif()
+
+    if(FIND_CLAP_INDEX GREATER_EQUAL 0)
+        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_CLAP)
+        
+        # Link the AU2 wrapper as static libs
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE CLAP_Wrapper)
+        target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${CLAP_SDK}/include ${CLAP_HELPERS_SDK}/include)
+
+        if(APPLE)
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "clap")
+
+            if(GMPI_PLUGIN_HAS_XML)
+                # Place xml file in bundle 'Resources' folder.
+                set(xml_path "${SUB_PROJECT_NAME}.xml")
+                target_sources(${SUB_PROJECT_NAME} PUBLIC ${xml_path})
+                set_source_files_properties(${xml_path} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+            endif()
+        else()
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES SUFFIX ".clap")
+        endif()
+
+        # copy plugin to components folder. NOTE: Requires user to have read-write permissions on folder.
+        if(APPLE AND SE_LOCAL_BUILD)
+            SET(CLAP_DEST "/Library/Audio/Plug-Ins/CLAP")
+            add_custom_command(TARGET ${SUB_PROJECT_NAME}
+                POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
+                    "${AU_DEST}/$<TARGET_FILE_NAME:${SUB_PROJECT_NAME}>.clap"
+                COMMENT "Copy to CLAP folder"
                 VERBATIM
             )
         endif()
@@ -326,6 +365,16 @@ function(gmpi_plugin)
                     VERBATIM
                 )
             endif()
+        endif()
+
+        if(FIND_CLAP_INDEX GREATER_EQUAL 0)
+            add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_CLAP
+                POST_BUILD
+                COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\CLAP\\$(TargetName)$(TargetExt)"
+                COMMENT "Copy to CLAP folder"
+                VERBATIM
+            )
+            set_target_properties(${GMPI_PLUGIN_PROJECT_NAME}_CLAP PROPERTIES FOLDER "CLAP plugins")
         endif()
     endif()
 
