@@ -69,6 +69,10 @@ function(gmpi_plugin)
         if(FIND_GMPI_INDEX LESS 0)
             list(APPEND GMPI_PLUGIN_FORMATS_LIST "GMPI")
         endif()
+
+        # we're gonna need the corefoundation library for the plist util
+        FIND_LIBRARY(COREFOUNDATION_LIBRARY CoreFoundation )
+        MARK_AS_ADVANCED (COREFOUNDATION_LIBRARY)
     endif()
 
 ################################ plist utility ##########################################
