@@ -1031,7 +1031,7 @@ tresult xml_spec_reader::createInstance(FIDString cid, FIDString iid, void** obj
 		}
 		else if (classId == Steinberg::FUID(ctrlUUid))
 		{
-			instance = static_cast<Steinberg::Vst::IEditController*>(new wrapper::VST3Controller(sem));
+			instance = static_cast<Steinberg::Vst::IEditController*>(new wrapper::Controller_VST3(sem));
 			break;
 		}
 	}
