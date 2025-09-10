@@ -58,7 +58,7 @@ function(gmpi_plugin)
     endif()
 
     # never build AU on Windows
-    if(WIN32)
+    if(NOT APPLE)
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU")
     endif()
 
