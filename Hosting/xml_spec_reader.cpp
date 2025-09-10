@@ -8,15 +8,7 @@
 #include "tinyXml2/tinyxml2.h"
 #include "GmpiSdkCommon.h"
 #include "BundleInfo.h"
-#include "it_enum_list.h"
 #include "conversion.h"
-
-#if 0
-#include "it_enum_list.h"
-#include "FileFinder.h"
-#include "FileFinder.h"
-#include "GmpiApiAudio.h"
-#endif
 
 extern "C"
 gmpi::ReturnCode MP_GetFactory( void** returnInterface );
@@ -557,7 +549,6 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 					// File extension, enum list or range.
 					param.enum_list = metadataPtr;
 					param.enum_entries = parse_enum_list(metadataPtr);
-//                    it_enum_list it( wrapper::Utf8ToWstring(param.enum_list) );
                     param.maximum = param.enum_entries.size() - 1;
 				}
 				else
