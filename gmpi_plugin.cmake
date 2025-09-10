@@ -72,7 +72,7 @@ function(gmpi_plugin)
     endif()
 
 ################################ plist utility ##########################################
-#    if(FIND_AU_INDEX GREATER_EQUAL 0)
+    if(FIND_AU_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
             set(plist_srcs
                 ${gmpi_sdk_folder}/Hosting/xml_spec_reader.h
@@ -93,7 +93,7 @@ function(gmpi_plugin)
 
             target_link_libraries( plist_util ${COREFOUNDATION_LIBRARY} )
         endif()
-#    endif()
+    endif()
 ################################ plist utility ##########################################
 
     # add SDK files
