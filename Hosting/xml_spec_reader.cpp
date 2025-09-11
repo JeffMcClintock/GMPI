@@ -760,6 +760,9 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 			{
 				if (!param.is_private && param.datatype != gmpi::PinDatatype::String && param.datatype != gmpi::PinDatatype::Blob && param.datatype != gmpi::PinDatatype::Midi)
 					param.dawTag = dawTag++;
+
+//				info.idToParam[param.id] = &param;
+//				dawTagToNativeIndex[param.dawTag] = 
 			}
 		}
 	}

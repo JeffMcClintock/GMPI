@@ -92,6 +92,18 @@ struct DawParameter : public QueClient // also host-controls, might need to rena
 		return (valueReal - valueLo) / (valueHi - valueLo);
 	}
 
+	double real2Normalized(double r) const
+	{
+		if (valueHi == valueLo)
+			return 0.0; // avoid divide by zero.
+		return (r - valueLo) / (valueHi - valueLo);
+	}
+
+	double normalized2Real(double n) const
+	{
+		return valueLo + n * (valueHi - valueLo);
+	}
+
 	int queryQueMessageLength(int availableBytes) override
 	{
 		return sizeof(double);
