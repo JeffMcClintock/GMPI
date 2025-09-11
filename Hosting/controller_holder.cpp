@@ -280,8 +280,8 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 
 						if(changed)
 						{
-							// updateProcessor
-							pendingControllerQueueClients.AddWaiter(param);
+							//// updateProcessor
+							//pendingControllerQueueClients.AddWaiter(param);
 
 #if 0 // not used currently
 							// update parameter-watchers
