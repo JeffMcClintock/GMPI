@@ -189,6 +189,7 @@ public:
 };
 
 struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
+	, public gmpi::api::IProcessorHost
 {
 	gmpi::hosting::pluginInfo const* info{};
 
@@ -199,18 +200,33 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	int MidiInputPinIdx = -1;
     std::vector<gmpi::hosting::DawParameter*> nativeParams;
 
+	int32_t blockSize = 512;
+	float sampleRate = 44100.0f;
+
     void init(gmpi::hosting::pluginInfo const& info);
-	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info);
+	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info, int32_t blockSize, float sampleRate);
 	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value);
     void setHostControlFromDaw(gmpi::hosting::HostControls hc, double value);
 	void sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset);
 
 	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
 
-	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data);
+//	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data);
 
 	void setPresetUnsafe(std::string& chunk);
 	std::string getPresetUnsafe();
+
+	// IAudioPluginHost
+	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data) override;
+	gmpi::ReturnCode setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming) override;
+	gmpi::ReturnCode setLatency(int32_t latency) override;
+	gmpi::ReturnCode sleep() override;
+	int32_t getBlockSize() override;
+	float getSampleRate() override;
+	int32_t getHandle() override;
+
+	GMPI_QUERYINTERFACE_METHOD(gmpi::api::IProcessorHost);
+	GMPI_REFCOUNT_NO_DELETE;
 };
 
 } // namespace hosting

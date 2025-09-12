@@ -45,9 +45,11 @@ void gmpi_processor::init(gmpi::hosting::pluginInfo const& info)
     }
 }
 
-bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& pinfo)
+bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& pinfo, int32_t pblockSize, float psampleRate)
 {
 	info = &pinfo;
+	blockSize = pblockSize;
+	sampleRate = psampleRate;
     
 	events.clear();
 	processor = {};
@@ -283,63 +285,6 @@ bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my
 	return false; // failed to consume message.
 }
 
-// data from Processor to host (eg MIDI out).
-gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data)
-{
-	for (auto& pin : info->dspPins)
-	{
-		// only output parameter pins.
-		if (pinId != pin.id || pin.direction != gmpi::PinDirection::Out || pin.parameterId == -1)
-			continue;
-
-		auto param = patchManager.getParameter(pin.parameterId);
-		if (!param)
-			continue;
-
-		switch (pin.parameterFieldType)
-		{
-		case gmpi::Field::Normalized:
-		{
-			assert(size == sizeof(float));
-
-			if (param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data))))
-				pendingControllerQueueClients.AddWaiter(param);
-		}
-		break;
-
-		case gmpi::Field::Value:
-		{
-			switch (pin.datatype)
-			{
-			case gmpi::PinDatatype::Float32:
-			{
-				if (param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data))))
-					pendingControllerQueueClients.AddWaiter(param);
-			}
-			break;
-			case gmpi::PinDatatype::Int32:
-			{
-				if (param->setReal(static_cast<double>(*reinterpret_cast<const int32_t*>(data))))
-					pendingControllerQueueClients.AddWaiter(param);
-			}
-			break;
-			case gmpi::PinDatatype::Bool:
-			{
-				if (param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data))))
-					pendingControllerQueueClients.AddWaiter(param);
-			}
-			break;
-			default:
-				assert(false); // unsupported type.
-			}
-		}
-		break;
-		}
-	}
-
-	return gmpi::ReturnCode::Ok;
-}
-
 void gmpi_processor::setPresetUnsafe(std::string& chunk)
 {
 	std::string name, category;
@@ -547,7 +492,95 @@ std::string gmpi_processor::getPresetUnsafe()
 	return printer.CStr();
 }
 
+// IAudioPluginHost
+// 
+// data from Processor to host (eg MIDI out).
+//gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data)
+gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data)
+{
+	for (auto& pin : info->dspPins)
+	{
+		// only output parameter pins.
+		if (pinId != pin.id || pin.direction != gmpi::PinDirection::Out || pin.parameterId == -1)
+			continue;
 
+		auto param = patchManager.getParameter(pin.parameterId);
+		if (!param)
+			continue;
+
+		switch (pin.parameterFieldType)
+		{
+		case gmpi::Field::Normalized:
+		{
+			assert(size == sizeof(float));
+
+			if (param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data))))
+				pendingControllerQueueClients.AddWaiter(param);
+		}
+		break;
+
+		case gmpi::Field::Value:
+		{
+			switch (pin.datatype)
+			{
+			case gmpi::PinDatatype::Float32:
+			{
+				if (param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::Int32:
+			{
+				if (param->setReal(static_cast<double>(*reinterpret_cast<const int32_t*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::Bool:
+			{
+				if (param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			default:
+				assert(false); // unsupported type.
+			}
+		}
+		break;
+		}
+	}
+
+	return gmpi::ReturnCode::Ok;
+}
+
+gmpi::ReturnCode gmpi_processor::setPinStreaming(int32_t timestamp, int32_t pinId, bool isStreaming)
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+gmpi::ReturnCode gmpi_processor::setLatency(int32_t latency)
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+gmpi::ReturnCode gmpi_processor::sleep()
+{
+	return gmpi::ReturnCode::Ok;
+}
+
+int32_t gmpi_processor::getBlockSize()
+{
+	return blockSize;
+}
+
+float gmpi_processor::getSampleRate()
+{
+	return sampleRate;
+}
+
+int32_t gmpi_processor::getHandle()
+{
+	return 0; // only one plugin, can have handle zero.
+}
 
 } // namespace hosting
 } // namespace gmpi
