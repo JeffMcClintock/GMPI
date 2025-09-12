@@ -324,14 +324,14 @@ function(gmpi_plugin)
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES SUFFIX ".clap")
         endif()
 
-        # copy plugin to components folder. NOTE: Requires user to have read-write permissions on folder.
+        # copy plugin to CLAP folder. NOTE: Requires user to have read-write permissions on folder.
         if(APPLE AND SE_LOCAL_BUILD)
             SET(CLAP_DEST "/Library/Audio/Plug-Ins/CLAP")
             add_custom_command(TARGET ${SUB_PROJECT_NAME}
                 POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_directory
                     "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
-                    "${AU_DEST}/$<TARGET_FILE_NAME:${SUB_PROJECT_NAME}>.clap"
+                    "${CLAP_DEST}/$<TARGET_FILE_NAME:${SUB_PROJECT_NAME}>.clap"
                 COMMENT "Copy to CLAP folder"
                 VERBATIM
             )
