@@ -137,7 +137,7 @@ void MidiToCv2::onSetPins()
 # Silence Detection
 
 Silence flags are a feature to allow plugins to communicate that an audio signal is silent.
-The advantage to a plugin is that when its input signal is silent - it may not have to do any work. 
+The advantage to a plugin is that when its input signal is silent, it may not have to do any work. 
 
 Adding only a few lines of code to our example plugin will enable the silence-flag feature.
 
@@ -148,12 +148,17 @@ Adding only a few lines of code to our example plugin will enable the silence-fl
 		pinOutput.setStreaming(pinInput.isStreaming());
 	}
 ```
-What this does is communicate to the DAW, that since the input is silent - then so is the plugins output.
+What this does is communicate to the DAW that since the input is silent, then so is the plugin's output.
 
-Notice how when its input is silent the plugin can choose to completely shut down, using no CPU at all (see below).
+Notice how when its input is silent, the plugin can choose to shut down completely, using no CPU at all (see below).
 This is just one example of how GMPI takes away the drudgery for you by providing *sensible default behaviour* out of the box (which can be customized if you need to).
 
 <img src="Docs/images/SilenceDetection.gif" width="500"/>
+
+# Adaptors
+
+Adaptors for building VST3, Audio Unit, CLAP, and SynthEdit plugins are in development. Targeting macOS and Windows so far.
+See the [Saw Demo instrument](https://github.com/JeffMcClintock/GMPI-plugins/tree/main/plugins/SawDemo) for an example.
 
 # Detailed GMPI Specification
 
