@@ -4,9 +4,9 @@ Generalized Music Plugin Interface
 
 In the same vein as VST and Audio Unit plugins, GMPI is a plugin API for Software Instruments and Effects.
 
-The GMPI project was started to gather the best parts of existing specifications and bring them together into an easy-to-use, open, powerful, and cross-platform alternative to the proprietary standards offered by Steinberg, Apple, and other vendors.
+The GMPI project was started to gather the best parts of existing specifications and bring them together into an easy-to-use, open, powerful, and cross-platform alternative to the proprietary stand[...]  
 
-GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavored to adhere to the specification as closely as is practical.
+GMPI was instigated by the MMA (MIDI Manufacturers Association) as a collaborative effort. This implementation of GMPI is not endorsed by the MMA, but we've endeavored to adhere to the specificatio[...]  
 
 # Features
 
@@ -36,7 +36,7 @@ how much overhead other formats require compared to GMPI. The plugins are all si
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
-GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [GMPI Plugins/Gain.cpp](https://github.com/JeffMcClintock/GMPI-plugins/blob/main/plugins/Gain/Gain.cpp)
+GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [GMPI Plugins/Gain.cpp](https://github.com/JeffMcClintock/GMPI-plugins/blob/main/plugins/Gain/Gain.cpp[...]  
 
 But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation. This is because GMPI provides
 *sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. And you can easily override the defaults when you need to.
@@ -57,7 +57,7 @@ of other plugin APIs, because you can add new features or flags without breaking
     </Audio>
   </Plugin>
 ```
-Every plugin has a unique identifier (the 'id'). This can be a URI, a GUID, or, as in this example, the manufacturer and plugin names. Then, the XML lists the plugin's parameters and its I/O (audio and MIDI input and output channels). A plugin can have any number of audio connections and any number of MIDI connections. The third pin provides access to the parameter.
+Every plugin has a unique identifier (the 'id'). This can be a URI, a GUID, or, as in this example, the manufacturer and plugin names. Then, the XML lists the plugin's parameters and its I/O (audi[...]  
 
 # Thread safe by default
 
@@ -68,12 +68,12 @@ class of common bugs and data-races found in audio plugins makes it trivial to r
 
 # Single Source of Truth
 
-A plugin contains several parts, like the User Interface and the Audio Processor. These objects often have different lifetimes, may run on different threads, and might be paused or suspended at various times.
-All of these parts need to by synchronized with each other and with the DAW. When a parameter changes on the UI that change is communicated to both the Processor and the DAW. And when a Parameter is changed or automated by the DAW, that change is synchronised with the plugin's UI and with its Processor.
+A plugin contains several parts, like the User Interface and the Audio Processor. These objects often have different lifetimes, may run on different threads, and might be paused or suspended at va[...]  
+All of these parts need to by synchronized with each other and with the DAW. When a parameter changes on the UI that change is communicated to both the Processor and the DAW. And when a Parameter [...
 
-  A common source of bugs and odd behaviors like parameter jitter is when a plugin API is not clear about which part 'owns' the state of the parameters. GMPI takes a different approach by assigning the 'single source of truth' to the DAW. In GMPI both the plugin UI and the Processor are 'listeners' on the plugin state. And the plugin state is owned by the DAW.
+  A common source of bugs and odd behaviors like parameter jitter is when a plugin API is not clear about which part 'owns' the state of the parameters. GMPI takes a different approach by assignin[...]  
   
-  This solves the problem of keeping the UI in sync with the state, even when the UI can be closed and reopened. It keeps the Processor in sync with the state, even when the processor can be suspended and resumed, and it eliminates the need for the DAW to explicitly keep querying/setting the plugin state when saving/loading a DAW session, when automating parameters and when performing undo/redo operations. This system radically simplifies the serialization of the plugin's state and presets. GMPI plugins don't even need explicit handling of serialisation....
+  This solves the problem of keeping the UI in sync with the state, even when the UI can be closed and reopened. It keeps the Processor in sync with the state, even when the processor can be suspe[...]  
 
 # Serialization by default
 
@@ -94,13 +94,13 @@ struct Gain : public Processor
 
 The GMPI framework will automatically initialize, synchronize, save, and load your plugin state from/into that member variable.
 
-If the GUI is closed, the framework updates it the next time it is opened. If the Processor is suspended (due to the silence-detection feature), the GUI will remain 'live' and responsive, because the plugin state is owned by neither the GUI nor the Processor, but shared.
+If the GUI is closed, the framework updates it the next time it is opened. If the Processor is suspended (due to the silence-detection feature), the GUI will remain 'live' and responsive, because [...]
 
 Supported datatypes are: 32 and 64-bit integer and float, bool, std::string, BLOB (any struct composed of plain data types).
 
 # Syncronisation by default
 
-Synchronizing a plugin's state between the GUI and Audio thread in other APIs is a common source of bugs and confusion. In GMPI it's simple. Here is how the GUI can update the plugin's gain parameter.
+Synchronizing a plugin's state between the GUI and Audio thread in other APIs is a common source of bugs and confusion. In GMPI it's simple. Here is how the GUI can update the plugin's gain param[...]  
 
 ```C
 pinGain = 3.5;
@@ -116,9 +116,9 @@ pinSampleFilenameString = "C:\SomeFolder\SomeSample.wav"; // this is thread-safe
 
 # Sample-accurate automation and MIDI by default
 
-The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled halfway through a process-block, the framework will process the first half of the samples, notify the plugin of the event, and then process the remaining samples.
+The GMPI framework by default parses incoming events and subdivides the audio buffers. e.g. if an event is scheduled halfway through a process-block, the framework will process the first half of [...]  
 
-This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time (and it's easy to override if you prefer to handle events manually).
+This is why the GMPI samples look so clean and minimal, because the *framework* ensures that events are handled at the right time (and it's easy to override if you prefer to handle events manuall[...]  
 
 # Simultaneous parameter changes
 
@@ -157,8 +157,17 @@ This is just one example of how GMPI takes away the drudgery for you by providin
 
 # Adaptors
 
+<p align="left">
+  <img src="Docs/images/vst3_logo.png" alt="VST3" width="56" style="margin-right:12px;" />
+  <img src="Docs/images/audio_unit_logo.png" alt="Audio Unit" width="56" style="margin-right:12px;" />
+  <img src="Docs/images/clap_logo.png" alt="CLAP" width="56" style="margin-right:12px;" />
+  <img src="Docs/images/GMPI_Icon_full.png" alt="GMPI" width="56" />
+</p>
+
 Adaptors for building VST3, Audio Unit, CLAP, and SynthEdit plugins are in development. Targeting macOS and Windows so far.
 See the [Saw Demo instrument](https://github.com/JeffMcClintock/GMPI-plugins/tree/main/plugins/SawDemo) for an example.
+
+(Trademarks belong to their respective owners; logos shown for identification only.)
 
 # Detailed GMPI Specification
 
