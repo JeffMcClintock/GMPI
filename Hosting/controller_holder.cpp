@@ -127,7 +127,6 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 			default:
 				assert(false); // unsupported type.
 			}
-			break;
 		}
 	}
 }

@@ -23,7 +23,6 @@ constexpr bool is_scalar(gmpi::PinDatatype dt)
 {
 	switch (dt)
 	{
-	case gmpi::PinDatatype::Float32:
 	case gmpi::PinDatatype::String:
 	case gmpi::PinDatatype::Blob:
 	case gmpi::PinDatatype::Midi:
@@ -37,17 +36,14 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 {
 	const paramInfo* info{};
 
-//	double valueReal = 0.0;
-
 	// Holds either a numeric value (double) or a textual/blob value (std::vector<uint8_t>).
 	std::variant<double, std::vector<uint8_t>> value_{};
 
 	bool isGrabbed{};
 
 	GmpiParameter() = default;
-	GmpiParameter(const paramInfo* i) //, double defaultValue, double lo, double hi)
+	GmpiParameter(const paramInfo* i)
 		: info(i)
-//		, valueReal(defaultValue)
 	{
 		assert(info->minimum <= info->maximum);
 
@@ -109,7 +105,7 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 	{
 		if (auto* v = std::get_if<std::vector<uint8_t>>(&value_))
 		{
-			const bool changed = v->size() != data.size() || std::equal(v->begin(), v->end(), data.begin());
+			const bool changed = v->size() != data.size() || !std::equal(v->begin(), v->end(), data.begin());
 
 			// Reuse existing storage if possible.
 			v->assign(data.begin(), data.end());
