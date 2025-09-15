@@ -81,9 +81,9 @@ function(gmpi_plugin)
             set(plist_srcs
                 ${gmpi_sdk_folder}/Hosting/xml_spec_reader.h
                 ${gmpi_sdk_folder}/Hosting/xml_spec_reader.cpp
+                ${gmpi_sdk_folder}/Hosting/dynamic_linking.h
+                ${gmpi_sdk_folder}/Hosting/dynamic_linking.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp
-                ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.h
-                ${GMPI_ADAPTORS}/wrapper/common/dynamic_linking.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.h
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp
             )
