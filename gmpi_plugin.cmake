@@ -101,26 +101,31 @@ function(gmpi_plugin)
 ################################ plist utility ##########################################
 
     # add SDK files
-    set(sdk_srcs
-        ${gmpi_sdk_folder}/Core/Common.h
-        ${gmpi_sdk_folder}/Core/Common.cpp
-    )
-
     set(plugin_includes
         ${gmpi_sdk_folder}
         ${gmpi_sdk_folder}/Core
     )
-   
+    
+    set(sdk_srcs
+        ${gmpi_sdk_folder}/Core/Common.h
+        ${gmpi_sdk_folder}/Core/Common.cpp
+        ${gmpi_sdk_folder}/Core/RefCountMacros.h
+        ${gmpi_sdk_folder}/Core/GmpiApiCommon.h
+        ${gmpi_sdk_folder}/Core/GmpiSdkCommon.h
+    )
+
     if(GMPI_PLUGIN_HAS_DSP)
         list(APPEND sdk_srcs
             ${gmpi_sdk_folder}/Core/Processor.h
             ${gmpi_sdk_folder}/Core/Processor.cpp
+            ${gmpi_sdk_folder}/Core/GmpiApiAudio.h
         )
     endif()
 
     if(GMPI_PLUGIN_HAS_GUI)
         list(APPEND sdk_srcs
             ${gmpi_ui_folder}/GmpiApiDrawing.h
+            ${gmpi_sdk_folder}/Core/GmpiApiEditor.h
             ${gmpi_ui_folder}/Drawing.h
         )
         list(APPEND plugin_includes ${gmpi_ui_folder})
