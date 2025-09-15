@@ -64,9 +64,7 @@ template
 class ControlPinBase : public PinBase
 {
 public:
-	ControlPinBase()
-	{
-	}
+	ControlPinBase() = default;
 	void sendPinUpdate(int blockPosition = -1)
 	{
 		PinBase::sendPinUpdate( rawSize(), rawData(), blockPosition );

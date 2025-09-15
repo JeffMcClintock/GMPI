@@ -4,12 +4,12 @@
 #include <assert.h>
 #include <functional>
 #include <math.h>
+#include <span>
 
 /*
 #include "Core/GmpiMidi.h"
 
 using namespace gmpi::midi;
-
 */
 
 namespace gmpi

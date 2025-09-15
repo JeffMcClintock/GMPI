@@ -6,9 +6,6 @@
 #include "parse_enum.h"
 #include "Common.h"
 #include "tinyXml2/tinyxml2.h"
-#include "GmpiSdkCommon.h"
-#include "BundleInfo.h"
-#include "conversion.h"
 
 extern "C"
 gmpi::ReturnCode MP_GetFactory( void** returnInterface );
@@ -797,7 +794,7 @@ bool xml_spec_reader::initializeFactory()
 	wrapper::gmpi_dynamic_linking::MP_DllLoad(&hinstLib, pluginPath.c_str());
 #else
 	wrapper::gmpi_dynamic_linking::DLL_HANDLE hinstLib{};
-	wrapper::gmpi_dynamic_linking::MP_GetDllHandle(&hinstLib);
+	wrapper::gmpi_dynamic_linking::MP _GetDllHandle(&hinstLib);
 
 #endif
 	if (!hinstLib)

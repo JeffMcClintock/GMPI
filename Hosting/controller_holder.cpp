@@ -34,6 +34,8 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 {
 	m_editors.push_back(gui);
 
+	constexpr int32_t voice{};
+
 	for (auto& pin : info->guiPins)
 	{
 		if (auto* param = patchManager.getParameter(pin.parameterId); param)
@@ -74,9 +76,9 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 
 				case gmpi::PinDatatype::Blob:
 				{
-					// TODO !!! const bool value = static_cast<bool>(std::round(param->valueReal()));
-					Blob test;
-					gui->setPin(pin.id, 0, test.size(), test.data());
+					const auto& value = std::get<std::vector<uint8_t>>(param->value_); // param->value_;
+					gui->setPin(pin.id, 0, static_cast<int32_t>(value.size()), value.data());
+					gui->notifyPin(pin.id, voice);
 				}
 				break;
 
