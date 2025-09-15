@@ -679,8 +679,7 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 		if (!v)
 			continue;
 
-		const double value = std::stod(v);
-		param.setReal(value);
+		param.setFromXml(v);
 
 		// This block seems messy. Should updating a parameter be a single function call?
 					// (would need to pass 'updateProcessor')
@@ -710,6 +709,8 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 	// except for preset name and category
 	for (auto& [paramHandle, param] : patchManager.parameters)
 	{
+		if(HostControls::None != param.info->hostConnect || !param.info->is_stateful)
+			continue; // host connect only
 #if 0
 		if (info.hostControl == HC_PROGRAM_NAME || HC_PROGRAM_CATEGORY == info.hostControl)
 			continue;

@@ -145,6 +145,7 @@ struct paramInfo
 	double maximum = 1.0;
 //	double default_value = 0.0;
 	bool is_private{};
+	bool is_stateful{ true };
 };
 
 struct pluginInfo

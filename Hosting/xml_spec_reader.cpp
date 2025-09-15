@@ -599,6 +599,13 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 				}
 
 				paramE->QueryBoolAttribute("private", &param.is_private);
+
+				const auto persistantFlag = paramE->Attribute("persistant");
+				if (persistantFlag && strcmp(persistantFlag, "false") == 0)
+				{
+					param.is_stateful = false;
+				}
+
 #if 0
 				SetPinFlag(("private"), IO_PAR_PRIVATE, paramE, param.flags);
 				SetPinFlag(("ignorePatchChange"), IO_IGNORE_PATCH_CHANGE, paramE, param.flags);
@@ -607,12 +614,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 				SetPinFlag(("isPolyphonic"), IO_PAR_POLYPHONIC, paramE, param.flags);
 				SetPinFlag(("isPolyphonicGate"), IO_PAR_POLYPHONIC_GATE, paramE, param.flags);
 				// exception. default for 'persistant' is true (set in param constructor).
-				std::string persistantFlag = FixNullCharPtr(paramE->Attribute("persistant"));
 
-				if (persistantFlag == "false")
-				{
-					CLEAR_BITS(param.flags, IO_PARAMETER_PERSISTANT);
-				}
 #endif
 
 #if 0

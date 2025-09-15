@@ -118,6 +118,25 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 		return true;
 	}
 
+	bool setFromXml(const char* textValue)
+	{
+		if (is_scalar(info->datatype))
+		{
+			return setReal(atof(textValue));
+		}
+		else
+		{
+			switch (info->datatype)
+			{
+			case gmpi::PinDatatype::String:
+				return setBlob({ reinterpret_cast<const uint8_t*>(textValue), reinterpret_cast<const uint8_t*>(textValue) + strlen(textValue) });
+
+			case gmpi::PinDatatype::Blob:
+				break; // TODO uuencode or hex
+			}
+		}
+	}
+
 	int32_t queryQueMessageLength(int availableBytes) override
 	{
 		if(std::holds_alternative<double>(value_))
