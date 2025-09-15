@@ -138,10 +138,7 @@ void Processor::midiHelper(const api::Event* e)
 {
 	assert(e->eventType == api::EventType::Midi);
 
-	onMidiMessage(
-		  e->pinIdx
-		, e->data()
-		, e->size());
+	onMidiMessage(e->pinIdx, e->payload());
 }
 
 Processor::Processor()

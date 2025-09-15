@@ -119,6 +119,8 @@ namespace gmpi
 			}
 		}
 
+		typedef std::span<const uint8_t> message_view;
+		/*
 		class message_view {
 			const uint8_t* ptr_;
 			std::size_t len_;
@@ -163,6 +165,9 @@ namespace gmpi
 				return ptr_ + len_;
 			}
 		};
+
+				*/
+
 	} // namespace midi
 
 	namespace midi_1_0
@@ -405,18 +410,12 @@ namespace gmpi
 			};
 		}
 
-		inline bool isMidi2Message(const uint8_t* m, int size)
+		inline bool isMidi2Message(std::span<const uint8_t> bytes)
 		{
 			// MIDI 2.0 messages are always at least 4 bytes
 			// and first 4-bits are message-type of which only values less than 5 are valid.
-			return size >= 4 && (m[0] >> 4) <= Data128;
+			return bytes.size() >= 4 && (bytes[0] >> 4) <= Data128;
 		}
-
-		inline bool isMidi2Message(gmpi::midi::message_view msg)
-		{
-			return isMidi2Message(msg.begin(), static_cast<int>(std::size(msg)));
-		}
-
 
 		struct headerInfo
 		{
@@ -535,7 +534,7 @@ namespace gmpi
 			return
 			{
 				msg[2],
-				gmpi::midi::utils::u0_32_ToFloat(msg.begin() + 4),
+				gmpi::midi::utils::u0_32_ToFloat(msg.data() + 4),
 			};
 		}
 		struct polyController
@@ -553,7 +552,7 @@ namespace gmpi
 			{
 				msg[2],
 				msg[3],
-				gmpi::midi::utils::u0_32_ToFloat(msg.begin() + 4),
+				gmpi::midi::utils::u0_32_ToFloat(msg.data() + 4),
 			};
 		}
 
@@ -799,7 +798,7 @@ namespace gmpi
 		{
 			assert(msg.size() == 8);
 
-			return gmpi::midi::utils::u8_24_ToFloat(msg.begin() + 4);
+			return gmpi::midi::utils::u8_24_ToFloat(msg.data() + 4);
 		}
 
 
@@ -1154,7 +1153,7 @@ namespace gmpi
 					{
 						bool isFirst = true;
 						int remain = static_cast<int>(msg.size()) - 2; // skip leading F0 and trailing F7
-						const uint8_t* src = msg.begin() + 1; // skip leading F0
+						const uint8_t* src = msg.data() + 1; // skip leading F0
 						while (remain > 0)
 						{
 							const auto msgout = gmpi::midi_2_0::makeSysex(src, remain, isFirst);

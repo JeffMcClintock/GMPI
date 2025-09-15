@@ -110,7 +110,7 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 		);
 	}
 
-	// initialise parameter pinss.
+	// initialise pins.
 	{
 		gmpi::api::Event e
 		{
@@ -131,15 +131,55 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 				MidiInputPinIdx = pin.id;
 			}
 
-			if (pin.direction == gmpi::PinDirection::Out || pin.parameterId == -1)
+			if (pin.direction == gmpi::PinDirection::Out)
 				continue;
 
-			auto param = patchManager.getParameter(pin.parameterId);
-			if (!param)
-				continue;
+			e.pinIdx = pin.id;
 
+			if (pin.parameterId == -1) // non-parameter pins. Just set to thier default.
 			{
-				e.pinIdx = pin.id;
+				const auto def = atof(pin.default_value.c_str());
+				bool hasDefault = true;
+
+				switch (pin.datatype)
+				{
+				case gmpi::PinDatatype::Float32:
+				{
+					copyValueToEvent(e, static_cast<float>(def));
+				}
+				break;
+
+				case gmpi::PinDatatype::Int32:
+				case gmpi::PinDatatype::Enum:
+				{
+					copyValueToEvent(e, static_cast<int32_t>(std::round(def)));
+				}
+				break;
+
+				case gmpi::PinDatatype::Bool:
+				{
+					copyValueToEvent(e, static_cast<bool>(std::round(def)));
+				}
+				break;
+
+				case gmpi::PinDatatype::Midi: // Audio/MIDI pins can't have default in most plugin APIs.
+				case gmpi::PinDatatype::Audio:
+					hasDefault = false;
+					break;
+
+				default:
+					hasDefault = false;
+					assert(false); // unsupported type.
+				}
+
+				if(hasDefault)
+					events.push(e);
+			}
+			else
+			{
+				auto param = patchManager.getParameter(pin.parameterId);
+				if (!param)
+					continue;
 
 				switch (pin.parameterFieldType)
 				{
@@ -156,19 +196,19 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 					{
 					case gmpi::PinDatatype::Float32:
 					{
-						copyValueToEvent(e, static_cast<float>(param->valueReal));
+						copyValueToEvent(e, static_cast<float>(param->valueReal()));
 					}
 					break;
 
 					case gmpi::PinDatatype::Int32:
 					{
-						copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal)));
+						copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal())));
 					}
 					break;
 
 					case gmpi::PinDatatype::Bool:
 					{
-						copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal)));
+						copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal())));
 					}
 					break;
 					default:
@@ -203,7 +243,7 @@ void gmpi_processor::setHostControlFromDaw(gmpi::hosting::HostControls hc, doubl
     }
 }
 
-void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset)
+void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, GmpiParameter* param, int sampleOffset)
 {
 	gmpi::api::Event e
 	{
@@ -236,19 +276,19 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 				{
 				case gmpi::PinDatatype::Float32:
 				{
-					copyValueToEvent(e, static_cast<float>(param->valueReal));
+					copyValueToEvent(e, static_cast<float>(param->valueReal()));
 				}
 				break;
 
 				case gmpi::PinDatatype::Int32:
 				{
-					copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal)));
+					copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal())));
 				}
 				break;
 
 				case gmpi::PinDatatype::Bool:
 				{
-					copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal)));
+					copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal())));
 				}
 				break;
 				default:
@@ -421,7 +461,7 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 			{
 				//				values.rawValues_.push_back(v);
 
-				param.setReal(param.info->default_value);
+				param.setToDefault();
 			}
 		}
 	}
@@ -471,7 +511,7 @@ std::string gmpi_processor::getPresetUnsafe()
 
 		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
 
-		paramElement->SetAttribute("val", parameter.valueReal);
+		paramElement->SetAttribute("val", parameter.valueReal());
 
 #if 0  // TODO??
 		// MIDI learn.
@@ -538,6 +578,12 @@ gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_
 			case gmpi::PinDatatype::Bool:
 			{
 				if (param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::Blob:
+			{
+				if (param->setBlob({ data, (size_t) size }))
 					pendingControllerQueueClients.AddWaiter(param);
 			}
 			break;

@@ -564,7 +564,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 //				param.default_value = QueryStringAttribute(paramE, "default");
 				if(auto defaultE = paramE->Attribute("default"); defaultE)
 				{
-					param.default_value = atof(defaultE);
+					param.default_value_s = defaultE;// = atof(defaultE);
 				}
 #if 0
 				// Automation.

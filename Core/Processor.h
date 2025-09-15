@@ -107,6 +107,12 @@ public:
 		assert( plugin_ != nullptr && "Don't forget init() on each pin in your constructor." );
 		return other == value_;
 	}
+
+	void setValueRaw(std::span<const uint8_t> bytes)
+	{
+		valueFromData<T>(bytes, value_);
+	}
+	/*
 	virtual void setValueRaw(int size, const uint8_t* data)
 	{
 		valueFromData<T>(size, data, value_);
@@ -115,11 +121,12 @@ public:
 	{
 		valueFromData<T>(static_cast<int>(size), data, value_);
 	}
-	virtual int rawSize() const
+	*/
+	/*virtual*/ int rawSize() const
 	{
 		return dataSize<T>(value_);
 	}
-	virtual const uint8_t* rawData()
+	/*virtual*/ const uint8_t* rawData()
 	{
 		return dataPtr<T>(value_);
 	}
@@ -131,7 +138,7 @@ public:
 	{
 		if(e->eventType == api::EventType::PinSet)
 		{
-			setValueRaw(e->size(), e->data());
+			setValueRaw(e->payload());
 			freshValue_ = true;
 		}
 	}
@@ -329,7 +336,7 @@ public:
 	// overrides
 	virtual void onGraphStart();	// called on very first sample.
 	virtual void onSetPins() {}  // one or more pins_ updated.  Check pin update flags to determine which ones.
-	virtual void onMidiMessage(int pin, const uint8_t* midiMessage, int size) {}
+	virtual void onMidiMessage(int pin, std::span<const uint8_t> midiMessage) {}
 
 	// access to the DAW
 	gmpi::shared_ptr<api::IProcessorHost> host;

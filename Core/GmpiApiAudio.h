@@ -17,6 +17,7 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+#include <span>
 #include "GmpiApiCommon.h"
 
 // Platform specific definitions.
@@ -51,13 +52,10 @@ struct Event
 		const uint8_t* oversizeData_;
 	};
 
-	int32_t size() const
-	{
-		return size_;
-	}
-	const uint8_t* data() const
-	{
-		return size_ > 8 ? oversizeData_ : data_;
+    std::span<const uint8_t> payload() const
+    {
+        const uint8_t* data = size_ > 8 ? oversizeData_ : data_;
+        return std::span<const uint8_t>(data, static_cast<size_t>(size_));
 	}
 };
 

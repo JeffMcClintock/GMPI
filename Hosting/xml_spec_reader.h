@@ -135,7 +135,7 @@ struct paramInfo
 
 	std::string name;
 	gmpi::PinDatatype datatype;
-//	std::string default_value;
+	std::string default_value_s;
 	//int32_t parameterId;
 	//int32_t flags;
 	std::string enum_list;
@@ -143,7 +143,7 @@ struct paramInfo
 
 	double minimum = 0.0;
 	double maximum = 1.0;
-	double default_value = 0.0;
+//	double default_value = 0.0;
 	bool is_private{};
 };
 
@@ -151,8 +151,8 @@ struct pluginInfo
 {
 	std::string id;
 	std::string name;
-	int inputCount = {};
-	int outputCount = {};
+//	int inputCount = {};
+//	int outputCount = {};
 	std::vector<pinInfo> dspPins;
 	std::vector<pinInfo> guiPins;
 	std::vector<paramInfo> parameters;

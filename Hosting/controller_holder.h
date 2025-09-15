@@ -7,6 +7,7 @@ gmpi::hosting::gmpi_processor plugin;
 
 #include <unordered_map>
 #include <span>
+#include <variant>
 #include <functional>
 #include "GmpiApiAudio.h"
 #include "GmpiSdkCommon.h"
@@ -18,37 +19,71 @@ namespace gmpi
 namespace hosting
 {
 
+constexpr bool is_scalar(gmpi::PinDatatype dt)
+{
+	switch (dt)
+	{
+	case gmpi::PinDatatype::Float32:
+	case gmpi::PinDatatype::String:
+	case gmpi::PinDatatype::Blob:
+	case gmpi::PinDatatype::Midi:
+		return false;
+	default:
+		return true;
+	}
+}
+
 struct GmpiParameter : public QueClient // also host-controls, might need to rename it.
 {
 	const paramInfo* info{};
-//	int32_t id{};
 
-	double valueReal = 0.0;
-	double valueLo = 0.0;
-	double valueHi = 1.0;
+//	double valueReal = 0.0;
+
+	// Holds either a numeric value (double) or a textual/blob value (std::vector<uint8_t>).
+	std::variant<double, std::vector<uint8_t>> value_{};
 
 	bool isGrabbed{};
 
 	GmpiParameter() = default;
-	GmpiParameter(const paramInfo* i, double defaultValue, double lo, double hi)
+	GmpiParameter(const paramInfo* i) //, double defaultValue, double lo, double hi)
 		: info(i)
-		, valueReal(defaultValue)
-		, valueLo(lo)
-		, valueHi(hi)
+//		, valueReal(defaultValue)
 	{
-		assert(valueLo < valueHi);
+		assert(info->minimum <= info->maximum);
+
+		setToDefault();
+	}
+
+	void setToDefault()
+	{
+		if (is_scalar(info->datatype))
+		{
+			value_ = atof(info->default_value_s.c_str());
+		}
+		else
+		{
+			value_ = std::vector<uint8_t>{}; // TODO: proper default for string/blob
+		}
+	}
+
+	double valueReal() const
+	{
+		if (auto pval = std::get_if<double>(&value_); pval)
+			return *pval;
+
+		return 0.0;
 	}
 
 	double real2Normalized(double r) const
 	{
-		if (valueHi == valueLo)
+		if (info->maximum == info->minimum)
 			return 0.0; // avoid divide by zero.
-		return (r - valueLo) / (valueHi - valueLo);
+		return (r - info->minimum) / (info->maximum - info->minimum);
 	}
 
 	double normalized2Real(double n) const
 	{
-		return valueLo + n * (valueHi - valueLo);
+		return info->minimum + n * (info->maximum - info->minimum);
 	}
 
 	bool setNormalised(double value)
@@ -57,21 +92,42 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 	}
 	double normalisedValue() const
 	{
-		return real2Normalized(valueReal);
+		return real2Normalized(valueReal());
 	}
 
 	bool setReal(double value)
 	{
-		const bool r = value != valueReal;
+		const bool r = value != valueReal();
 
-		valueReal = value;
+		value_ = value;
 
 		return r;
 	}
 
-	int queryQueMessageLength(int availableBytes) override
+	// BLOB based parameters
+	bool setBlob(std::span<const uint8_t> data)
 	{
-		return sizeof(double);
+		if (auto* v = std::get_if<std::vector<uint8_t>>(&value_))
+		{
+			const bool changed = v->size() != data.size() || std::equal(v->begin(), v->end(), data.begin());
+
+			// Reuse existing storage if possible.
+			v->assign(data.begin(), data.end());
+
+			return changed;
+		}
+
+		// Construct the vector in-place inside the variant (no temporary).
+		value_.emplace<std::vector<uint8_t>>(data.begin(), data.end());
+		return true;
+	}
+
+	int32_t queryQueMessageLength(int availableBytes) override
+	{
+		if(std::holds_alternative<double>(value_))
+			return sizeof(double);
+		else
+			return sizeof(int32_t) + static_cast<int32_t>(std::get<std::vector<uint8_t>>(value_).size());
 	}
 
 	void getQueMessage(class my_output_stream& outStream, int messageLength) override
@@ -80,10 +136,24 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 		const int32_t voice{};
 
 		outStream << info->id;
-		outStream << id_to_long("ppc2");
-		outStream << messageLength;
 
-		outStream << valueReal;
+		if (std::holds_alternative<double>(value_))
+		{
+			outStream << id_to_long("ppc2");
+			outStream << messageLength;
+
+			outStream << valueReal();
+		}
+		else
+		{
+			auto& v = std::get<std::vector<uint8_t>>(value_);
+
+			outStream << id_to_long("ppc3");
+			outStream << messageLength;
+
+			outStream << static_cast<int32_t>(v.size());
+			outStream.Write(v.data(), static_cast<unsigned int>(v.size()));
+		}
 	}
 };
 
@@ -105,9 +175,9 @@ public:
 
 				GmpiParameter p(
 					  &paramInfo
-					, paramInfo.default_value // atof(paramInfo.default_value.c_str())
-					, paramInfo.minimum
-					, paramInfo.maximum
+					//, paramInfo.default_value // atof(paramInfo.default_value.c_str())
+					//, paramInfo.minimum
+					//, paramInfo.maximum
 				);
 
 				parameters[paramInfo.id] = p;
@@ -147,10 +217,23 @@ public:
 
 		auto& param = it->second;
 
-		if (value == param.valueReal)
+		if (!param.setReal(value))
 			return {};
 
-		param.valueReal = value;
+		return &param;
+	}
+
+	GmpiParameter* setParameterBlob(int id, std::span<const uint8_t> data)
+	{
+		auto it = parameters.find(id);
+		if (it == parameters.end())
+			return {};
+
+		auto& param = it->second;
+
+		if (!param.setBlob(data))
+			return {};
+
 		return &param;
 	}
 

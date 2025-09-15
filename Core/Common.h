@@ -21,6 +21,7 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <span>
 #include <cstring> // for std::memcpy
 #include <type_traits> // for std::is_trivially_copyable
 #include "GmpiApiAudio.h"
@@ -192,29 +193,29 @@ inline const uint8_t* dataPtr<Blob>(const Blob& value)
 
 // De-serialize type.
 template <typename T>
-inline void valueFromData(int size, const uint8_t* data, T& returnValue)
+inline void valueFromData(std::span<const uint8_t> bytes, T& returnValue)
 {
-	assert(size == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
+	assert(bytes.size() == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
 	static_assert(std::is_trivially_copyable<T>::value, "T must be trivially copyable");
-	std::memcpy(&returnValue, data, size);
+	std::memcpy(&returnValue, bytes.data(), bytes.size());
 }
 
 template <>
-inline void valueFromData<Blob>(int size, const uint8_t* data, Blob& returnValue)
+inline void valueFromData<Blob>(std::span<const uint8_t> bytes, Blob& returnValue)
 {
-	returnValue.assign(data, data + size);
+	returnValue.assign(bytes.begin(), bytes.end());
 }
 
 template <>
-inline void valueFromData<std::string>(int size, const uint8_t* data, std::string& returnValue)
+inline void valueFromData<std::string>(std::span<const uint8_t> bytes, std::string& returnValue)
 {
-	returnValue.assign(reinterpret_cast<const char*>(data), size);
+	returnValue.assign(reinterpret_cast<const char*>(bytes.data()), bytes.size());
 }
 
 template <>
-inline void valueFromData<std::wstring>(int size, const uint8_t* data, std::wstring& returnValue)
+inline void valueFromData<std::wstring>(std::span<const uint8_t> bytes, std::wstring& returnValue)
 {
-	returnValue.assign(reinterpret_cast<const wchar_t*>(data), size / sizeof(wchar_t));
+	returnValue.assign(reinterpret_cast<const wchar_t*>(bytes.data()), bytes.size() / sizeof(wchar_t));
 }
 
 } // namespace

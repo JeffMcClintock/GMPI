@@ -5,7 +5,10 @@
 gmpi::hosting::gmpi_processor plugin;
 */
 
+#include <span>
+#include <variant>
 #include <unordered_map>
+#include "controller_holder.h"
 #include "GmpiApiAudio.h"
 #include "GmpiSdkCommon.h"
 #include "Hosting/xml_spec_reader.h"
@@ -57,13 +60,29 @@ public:
 	}
 };
 
-struct DawParameter : public QueClient // also host-controls, might need to rename it.
+/*
+struct GmpiParameter : public QueClient // also host-controls, might need to rename it.
 {
 	const paramInfo* info{};
 
-	double valueReal = 0.0;
-	double valueLo = 0.0;
-	double valueHi = 1.0;
+	//double valueReal = 0.0;
+	//double valueLo = 0.0;
+	//double valueHi = 1.0;
+
+	// Holds either a numeric value (double) or a textual/blob value (std::vector<uint8_t>).
+	std::variant<double, std::vector<uint8_t>> value_{};
+
+	void setToDefault()
+	{
+		if (is_scalar(info->datatype))
+		{
+			value_ = atof(info->default_value_s.c_str());
+		}
+		else
+		{
+			value_ = std::vector<uint8_t>{}; // TODO: proper default for string/blob
+		}
+	}
 
 	bool setNormalised(double value)
 	{
@@ -104,6 +123,13 @@ struct DawParameter : public QueClient // also host-controls, might need to rena
 		return valueLo + n * (valueHi - valueLo);
 	}
 
+	// BLOB based parameters
+	bool setBlob(std::span<const uint8_t> data)
+	{
+		//value_ = std::vector<uint8_t>(data.begin(), data.end());
+		return true;
+	}
+
 	int queryQueMessageLength(int availableBytes) override
 	{
 		return sizeof(double);
@@ -121,11 +147,12 @@ struct DawParameter : public QueClient // also host-controls, might need to rena
 		outStream << valueReal;
 	}
 };
+*/
 
 class PatchManager
 {
 public:
-	std::unordered_map<int, DawParameter> parameters;
+	std::unordered_map<int, GmpiParameter> parameters;
 
 	PatchManager() = default;
 
@@ -136,19 +163,20 @@ public:
 			//assert(param.id != -1 || param.hostConnect != gmpi::hosting::HostControls::None);
 			//		if (param.id >= 0)
 			{
-				gmpi::hosting::DawParameter p;
-//				p.id = param.id; // > -1 ? param.id : (-2 - (int)param.hostConnect);
+				gmpi::hosting::GmpiParameter p;
 				p.info = &param;
-				p.valueReal = param.default_value; // atof(param.default_value.c_str());
-				p.valueLo = param.minimum;
-				p.valueHi = param.maximum;
+//				p.id = param.id; // > -1 ? param.id : (-2 - (int)param.hostConnect);
+				//p.valueReal = atof(param.default_value_s.c_str()); // param.default_value; // atof(param.default_value.c_str());
+				//p.valueLo = param.minimum;
+				//p.valueHi = param.maximum;
 
+				p.setToDefault();
 				parameters[param.id] = p;
 			}
 		}
 	}
 
-	DawParameter* getParameter(int id)
+	GmpiParameter* getParameter(int id)
 	{
 		if (auto it = parameters.find(id); it != parameters.end())
 			return &(it->second);
@@ -157,7 +185,7 @@ public:
 	}
 
 	// return the parameter only if it changed.
-	DawParameter* setParameterNormalised(int id, double value)
+	GmpiParameter* setParameterNormalised(int id, double value)
 	{
 		auto it = parameters.find(id);
 		if (it == parameters.end())
@@ -172,7 +200,7 @@ public:
 	}
 
 	// return the parameter only if it changed.
-	DawParameter* setParameterReal(int id, double value)
+	GmpiParameter* setParameterReal(int id, double value)
 	{
 		auto it = parameters.find(id);
 		if (it == parameters.end())
@@ -180,10 +208,10 @@ public:
 
 		auto& param = it->second;
 
-		if (value == param.valueReal)
+		if (value == param.valueReal())
 			return {};
 
-		param.valueReal = value;
+		param.setReal(value);
 		return &param;
 	}
 };
@@ -198,7 +226,7 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	PatchManager patchManager;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 	int MidiInputPinIdx = -1;
-    std::vector<gmpi::hosting::DawParameter*> nativeParams;
+    std::vector<gmpi::hosting::GmpiParameter*> nativeParams;
 
 	int32_t blockSize = 512;
 	float sampleRate = 44100.0f;
@@ -207,7 +235,7 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info, int32_t blockSize, float sampleRate);
 	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value);
     void setHostControlFromDaw(gmpi::hosting::HostControls hc, double value);
-	void sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, DawParameter* param, int sampleOffset);
+	void sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, GmpiParameter* param, int sampleOffset);
 
 	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
 
