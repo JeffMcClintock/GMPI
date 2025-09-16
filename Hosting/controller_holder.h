@@ -135,6 +135,7 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 				break; // TODO uuencode or hex
 			}
 		}
+		return false;
 	}
 
 	int32_t queryQueMessageLength(int availableBytes) override

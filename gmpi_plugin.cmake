@@ -188,7 +188,9 @@ function(gmpi_plugin)
 
         gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
         
-        set(TARGET_EXTENSION "${kind}")
+        #set(TARGET_EXTENSION "${kind}")
+        string(TOLOWER "${kind}" TARGET_EXTENSION)
+
         if(kind STREQUAL "AU")
             set(TARGET_EXTENSION "component")
 
