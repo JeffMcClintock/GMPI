@@ -30,9 +30,18 @@ void gmpi_controller_holder::init(gmpi::hosting::pluginInfo& pinfo)
 	}
 }
 
-void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
+void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 {
-	m_editors.push_back(gui);
+	gmpi::shared_ptr<gmpi::api::IUnknown> unknown(unknownEditor);
+	auto editor = unknown.as<gmpi::api::IEditor>();
+
+	if(editor.isNull())
+	{
+		assert(false); // not an IEditor
+		return;
+	}
+	
+	m_editors.push_back(editor.get());
 
 	constexpr int32_t voice{};
 
@@ -45,7 +54,7 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 			case gmpi::Field::Normalized:
 			{
 				const float valueNormalized = static_cast<float>(param->normalisedValue());
-				gui->setPin(pin.id, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
+				editor->setPin(pin.id, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&valueNormalized));
 			}
 			break;
 
@@ -56,29 +65,29 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 				case gmpi::PinDatatype::Float32:
 				{
 					const float value = static_cast<float>(param->valueReal());
-					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 				}
 				break;
 
 				case gmpi::PinDatatype::Int32:
 				{
 					const int32_t value = static_cast<int32_t>(std::round(param->valueReal()));
-					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 				}
 				break;
 
 				case gmpi::PinDatatype::Bool:
 				{
 					const bool value = static_cast<bool>(std::round(param->valueReal()));
-					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 				}
 				break;
 
 				case gmpi::PinDatatype::Blob:
 				{
 					const auto& value = std::get<std::vector<uint8_t>>(param->value_); // param->value_;
-					gui->setPin(pin.id, 0, static_cast<int32_t>(value.size()), value.data());
-					gui->notifyPin(pin.id, voice);
+					editor->setPin(pin.id, 0, static_cast<int32_t>(value.size()), value.data());
+					editor->notifyPin(pin.id, voice);
 				}
 				break;
 
@@ -99,7 +108,7 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 			case gmpi::PinDatatype::Float32:
 			{
 				const float value = static_cast<float>(def);
-				gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+				editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 			}
 			break;
 
@@ -107,14 +116,14 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 			case gmpi::PinDatatype::Int32:
 			{
 				const int32_t value = static_cast<int32_t>(std::round(def));
-				gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+				editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 			}
 			break;
 
 			case gmpi::PinDatatype::Bool:
 			{
 				const bool value = static_cast<bool>(std::round(def));
-				gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+				editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 			}
 			break;
 
@@ -122,7 +131,7 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 			{
 				// TODO !!! const bool value = static_cast<bool>(std::round(def));
 				Blob test;
-				gui->setPin(pin.id, 0, test.size(), test.data());
+				editor->setPin(pin.id, 0, test.size(), test.data());
 			}
 			break;
 
@@ -133,14 +142,15 @@ void gmpi_controller_holder::initUi(gmpi::api::IEditor* gui)
 	}
 }
 
-gmpi::ReturnCode gmpi_controller_holder::unRegisterGui(gmpi::api::IEditor* gui)
+gmpi::ReturnCode gmpi_controller_holder::unRegisterGui(gmpi::api::IUnknown* editor)
 {
 #if _HAS_CXX20
-	std::erase(m_editors, gui);
+	std::erase(m_editors, editor);
 #else
-	if (auto it = find(m_editors.begin(), m_editors.end(), gui); it != m_editors.end())
+	if (auto it = find(m_editors.begin(), m_editors.end(), editor); it != m_editors.end())
 		m_editors.erase(it);
 #endif
+
 	return gmpi::ReturnCode::Ok;
 }
 

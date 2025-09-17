@@ -465,6 +465,26 @@ private:
 	IWriteableQue* m_que;
 };
 
+class memory_output_stream : public my_output_stream
+{
+	std::vector<std::byte>& storage;
+	size_t writePos{};
+
+public:
+	memory_output_stream(std::vector<std::byte>& pstorage, int p_handle = 0, const char* p_msg_id = 0) : storage(pstorage)
+	{
+		if (p_msg_id)
+		{
+			*this << p_handle;
+			*this << id_to_long(p_msg_id);
+		}
+	}
+	void Write(const void* lpBuf, unsigned int nMax) override
+	{
+		storage.insert(storage.end(), (std::byte*)lpBuf, (std::byte*)lpBuf + nMax);
+	}
+};
+
 class QueClient
 {
 public:
@@ -522,54 +542,7 @@ public:
 		client->inQue_ = true;
 	}
 
-	bool ServiceWaiters(my_output_stream& outStream, int freeSpace, int maximumBytes)
-	{
-		bool sentData = false;
-
-		QueClient* client = waitingClientsHead;
-
-		if (client)
-		{
-			QueClient* tail = waitingClientsTail;
-
-			while (client)
-			{
-				const int headerLength = sizeof(int) * 3;
-				const int safetyZoneLength = headerLength * 8; // not all que users check size first. Allow some slack for the odd miscelaneous message.
-				int requestedMessageLength = client->queryQueMessageLength(maximumBytes - headerLength); // NOT including header.
-				int totalMessageLength = requestedMessageLength + headerLength;
-
-				// avoid overflow by leaving decent capacity, unless message is too big for an empty que anyhow.
-				if (freeSpace < totalMessageLength + safetyZoneLength) // && fifo_.totalSize() > totalMessageLength )
-				{
-					break;
-				}
-
-				//_RPT2(_CRT_WARN, "ServiceWaiter: %s (%x)\n", typeid(*waitingClientsHead).name(), waitingClientsHead);
-				waitingClientsHead = client->next_;
-
-				if (waitingClientsTail == client)
-				{
-					waitingClientsTail = 0;
-				}
-
-				client->inQue_ = false;
-				client->dirty_ = false;
-				client->getQueMessage(outStream, requestedMessageLength);
-
-				sentData = true;
-
-				freeSpace -= totalMessageLength;
-
-				// only go as far as original tail (else objects might que themselves over and over)
-				if (client == tail)
-					client = 0;
-				else
-					client = waitingClientsHead;
-			}
-		}
-		return sentData;
-	}
+	bool ServiceWaiters(my_output_stream& outStream, int freeSpace, int maximumBytes);
 
 	void setSampleRate(float s)
 	{

@@ -3,10 +3,6 @@
 #include <string>
 #include <vector>
 #include <algorithm>
-#include <optional>
-//#include "GmpiApiCommon.h"
-//#include "GmpiApiEditor.h"
-//#include "GmpiSdkCommon.h"
 
 namespace gmpi
 {
@@ -18,10 +14,7 @@ my_input_stream& my_input_stream::operator>>(gmpi::Blob& val)
     int size;
     Read(&size, sizeof(size));
     val.resize(size);
-    //    char* dat = new char[size];
     Read(val.data(), size);
-    //    val.setValueRaw(size,dat);
-    //    delete [] dat;
     return *this;
 }
 
@@ -49,6 +42,64 @@ my_output_stream& my_output_stream::operator<<(const gmpi::Blob& val)
     return *this;
 };
 
+bool QueuedUsers::ServiceWaiters(my_output_stream& outStream, int freeSpace, int maximumBytes)
+{
+	bool sentData = false;
+
+	QueClient* client = waitingClientsHead;
+
+	if (client)
+	{
+		QueClient* tail = waitingClientsTail;
+
+		while (client)
+		{
+			const int headerLength = sizeof(int) * 3;
+			const int safetyZoneLength = headerLength * 8; // not all que users check size first. Allow some slack for the odd miscelaneous message.
+			int requestedMessageLength = client->queryQueMessageLength(maximumBytes - headerLength); // NOT including header.
+			int totalMessageLength = requestedMessageLength + headerLength;
+
+			// in the rare case that a message is bigger than maximumBytes, use the alternate method.
+			if (totalMessageLength + safetyZoneLength > maximumBytes)
+			{
+				std::vector<std::byte> oversize_data(requestedMessageLength + headerLength);
+				memory_output_stream ourstream(oversize_data);
+
+				client->getQueMessage(outStream, requestedMessageLength);
+				break;
+			}
+
+			// not enough spare capacity atm? try again later.
+			if (totalMessageLength + safetyZoneLength > freeSpace)
+			{
+				break;
+			}
+
+			//_RPT2(_CRT_WARN, "ServiceWaiter: %s (%x)\n", typeid(*waitingClientsHead).name(), waitingClientsHead);
+			waitingClientsHead = client->next_;
+
+			if (waitingClientsTail == client)
+			{
+				waitingClientsTail = 0;
+			}
+
+			client->inQue_ = false;
+			client->dirty_ = false;
+			client->getQueMessage(outStream, requestedMessageLength);
+
+			sentData = true;
+
+			freeSpace -= totalMessageLength;
+
+			// only go as far as original tail (else objects might que themselves over and over)
+			if (client == tail)
+				client = 0;
+			else
+				client = waitingClientsHead;
+		}
+	}
+	return sentData;
+}
 /////////////////////////////////////////////////////////////////////////////////
 interThreadQue::interThreadQue(int p_que_size) :
 	fifo_(p_que_size)

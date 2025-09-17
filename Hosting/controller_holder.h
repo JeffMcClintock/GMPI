@@ -13,6 +13,7 @@ gmpi::hosting::gmpi_processor plugin;
 #include "GmpiSdkCommon.h"
 #include "Hosting/xml_spec_reader.h"
 #include "Hosting/message_queues.h"
+#include "helpers/IController.h"
 
 namespace gmpi
 {
@@ -273,7 +274,11 @@ public:
 
 };
 
-class gmpi_controller_holder : public gmpi::api::IEditorHost, public gmpi::api::IParameterObserver, public gmpi::hosting::interThreadQueUser
+class gmpi_controller_holder :
+	public gmpi::api::IEditorHost
+	, public gmpi::api::IParameterObserver
+	, public gmpi::hosting::interThreadQueUser
+	, public gmpi::hosting::IController
 {
 public:
 	gmpi::hosting::pluginInfo* info{};
@@ -309,7 +314,6 @@ public:
 
 	std::vector<gmpi::api::IEditor*> m_editors;
 	gmpi::hosting::interThreadQue message_que_dsp_to_ui;
-//?	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 
 	std::function<void(GmpiParameter*)> notifyDaw = [](GmpiParameter*) {};
 
@@ -318,9 +322,10 @@ public:
 	// send initial value of all parameters to GUI
 	void initUi(gmpi::api::IParameterObserver* gui); // old, needs aditional translation params->pins
 
-	void initUi(gmpi::api::IEditor* gui);
-	gmpi::ReturnCode unRegisterGui(gmpi::api::IEditor* gui);
-	
+	// IController interface
+	void initUi(gmpi::api::IUnknown* editor) override;
+	gmpi::ReturnCode unRegisterGui(gmpi::api::IUnknown* editor) override;
+
 	void setPinFromUi(int32_t pinId, int32_t voice, std::span<const std::byte> data);
 
 	// IEditorHost
