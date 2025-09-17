@@ -143,7 +143,7 @@ MORE_DATA:
 	}
 
 	// If FIFO big enough for messsage, just wait till enough data available.
-	assert(fifo_.totalSize() > recievingMessageLength);
+	assert(fifo_.totalSpace() > recievingMessageLength);
 
 	if (fifo_.readyBytes() >= recievingMessageLength)
 	{

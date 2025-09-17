@@ -2,14 +2,12 @@
 /*
 #include "Hosting/message_queues.h"
 
-gmpi::hosting::gmpi_processor plugin;
+gmpi::hosting::lock_free_fifo fifo;
 */
 
 #include <atomic>
 #include <cmath>
-#include "Common.h"
-//#include "GmpiApiAudio.h"
-//#include "GmpiSdkCommon.h"
+#include "Core/Common.h"
 
 namespace gmpi
 {
@@ -43,6 +41,7 @@ inline constexpr uint32_t id_to_long(const char* id)
 class IWriteableQue
 {
 public:
+	virtual int totalSpace() = 0;
 	virtual int freeSpace() = 0;
 	virtual void pushString(int p_length, const unsigned char* p_data) = 0;
 	virtual void Send() = 0;
@@ -50,16 +49,18 @@ public:
 
 class WriteableQueSink : public IWriteableQue
 {
-	virtual int freeSpace() override
+    int freeSpace() override
 	{
 		return (std::numeric_limits<int>::max)();
 	}
-	virtual void pushString(int /*p_length*/, const unsigned char* /*p_data*/) override
+	int totalSpace() override
 	{
+		return (std::numeric_limits<int>::max)();
 	}
-	virtual void Send() override
-	{
-	}
+	void pushString( int /*p_length*/, const unsigned char* /*p_data*/ ) override
+    {}
+    void Send() override
+    {}
 };
 
 // Base class common to various FIFO's and ques.
@@ -97,7 +98,7 @@ public:
 #endif
 #if defined( _DEBUG )
 	virtual bool isUncomitted() = 0;
-	int m_debug_thread_id{};
+	int m_debug_thread_id = {};
 #endif
 };
 
@@ -121,6 +122,12 @@ public:
 	virtual void Reset()
 	{
 		read_ptr = m_committed_write_ptr = m_uncommited_write_ptr = 0;
+	}
+
+	// empty the FIFO discarding contents. thread-safe from the consumer side.
+	void clear()
+	{
+		read_ptr.store(m_committed_write_ptr.load(std::memory_order_relaxed), std::memory_order_release);
 	}
 
 #if defined( _DEBUG )
@@ -262,7 +269,7 @@ public:
 		return freeSpace - 1;
 	}
 
-	int totalSize() const
+	int totalSpace() override
 	{
 		return m_que_size - 1;
 	}
@@ -448,6 +455,12 @@ public:
 		m_que->Send();
 	}
 
+	static bool hasSpaceForMessage(IWriteableQue* p_que, int sizeofPayload)
+	{
+		constexpr int headerSize = sizeof(int32_t) * 2;
+		return sizeofPayload + headerSize < p_que->freeSpace();
+	}
+
 private:
 	IWriteableQue* m_que;
 };
@@ -564,7 +577,7 @@ public:
 		sampleFramesPerCycle = static_cast<int>(std::round(s / guiFrameRate));
 	}
 
-	bool ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames) //, int sampleFramesPerCycle)
+	bool ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames)
 	{
 		my_msg_que_output_stream outStream(que);
 		auto freeSpace = que->freeSpace();
@@ -624,6 +637,7 @@ public:
 				waitingClientsHead->inQue_ = false;
 				waitingClientsHead = waitingClientsHead->next_;
 
+				// if we processed them all, null the tail. List must be consistent before we try to add it back again below.
 				if (waitingClientsHead == nullptr)
 					waitingClientsTail = nullptr;
 
@@ -701,14 +715,15 @@ public:
 	virtual void popString(int p_length, const void* p_data) override;
 	virtual bool isEmpty() override;
 	virtual int readyBytes() override;
+	int totalSpace() override
+	{
+		return fifo_.totalSpace();
+	}
 	int freeSpace() override
 	{
 		return fifo_.freeSpace();
 	}
-	int maxMessageSize()
-	{
-		return fifo_.totalSize();
-	}
+
 	void pollMessage(interThreadQueUser* app);
 #if defined( _DEBUG )
 	virtual bool isUncomitted() override;
