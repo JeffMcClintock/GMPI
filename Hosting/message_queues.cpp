@@ -65,7 +65,7 @@ void QueuedUsers::startMultiPartSend(QueClient* client, my_output_stream& outStr
 
 	multipartChunkIndex = 1;
 
-	_RPTN(0, "FIFO sending oversize message in chunks (%d bytes)\n", totalMessageLength);
+//	_RPTN(0, "FIFO sending oversize message in chunks (%d bytes)\n", totalMessageLength);
 }
 
 bool QueuedUsers::MultiPart_send(my_output_stream& outStream, int freeSpace)
@@ -76,7 +76,7 @@ bool QueuedUsers::MultiPart_send(my_output_stream& outStream, int freeSpace)
 
 	const auto chunksize = (std::min)(oversize_data.size() - multipartReadIndex, (size_t)(freeSpace - safetyZoneLength));
 
-	_RPTN(0, "FIFO sending chunk %d (%d bytes)\n", multipartChunkIndex, chunksize);
+//	_RPTN(0, "FIFO sending chunk %d (%d bytes)\n", multipartChunkIndex, chunksize);
 
 	// send header for chunk.
 	outStream << -99; // handle
@@ -94,7 +94,7 @@ bool QueuedUsers::MultiPart_send(my_output_stream& outStream, int freeSpace)
 		multipartReadIndex = 0;
 		oversize_data.clear();
 
-		_RPT0(0, "FIFO oversize DONE\n");
+//		_RPT0(0, "FIFO oversize DONE\n");
 	}
 	else
 	{
