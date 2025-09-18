@@ -42,9 +42,79 @@ my_output_stream& my_output_stream::operator<<(const gmpi::Blob& val)
     return *this;
 };
 
+void QueuedUsers::startMultiPartSend(QueClient* client, my_output_stream& outStream, int requestedMessageLength)
+{
+	int totalMessageLength = requestedMessageLength + headerLength;
+
+	// write message to buffer
+	{
+		oversize_data.resize(totalMessageLength);
+		memory_output_stream memstream(oversize_data);
+
+		client->getQueMessage(memstream, requestedMessageLength);
+	}
+
+	// send multipart message header.
+	{
+		outStream << -99; // handle
+		outStream << id_to_long("MPAR"); // multipart message start
+		outStream << (int32_t) sizeof(int32_t);
+
+		outStream << (int32_t) totalMessageLength; // multipart message length
+	}
+
+	multipartChunkIndex = 1;
+
+	_RPTN(0, "FIFO sending oversize message in chunks (%d bytes)\n", totalMessageLength);
+}
+
+bool QueuedUsers::MultiPart_send(my_output_stream& outStream, int freeSpace)
+{
+	// if queue is full or nearly, just rety later.
+	if (freeSpace <= safetyZoneLength * 2)
+		return false;
+
+	const auto chunksize = (std::min)(oversize_data.size() - multipartReadIndex, (size_t)(freeSpace - safetyZoneLength));
+
+	_RPTN(0, "FIFO sending chunk %d (%d bytes)\n", multipartChunkIndex, chunksize);
+
+	// send header for chunk.
+	outStream << -99; // handle
+	outStream << id_to_long("MPCK"); // multipart chunk
+	outStream << (int32_t)chunksize;
+
+	// send chunk data
+	outStream.Write(oversize_data.data() + multipartReadIndex, (unsigned int)chunksize);
+	multipartReadIndex += chunksize;
+
+	if (multipartReadIndex >= oversize_data.size())
+	{
+		// end of multipart message.
+		multipartChunkIndex = 0;
+		multipartReadIndex = 0;
+		oversize_data.clear();
+
+		_RPT0(0, "FIFO oversize DONE\n");
+	}
+	else
+	{
+		++multipartChunkIndex;
+	}
+
+	return true;
+}
+
+
+#if 0
 bool QueuedUsers::ServiceWaiters(my_output_stream& outStream, int freeSpace, int maximumBytes)
 {
+	assert(maximumBytes > headerLength + safetyZoneLength);
+
 	bool sentData = false;
+
+	// if an oversize message is being sent, concentrate on that..
+	if (multiPartMode())
+		return MultiPart_send(outStream, freeSpace);
 
 	QueClient* client = waitingClientsHead;
 
@@ -54,24 +124,20 @@ bool QueuedUsers::ServiceWaiters(my_output_stream& outStream, int freeSpace, int
 
 		while (client)
 		{
-			const int headerLength = sizeof(int) * 3;
-			const int safetyZoneLength = headerLength * 8; // not all que users check size first. Allow some slack for the odd miscelaneous message.
 			int requestedMessageLength = client->queryQueMessageLength(maximumBytes - headerLength); // NOT including header.
 			int totalMessageLength = requestedMessageLength + headerLength;
 
 			// in the rare case that a message is bigger than maximumBytes, use the alternate method.
 			if (totalMessageLength + safetyZoneLength > maximumBytes)
 			{
-				std::vector<std::byte> oversize_data(requestedMessageLength + headerLength);
-				memory_output_stream ourstream(oversize_data);
+				if (safetyZoneLength >= freeSpace) // check there is a little room for the "MPAR" header.
+					break;
 
-				client->getQueMessage(outStream, requestedMessageLength);
-				break;
+				startMultiPartSend(client, outStream, requestedMessageLength);
 			}
-
-			// not enough spare capacity atm? try again later.
-			if (totalMessageLength + safetyZoneLength > freeSpace)
+			else if (totalMessageLength + safetyZoneLength > freeSpace)
 			{
+				// not enough spare capacity atm? try again later.
 				break;
 			}
 
@@ -98,6 +164,124 @@ bool QueuedUsers::ServiceWaiters(my_output_stream& outStream, int freeSpace, int
 				client = waitingClientsHead;
 		}
 	}
+
+	return sentData;
+}
+#endif
+
+// pass the number of sampleframes in this processblock, or just a large number (100000) if not audio related.
+bool QueuedUsers::ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames)
+{
+	my_msg_que_output_stream outStream(que);
+	auto freeSpace = que->freeSpace();
+	auto maximumBytes = que->totalSpace();
+
+	// if an oversize message is being sent, concentrate on that..
+	if (multiPartMode())
+		return MultiPart_send(outStream, freeSpace);
+
+	bool sentData = false;
+	cumulativesampleFrames += sampleFrames;
+
+	// Process a number proportional to time elapsed within graphics frame.
+	sfAccumulator += sampleFrames;
+	assert(sampleFramesPerClient > 0);
+
+	int count = sfAccumulator / sampleFramesPerClient;
+	sfAccumulator -= count * sampleFramesPerClient;
+
+	constexpr int headerLength = sizeof(int) * 3;
+	constexpr int safetyZoneLength = headerLength * 8; // not all que users check size first. Allow some slack for the odd miscelaneous message.
+	while (currentClient && count > 0)
+	{
+		int requestedMessageLength = currentClient->queryQueMessageLength(freeSpace - headerLength); // NOT including header.
+		int totalMessageLength = requestedMessageLength + headerLength;
+
+		// in the rare case that a message is bigger than maximumBytes, use the alternate method.
+		if (totalMessageLength + safetyZoneLength > maximumBytes)
+		{
+			if (safetyZoneLength >= freeSpace) // check there is a little room for the "MPAR" header.
+				break;
+
+			startMultiPartSend(currentClient, outStream, requestedMessageLength);
+		}
+		else
+		{
+			if (totalMessageLength + safetyZoneLength > freeSpace)
+			{
+				// not enough spare capacity atm? try again later.
+				break;
+			}
+
+			currentClient->getQueMessage(outStream, requestedMessageLength);
+		}
+
+		currentClient->dirty_ = false;
+		sentData = true;
+		freeSpace -= totalMessageLength;
+		currentClient = currentClient->next_;
+		--count;
+		++servicedCount;
+		//			_RPT0(_CRT_WARN, "*");
+	}
+	//		while (count-- > 0)
+	////		{
+	//			_RPT0(_CRT_WARN, "-");
+	//		}
+	//		_RPT0(_CRT_WARN, "\n");
+
+	// End of GUI frame? Clear clients ready for next frame.
+	if (cumulativesampleFrames > sampleFramesPerCycle)
+	{
+		cumulativesampleFrames -= sampleFramesPerCycle;
+
+		int size = 0;
+		//			_RPT0(_CRT_WARN, "_________\n");
+		// Remove all processed clients from list, leaving tail (if any).
+		while (servicedCount > 0)
+		{
+			auto waiter = waitingClientsHead;
+
+			// remove it.
+			waitingClientsHead->inQue_ = false;
+			waitingClientsHead = waitingClientsHead->next_;
+
+			// if we processed them all, null the tail. List must be consistent before we try to add it back again below.
+			if (waitingClientsHead == nullptr)
+				waitingClientsTail = nullptr;
+
+			// if it was updated after being serviced but before being removed, re-add it.
+			if (waiter->dirty_)
+			{
+				AddWaiter(waiter);
+			}
+
+			++size;
+			--servicedCount;
+		}
+		// count remainder.
+		auto client = waitingClientsHead;
+		while (client)
+		{
+			client = client->next_;
+			++size;
+		}
+
+		if (currentClient == nullptr)
+			currentClient = waitingClientsHead;
+
+		// Calculate a running estimate of client service period to achieve speading them out evenly over successive process() calls.
+		int new_sampleFramesPerClient = (std::max)(1, sampleFramesPerCycle / (std::max)(10, size));
+
+		sampleFramesPerClient = (sampleFramesPerClient + new_sampleFramesPerClient) / 2;
+		assert(sampleFramesPerClient > 0);
+	}
+
+	if (sentData)
+	{
+		que->Send();
+	}
+
 	return sentData;
 }
 /////////////////////////////////////////////////////////////////////////////////
@@ -211,15 +395,81 @@ MORE_DATA:
 
 void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input_stream& strm)
 {
-	if (!client->onQueMessageReady(recievingHandle, recievingMessageId, strm))
+	if (-99 == recievingHandle) // special case for multi-part messages
 	{
-		// If client couldn't handle message (e.g. module muted) discard message to free up que.
-		char temp[8];
-		int todo = recievingMessageLength;
-		while (todo > 0)
+		if (recievingMessageId == id_to_long("MPAR")) // multipart message start
 		{
-			fifo_.popString(std::min(todo, (int)sizeof(temp)), &temp);
-			todo -= sizeof(temp);
+			int32_t totalMessageLength{};
+			strm >> totalMessageLength;
+
+			oversize_data.resize(totalMessageLength);
+			multipartReadIndex = 0;
+			multipartChunkIndex = 1;
+
+			_RPTN(0, "FIFO recieving oversize message in chunks (%d bytes)\n", totalMessageLength);
+		}
+		else if (recievingMessageId == id_to_long("MPCK")) // multipart chunk
+		{
+			const auto payloadSize = recievingMessageLength;// -sizeof(int32_t);
+
+			_RPTN(0, "FIFO recieving chunk %d (%d bytes)\n", multipartChunkIndex, payloadSize);
+
+			if(payloadSize + multipartReadIndex > oversize_data.size())
+			{
+				_RPT0(0, "FIFO oversize read FAIL\n");
+
+				// failed. ignore all further data.
+				assert(false); // overflow
+
+				oversize_data.clear();
+				return;
+			}
+
+			strm.Read(oversize_data.data() + multipartReadIndex, payloadSize);
+
+			multipartReadIndex += payloadSize;
+			multipartChunkIndex++;
+
+			if (multipartReadIndex >= oversize_data.size())
+			{
+				_RPT0(0, "FIFO oversize recieve DONE\n");
+
+				int32_t handle{};
+				int32_t msg_id{};
+				int32_t msg_len{};
+
+				memory_input_stream instream(oversize_data);
+
+				instream >> handle;
+				instream >> msg_id;
+				instream >> msg_len;
+
+				client->onQueMessageReady(handle, msg_id, instream);
+
+				// end of multipart message.
+				multipartChunkIndex = 0;
+				multipartReadIndex = 0;
+				oversize_data.clear();
+			}
+		}
+		else
+		{
+			assert(false);
+		}
+		return;
+	}
+	else
+	{
+		if (!client->onQueMessageReady(recievingHandle, recievingMessageId, strm))
+		{
+			// If client couldn't handle message (e.g. module muted) discard message to free up que.
+			char temp[8];
+			int todo = recievingMessageLength;
+			while (todo > 0)
+			{
+				fifo_.popString(std::min(todo, (int)sizeof(temp)), &temp);
+				todo -= sizeof(temp);
+			}
 		}
 	}
 }

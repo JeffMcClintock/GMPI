@@ -9,6 +9,11 @@ gmpi::hosting::lock_free_fifo fifo;
 #include <cmath>
 #include "Core/Common.h"
 
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable:4324) // padding due to alignas (intentional to avoid false sharing)
+#endif
+
 namespace gmpi
 {
 namespace hosting
@@ -481,7 +486,33 @@ public:
 	}
 	void Write(const void* lpBuf, unsigned int nMax) override
 	{
-		storage.insert(storage.end(), (std::byte*)lpBuf, (std::byte*)lpBuf + nMax);
+		assert(writePos + nMax <= storage.size());
+
+		auto from = (std::byte*)lpBuf;
+
+		std::copy(from, from + nMax, storage.data() + writePos);
+		writePos += nMax;
+	}
+};
+
+class memory_input_stream : public my_input_stream
+{
+	std::vector<std::byte>& storage;
+	size_t readPos{};
+
+public:
+	memory_input_stream(std::vector<std::byte>& pstorage) : storage(pstorage)
+	{
+	}
+	void Read(const void* lpBuf, unsigned int nMax) override
+	{
+		assert(readPos + nMax <= storage.size());
+
+		auto to = (std::byte*)lpBuf;
+
+		std::copy(storage.data() + readPos, storage.data() + readPos + nMax, to);
+
+		readPos += nMax;
 	}
 };
 
@@ -507,6 +538,8 @@ public:
 class QueuedUsers
 {
 	int sampleFramesPerCycle = 500;
+	inline static int32_t headerLength = sizeof(int32_t) * 3;
+	inline static int32_t safetyZoneLength = headerLength * 50; // not all que users check size first. Allow some slack for the odd miscelaneous message.
 
 public:
 	QueuedUsers() :
@@ -542,112 +575,18 @@ public:
 		client->inQue_ = true;
 	}
 
-	bool ServiceWaiters(my_output_stream& outStream, int freeSpace, int maximumBytes);
-
 	void setSampleRate(float s)
 	{
 		static const int guiFrameRate = 60;
 		sampleFramesPerCycle = static_cast<int>(std::round(s / guiFrameRate));
 	}
 
-	bool ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames)
-	{
-		my_msg_que_output_stream outStream(que);
-		auto freeSpace = que->freeSpace();
+//	bool ServiceWaiters(my_output_stream& outStream, int freeSpace, int maximumBytes);
+	bool ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames);
 
-		bool sentData = false;
-		cumulativesampleFrames += sampleFrames;
-
-		// Process a number proportional to time elapsed within graphics frame.
-		sfAccumulator += sampleFrames;
-		assert(sampleFramesPerClient > 0);
-
-		int count = sfAccumulator / sampleFramesPerClient;
-		sfAccumulator -= count * sampleFramesPerClient;
-
-		constexpr int headerLength = sizeof(int) * 3;
-		constexpr int safetyZoneLength = headerLength * 8; // not all que users check size first. Allow some slack for the odd miscelaneous message.
-		while (currentClient && count > 0)
-		{
-			int requestedMessageLength = currentClient->queryQueMessageLength(freeSpace - headerLength); // NOT including header.
-			int totalMessageLength = requestedMessageLength + headerLength;
-
-			// avoid overflow by leaving decent capacity, unless message is too big for an empty que anyhow.
-			if (freeSpace < totalMessageLength + safetyZoneLength)
-			{
-				break;
-			}
-
-			currentClient->dirty_ = false;
-			currentClient->getQueMessage(outStream, requestedMessageLength);
-
-			sentData = true;
-			freeSpace -= totalMessageLength;
-			currentClient = currentClient->next_;
-			--count;
-			++servicedCount;
-			//			_RPT0(_CRT_WARN, "*");
-		}
-		//		while (count-- > 0)
-		////		{
-		//			_RPT0(_CRT_WARN, "-");
-		//		}
-		//		_RPT0(_CRT_WARN, "\n");
-
-				// End of GUI frame? Clear clients ready for next frame.
-		if (cumulativesampleFrames > sampleFramesPerCycle)
-		{
-			cumulativesampleFrames -= sampleFramesPerCycle;
-
-			int size = 0;
-			//			_RPT0(_CRT_WARN, "_________\n");
-						// Remove all processed clients from list, leaving tail (if any).
-			while (servicedCount > 0)
-			{
-				auto waiter = waitingClientsHead;
-
-				// remove it.
-				waitingClientsHead->inQue_ = false;
-				waitingClientsHead = waitingClientsHead->next_;
-
-				// if we processed them all, null the tail. List must be consistent before we try to add it back again below.
-				if (waitingClientsHead == nullptr)
-					waitingClientsTail = nullptr;
-
-				// if it was updated after being serviced but before being removed, re-add it.
-				if (waiter->dirty_)
-				{
-					AddWaiter(waiter);
-				}
-
-				++size;
-				--servicedCount;
-			}
-			// count remainder.
-			auto client = waitingClientsHead;
-			while (client)
-			{
-				client = client->next_;
-				++size;
-			}
-
-			if (currentClient == nullptr)
-				currentClient = waitingClientsHead;
-
-			// Calculate a running estimate of client service period to achieve speading them out evenly over successive process() calls.
-			int new_sampleFramesPerClient = (std::max)(1, sampleFramesPerCycle / (std::max)(10, size));
-
-			sampleFramesPerClient = (sampleFramesPerClient + new_sampleFramesPerClient) / 2;
-			assert(sampleFramesPerClient > 0);
-		}
-
-		if (sentData)
-		{
-			que->Send();
-		}
-
-		return sentData;
-	}
+	void startMultiPartSend(QueClient* client, my_output_stream& outStream, int requestedMessageLength);
+	bool MultiPart_send(my_output_stream& outStream, int freeSpace);
+	bool multiPartMode() { return multipartChunkIndex > 0; }
 
 	void Reset()
 	{
@@ -675,6 +614,11 @@ private:
 	int sampleFramesPerClient = 100; // Adaptive estimate for load-balancing.
 	int sfAccumulator = 0;
 	int servicedCount = 0;
+
+	// oversize messages
+	std::vector<std::byte> oversize_data;
+	int multipartChunkIndex{};
+	size_t multipartReadIndex{};
 };
 
 class interThreadQue : public InterThreadQueBase
@@ -714,7 +658,16 @@ private:
 	int recievingHandle;
 	int recievingMessageId;
 	int recievingMessageLength;
+
+	// oversize messages
+	std::vector<std::byte> oversize_data;
+	int multipartChunkIndex{};
+	size_t multipartReadIndex{};
 };
 
 } // namespace hosting
 } // namespace gmpi
+
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
