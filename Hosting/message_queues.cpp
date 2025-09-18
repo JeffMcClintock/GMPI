@@ -406,17 +406,17 @@ void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input
 			multipartReadIndex = 0;
 			multipartChunkIndex = 1;
 
-			_RPTN(0, "FIFO recieving oversize message in chunks (%d bytes)\n", totalMessageLength);
+			//_RPTN(0, "FIFO recieving oversize message in chunks (%d bytes)\n", totalMessageLength);
 		}
 		else if (recievingMessageId == id_to_long("MPCK")) // multipart chunk
 		{
 			const auto payloadSize = recievingMessageLength;// -sizeof(int32_t);
 
-			_RPTN(0, "FIFO recieving chunk %d (%d bytes)\n", multipartChunkIndex, payloadSize);
+			//_RPTN(0, "FIFO recieving chunk %d (%d bytes)\n", multipartChunkIndex, payloadSize);
 
 			if(payloadSize + multipartReadIndex > oversize_data.size())
 			{
-				_RPT0(0, "FIFO oversize read FAIL\n");
+				//_RPT0(0, "FIFO oversize read FAIL\n");
 
 				// failed. ignore all further data.
 				assert(false); // overflow
@@ -432,7 +432,7 @@ void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input
 
 			if (multipartReadIndex >= oversize_data.size())
 			{
-				_RPT0(0, "FIFO oversize recieve DONE\n");
+				//_RPT0(0, "FIFO oversize recieve DONE\n");
 
 				int32_t handle{};
 				int32_t msg_id{};
