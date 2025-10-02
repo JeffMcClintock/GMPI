@@ -79,10 +79,10 @@ function(gmpi_plugin)
     if(FIND_AU_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
             set(plist_srcs
-                ${gmpi_sdk_folder}/Hosting/xml_spec_reader.h
-                ${gmpi_sdk_folder}/Hosting/xml_spec_reader.cpp
-                ${gmpi_sdk_folder}/Hosting/dynamic_linking.h
-                ${gmpi_sdk_folder}/Hosting/dynamic_linking.cpp
+                ${GMPI_SDK}/Hosting/xml_spec_reader.h
+                ${GMPI_SDK}/Hosting/xml_spec_reader.cpp
+                ${GMPI_SDK}/Hosting/dynamic_linking.h
+                ${GMPI_SDK}/Hosting/dynamic_linking.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.h
                 ${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp
@@ -91,7 +91,7 @@ function(gmpi_plugin)
             add_executable(plist_util ${plist_srcs})
 
             target_include_directories(plist_util PRIVATE
-                ${gmpi_sdk_folder}/Core
+                ${GMPI_SDK}/Core
                 ${GMPI_ADAPTORS}/wrapper/common
             )
 
@@ -102,33 +102,33 @@ function(gmpi_plugin)
 
     # add SDK files
     set(plugin_includes
-        ${gmpi_sdk_folder}
-        ${gmpi_sdk_folder}/Core
+        ${GMPI_SDK}
+        ${GMPI_SDK}/Core
     )
     
     set(sdk_srcs
-        ${gmpi_sdk_folder}/Core/Common.h
-        ${gmpi_sdk_folder}/Core/Common.cpp
-        ${gmpi_sdk_folder}/Core/RefCountMacros.h
-        ${gmpi_sdk_folder}/Core/GmpiApiCommon.h
-        ${gmpi_sdk_folder}/Core/GmpiSdkCommon.h
+        ${GMPI_SDK}/Core/Common.h
+        ${GMPI_SDK}/Core/Common.cpp
+        ${GMPI_SDK}/Core/RefCountMacros.h
+        ${GMPI_SDK}/Core/GmpiApiCommon.h
+        ${GMPI_SDK}/Core/GmpiSdkCommon.h
     )
 
     if(GMPI_PLUGIN_HAS_DSP)
         list(APPEND sdk_srcs
-            ${gmpi_sdk_folder}/Core/Processor.h
-            ${gmpi_sdk_folder}/Core/Processor.cpp
-            ${gmpi_sdk_folder}/Core/GmpiApiAudio.h
+            ${GMPI_SDK}/Core/Processor.h
+            ${GMPI_SDK}/Core/Processor.cpp
+            ${GMPI_SDK}/Core/GmpiApiAudio.h
         )
     endif()
 
     if(GMPI_PLUGIN_HAS_GUI)
         list(APPEND sdk_srcs
-            ${gmpi_ui_folder}/GmpiApiDrawing.h
-            ${gmpi_sdk_folder}/Core/GmpiApiEditor.h
-            ${gmpi_ui_folder}/Drawing.h
+            ${GMPI_UI_SDK}/GmpiApiDrawing.h
+            ${GMPI_SDK}/Core/GmpiApiEditor.h
+            ${GMPI_UI_SDK}/Drawing.h
         )
-        list(APPEND plugin_includes ${gmpi_ui_folder})
+        list(APPEND plugin_includes ${GMPI_UI_SDK})
     endif()
 
     if(GMPI_PLUGIN_HAS_XML)
