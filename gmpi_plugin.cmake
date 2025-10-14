@@ -17,7 +17,7 @@ function(gmpi_target)
         $<$<CONFIG:Release>:NDEBUG>
     )
     # Workspace uses C++14
-    target_compile_features(${GMPI_TARGET_PROJECT_NAME} PUBLIC cxx_std_17)
+    # target_compile_features(${GMPI_TARGET_PROJECT_NAME} PUBLIC cxx_std_17)
 
     if(APPLE)
         # Guard Apple-specific frameworks
@@ -52,8 +52,15 @@ function(gmpi_plugin)
         message(FATAL_ERROR "gmpi_plugin(PROJECT_NAME <name>) is required.")
     endif()
 
+    if(NOT GMPI_SDK)
+        message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_SDK to be set.")
+    endif()
+    if(NOT DEFINED GMPI_UI_SDK AND DEFINED HAS_GUI)
+        message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_UI_SDK to be set.")
+    endif()
+    
     # Default to GMPI if no formats were specified.
-    if(NOT GMPI_PLUGIN_FORMATS_LIST)
+    if(NOT DEFINED GMPI_PLUGIN_FORMATS_LIST)
         set(GMPI_PLUGIN_FORMATS_LIST GMPI)
     endif()
 
@@ -147,6 +154,10 @@ function(gmpi_plugin)
             set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME})
         else()
             set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_${kind})
+
+            if(NOT GMPI_ADAPTORS)
+                message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_ADAPTORS to be set.")
+            endif()
         endif()
 
         set(FORMAT_SDK_FILES ${sdk_srcs})

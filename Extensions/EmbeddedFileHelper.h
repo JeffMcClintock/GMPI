@@ -23,7 +23,7 @@ public:
 	std::string resolveFilename(std::string filename)
 	{
 		gmpi::ReturnString fullFilename;
-		host->resolveFilename(filename.c_str(), &fullFilename);
+		host->findResourceUri(filename.c_str(), &fullFilename);
 		return fullFilename.c_str();
 	}
 #if 0 // TODO, implement class 'UriFile'

@@ -233,7 +233,7 @@ ReturnCode Processor::setBuffer(int32_t PinIndex, float* buffer)
 	return ReturnCode::Ok;
 }
 
-void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
+void MidiOutPin::send(gmpi::midi::message_view msg, int blockPosition)
 {
 	assert(blockPosition >= -1 && "MIDI Out pin can't use negative timestamps");
 	if (blockPosition == -1)
@@ -241,7 +241,12 @@ void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
 		assert(plugin_->blockPosExact_ && "err: Please use - midiPin.send( data, size, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host->setPin(blockPosition, getIndex(), size, data);
+	plugin_->host->setPin(blockPosition, getIndex(), static_cast<int32_t>(msg.size()), msg.data());
+}
+
+void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
+{
+	send({ static_cast<const uint8_t*>(data) , static_cast<size_t>(size) }, blockPosition);
 }
 
 void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
