@@ -492,12 +492,11 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 		return;
 	}
 
-	//	RegisterPluginsXml(&doc, pluginPath);
-	auto pluginList = doc.FirstChildElement("PluginList");
+	tinyxml2::XMLNode* pluginList = doc.FirstChildElement("PluginList");
 	
 	// handle XML without <PluginList> only <Plugin>.
 	if (!pluginList)
-		pluginList = doc.ToElement();
+		pluginList = &doc;
 
 	if (!pluginList)
 		return;
