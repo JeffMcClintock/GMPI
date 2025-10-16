@@ -494,6 +494,11 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 	//	RegisterPluginsXml(&doc, pluginPath);
 	auto pluginList = doc.FirstChildElement("PluginList");
+	
+	// handle XML without <PluginList> only <Plugin>.
+	if (!pluginList)
+		pluginList = doc.ToElement();
+
 	if (!pluginList)
 		return;
 
