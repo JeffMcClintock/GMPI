@@ -36,7 +36,7 @@ how much overhead other formats require compared to GMPI. The plugins are all si
 
 <img src="Docs/plugin_api_complexity.png" width="260"/>
 
-GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [GMPI Plugins/Gain.cpp](https://github.com/JeffMcClintock/GMPI-plugins/blob/main/plugins/Gain/Gain.cpp[...]  
+GMPI plugins are simply easier to write.  See the full source code of the GMPI gain plugin in [GMPI Plugins/Gain.cpp](https://github.com/JeffMcClintock/GMPI-plugins/blob/main/plugins/Gain/Gain.cpp)  
 
 But don't be fooled by the simplicity, even this basic GMPI plugin supports sample-accurate automation. This is because GMPI provides
 *sensible default behaviour* for advanced features. Sample-accurate MIDI and parameter automation is *built-in* to the framework. And you can easily override the defaults when you need to.
