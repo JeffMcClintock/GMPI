@@ -494,8 +494,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 	tinyxml2::XMLNode* pluginList = doc.FirstChildElement("PluginList");
 	
-	// handle XML without <PluginList> only <Plugin>.
-	if (!pluginList)
+	if (!pluginList) // handle XML without <PluginList> only <Plugin>.
 		pluginList = &doc;
 
 	if (!pluginList)
