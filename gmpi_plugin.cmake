@@ -371,7 +371,7 @@ function(gmpi_plugin)
             if(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
                     POST_BUILD
-                    COMMAND xcopy /c /y "\"$(OutDir)$(TargetName)$(TargetExt)\"" "\"C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win\\\""
+                    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win"
                     COMMENT "Copy to SynthEdit plugin folder"
                     VERBATIM
                 )
