@@ -36,7 +36,7 @@ my_output_stream& my_output_stream::operator<<(const std::wstring& val)
 
 my_output_stream& my_output_stream::operator<<(const gmpi::Blob& val)
 {
-    int size = val.size();
+    const auto size = static_cast<int32_t>(val.size());
     Write(&size, sizeof(size));
     Write(val.data(), size);
     return *this;
