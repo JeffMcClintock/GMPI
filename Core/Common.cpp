@@ -32,7 +32,7 @@ using namespace gmpi;
 using namespace gmpi::api;
 
 //---------------FACTORY --------------------
-#ifndef GMPI_DISABLE_FACTORY
+#ifndef GMPI_DISABLE_FACTORY // or just exclude this file.
 
 // MpFactory - a singleton object.  The plugin registers it's ID with the factory.
 

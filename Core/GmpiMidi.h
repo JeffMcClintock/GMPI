@@ -1750,6 +1750,11 @@ namespace gmpi
 				}
 			}
 
+			void setSink(std::function<void(const midi::message_view, int)> psink)
+			{
+				sink = psink;
+			}
+
 			void processMidi(const midi::message_view msg, int timestamp)
 			{
 				// MIDI 1.0 messages need no conversion

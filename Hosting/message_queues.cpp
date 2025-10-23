@@ -57,7 +57,7 @@ void QueuedUsers::startMultiPartSend(QueClient* client, my_output_stream& outStr
 	// send multipart message header.
 	{
 		outStream << -99; // handle
-		outStream << id_to_long("MPAR"); // multipart message start
+		outStream << gmpi::hosting::id_to_long("MPAR"); // multipart message start
 		outStream << (int32_t) sizeof(int32_t);
 
 		outStream << (int32_t) totalMessageLength; // multipart message length
@@ -80,7 +80,7 @@ bool QueuedUsers::MultiPart_send(my_output_stream& outStream, int freeSpace)
 
 	// send header for chunk.
 	outStream << -99; // handle
-	outStream << id_to_long("MPCK"); // multipart chunk
+	outStream << gmpi::hosting::id_to_long("MPCK"); // multipart chunk
 	outStream << (int32_t)chunksize;
 
 	// send chunk data
@@ -397,7 +397,7 @@ void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input
 {
 	if (-99 == recievingHandle) // special case for multi-part messages
 	{
-		if (recievingMessageId == id_to_long("MPAR")) // multipart message start
+		if (recievingMessageId == gmpi::hosting::id_to_long("MPAR")) // multipart message start
 		{
 			int32_t totalMessageLength{};
 			strm >> totalMessageLength;
@@ -408,7 +408,7 @@ void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input
 
 			//_RPTN(0, "FIFO recieving oversize message in chunks (%d bytes)\n", totalMessageLength);
 		}
-		else if (recievingMessageId == id_to_long("MPCK")) // multipart chunk
+		else if (recievingMessageId == gmpi::hosting::id_to_long("MPCK")) // multipart chunk
 		{
 			const auto payloadSize = recievingMessageLength;// -sizeof(int32_t);
 
