@@ -298,7 +298,7 @@ function(gmpi_plugin)
         endif()
 
         # Link the VST3 wrapper as static libs
-        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE base pluginterfaces VST3_Wrapper)
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE VST3_Wrapper)
     endif()
 
     if(FIND_AU_INDEX GREATER_EQUAL 0)
