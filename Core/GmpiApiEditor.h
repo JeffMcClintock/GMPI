@@ -61,7 +61,7 @@ struct DECLSPEC_NOVTABLE IDeterministicUi : IUnknown
 #endif
 
 // INTERFACE 'Editor' (experimental)
-struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
+struct DECLSPEC_NOVTABLE IEditor : IUnknown
 {
     // Establish connection to host.
     virtual ReturnCode setHost(IUnknown* host) = 0;
@@ -84,7 +84,7 @@ struct DECLSPEC_NOVTABLE IEditor_x : IUnknown
 };
 
 // experimental uni-directional signal-flow.
-struct DECLSPEC_NOVTABLE IEditor2_x : IUnknown
+struct DECLSPEC_NOVTABLE IEditor2 : IUnknown
 {
     virtual ReturnCode process() = 0;
 
@@ -93,7 +93,7 @@ struct DECLSPEC_NOVTABLE IEditor2_x : IUnknown
     { 0x593abad0, 0x295a, 0x419c, { 0xb3, 0x4a, 0x68, 0xd4, 0xb6, 0xac, 0xf4, 0x72 } };
 };
 // and host
-struct DECLSPEC_NOVTABLE IEditorHost2_x : IUnknown
+struct DECLSPEC_NOVTABLE IEditorHost2 : IUnknown
 {
     virtual ReturnCode setDirty() = 0;
 
@@ -104,7 +104,7 @@ struct DECLSPEC_NOVTABLE IEditorHost2_x : IUnknown
 
 
 // INTERFACE 'IEditorHost' (experimental)
-struct DECLSPEC_NOVTABLE IEditorHost_x : IUnknown
+struct DECLSPEC_NOVTABLE IEditorHost : IUnknown
 {
     virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) = 0;
     virtual int32_t getHandle() = 0;
@@ -125,57 +125,31 @@ public:
 };
 
 // Controller interface.
-struct DECLSPEC_NOVTABLE IController_x : IParameterObserver
+struct DECLSPEC_NOVTABLE IController : IParameterObserver
 {
-public:
     // Establish connection to host.
     virtual ReturnCode initialize(gmpi::api::IUnknown* host, int32_t handle) = 0;
-#if 0
-    // Patch-Manager -> plugin.
-    virtual ReturnCode preSaveState() = 0;
-    virtual ReturnCode open() = 0;
 
-    // Pins.
-    virtual ReturnCode setPinDefault(int32_t pinType, int32_t pinId, const char* defaultValue) = 0;
-    virtual ReturnCode setPin(int32_t pinId, int32_t voice, int64_t size, const uint8_t* data) = 0;
-    virtual ReturnCode notifyPin(int32_t pinId, int32_t voice) = 0;
-
-    virtual ReturnCode onDelete() = 0;
-#endif
+	// Sync unsaved state from plugin to host.
+    virtual ReturnCode syncState() = 0;
 
     // {B379BA45-E486-4545-8D91-4CE11C4811DE}
     inline static const Guid guid =
     { 0xb379ba45, 0xe486, 0x4545, { 0x8d, 0x91, 0x4c, 0xe1, 0x1c, 0x48, 0x11, 0xde } };
 };
 
-struct DECLSPEC_NOVTABLE IControllerHost_x : IUnknown
+struct DECLSPEC_NOVTABLE IControllerHost : IUnknown
 {
-public:
-    virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;
-    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
-#if 0
-    // Each plugin instance has a host-assigned unique handle shared by UI and Audio class.
-    virtual ReturnCode getHandle(int32_t& returnHandle) = 0;
-    virtual void updateParameter(int32_t parameterHandle, int32_t paramFieldType, int32_t voice) = 0;
-    virtual ReturnCode getParameterHandle(int32_t moduleHandle, int32_t moduleParameterId) = 0;
-    virtual ReturnCode getParameterModuleAndParamId(int32_t parameterHandle, int32_t* returnModuleHandle, int32_t* returnModuleParameterId) = 0;
-    //?	virtual ReturnCode setPinDefault(int32_t pinIndex, int32_t paramFieldType, const char* utf8Value) = 0;
-    virtual ReturnCode setLatency(int32_t latency) = 0;
-
-    // Backdoor to Audio class. Not recommended. Use Parameters instead to support proper automation.
-    //virtual ReturnCode sendMessageToAudio(int32_t id, int32_t size, const void* messageData) = 0;
-    virtual ReturnCode createControllerIterator(gmpi::IMpControllerIterator** returnIterator) = 0;
-    virtual ReturnCode pinTransmit(int32_t pinId, int32_t voice, int64_t size, const uint8_t* data) = 0;
-#endif
+    virtual ReturnCode setParameter(int32_t parameterIndex, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
 
     // {CD0F9C61-E546-47E2-A31C-09B3FBC8F5D0}
     inline static const Guid guid =
     { 0xcd0f9c61, 0xe546, 0x47e2, { 0xa3, 0x1c, 0x9, 0xb3, 0xfb, 0xc8, 0xf5, 0xd0 } };
 };
 
-struct DECLSPEC_NOVTABLE IParameterSetter_x : IUnknown
+// experimental mono-directional subcontrol support
+struct DECLSPEC_NOVTABLE IParameterSetter : IUnknown
 {
-public:
     virtual ReturnCode getParameterHandle(int32_t moduleParameterId, int32_t& returnHandle) = 0;
     virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
 
@@ -183,13 +157,6 @@ public:
     inline static const Guid guid =
     { 0xcc7a7938, 0x2cd0, 0x4413, { 0x8c, 0xa8, 0x11, 0x78, 0x1b, 0x2e, 0x89, 0xb2 } };
 };
-
-using IEditor = IEditor_x;
-using IEditorHost = IEditorHost_x;
-using IController = IController_x;
-using IControllerHost = IControllerHost_x;
-
-
 
 // Platform specific definitions.
 #pragma pack(pop)
