@@ -284,6 +284,8 @@ function(gmpi_plugin)
     if(FIND_VST3_INDEX GREATER_EQUAL 0)
         set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
 
+        target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${VST3_SDK})
+        
         if(APPLE)
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES BUNDLE_EXTENSION "vst3")
 
