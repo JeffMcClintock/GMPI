@@ -83,6 +83,17 @@ struct DECLSPEC_NOVTABLE IEditor : IUnknown
     { 0xe3942893, 0x69b2, 0x401c, { 0x8b, 0xca, 0x74, 0x65, 0xf, 0xaa, 0xe3, 0x1c } };
 };
 
+// INTERFACE 'IEditorHost' (experimental)
+struct DECLSPEC_NOVTABLE IEditorHost : IUnknown
+{
+    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) = 0;
+    virtual int32_t getHandle() = 0;
+
+    // {8A8CF7DC-BC36-4743-A09A-967571355A1A}
+    inline static const Guid guid =
+    { 0x8a8cf7dc, 0xbc36, 0x4743, { 0xa0, 0x9a, 0x96, 0x75, 0x71, 0x35, 0x5a, 0x1a } };
+};
+
 // experimental uni-directional signal-flow.
 struct DECLSPEC_NOVTABLE IEditor2 : IUnknown
 {
@@ -102,22 +113,10 @@ struct DECLSPEC_NOVTABLE IEditorHost2 : IUnknown
     { 0x89c64a37, 0xe10e, 0x42a3, { 0xac, 0x3d, 0x44, 0xa5, 0x8b, 0xc6, 0x6, 0x74 } };
 };
 
-
-// INTERFACE 'IEditorHost' (experimental)
-struct DECLSPEC_NOVTABLE IEditorHost : IUnknown
-{
-    virtual ReturnCode setPin(int32_t PinIndex, int32_t voice, int32_t size, const uint8_t* data) = 0;
-    virtual int32_t getHandle() = 0;
-
-    // {8A8CF7DC-BC36-4743-A09A-967571355A1A}
-    inline static const Guid guid =
-    { 0x8a8cf7dc, 0xbc36, 0x4743, { 0xa0, 0x9a, 0x96, 0x75, 0x71, 0x35, 0x5a, 0x1a } };
-};
-
 struct DECLSPEC_NOVTABLE IParameterObserver : IUnknown
 {
 public:
-    virtual ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
+    virtual ReturnCode setParameter(int32_t parameterIndex, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
 
     // {7D5AD528-A035-44E5-82A2-4E3A70AEA099}
     inline static const Guid guid =
