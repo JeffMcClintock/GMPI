@@ -311,7 +311,7 @@ public:
 		assert(false && "MIDI pins_ don't have a buffer");
 	}
 
-	void send(gmpi::midi::message_view msg, int blockPosition = -1);
+	void send(gmpi::midi2::message_view msg, int blockPosition = -1);
 	void send(const unsigned char* data, int size, int blockPosition = -1);
 	void sendFirstUpdate() override {} // N/A.
 };

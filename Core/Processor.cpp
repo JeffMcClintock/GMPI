@@ -233,7 +233,7 @@ ReturnCode Processor::setBuffer(int32_t PinIndex, float* buffer)
 	return ReturnCode::Ok;
 }
 
-void MidiOutPin::send(gmpi::midi::message_view msg, int blockPosition)
+void MidiOutPin::send(gmpi::midi2::message_view msg, int blockPosition)
 {
 	assert(blockPosition >= -1 && "MIDI Out pin can't use negative timestamps");
 	if (blockPosition == -1)
