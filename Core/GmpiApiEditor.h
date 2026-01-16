@@ -17,6 +17,10 @@
   OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 */
 
+/*
+#include "GmpiApiEditor.h"
+*/
+
 #include "GmpiApiCommon.h"
 
 // Platform specific definitions.
