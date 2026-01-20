@@ -630,7 +630,7 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 			formatVersion = 1;
 			try
 			{
-				fourCC = std::stoul(hexcode, nullptr, 16);
+				fourCC = static_cast<int32_t>(std::stoul(hexcode, nullptr, 16));
 			}
 			catch (...)
 			{
