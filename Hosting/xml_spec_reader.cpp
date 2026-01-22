@@ -850,7 +850,7 @@ bool xml_spec_reader::initializeFactory()
 		/*
 		 MP_DllEntry dll_entry_point;
 
-		const char* gmpi_dll_entrypoint_name = "MP_GetFactory";
+		const char* gmpi_dll_entrypoint_name = "MP_Get Factory";
 		auto fail = gmpi_dynamic_linking::MP_DllSymbol(hinstLib, gmpi_dll_entrypoint_name, (void**)&dll_entry_point);
 
 		if (fail) // GMPI/SDK3 Plugin
