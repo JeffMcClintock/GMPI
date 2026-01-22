@@ -59,8 +59,8 @@ enum class PinDirection : int32_t
 enum class PinDatatype : int32_t
 {
     Enum,
-    String,
-    Midi,
+//    String16,
+    Midi = 1,
     Float64,
     Bool,
     Audio,
@@ -68,6 +68,9 @@ enum class PinDatatype : int32_t
     Int32 = 8,
     Int64,
     Blob,
+    Class,
+    String,
+    Blob2,
 };
 
 namespace api

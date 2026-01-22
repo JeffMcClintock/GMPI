@@ -780,7 +780,7 @@ bool xml_spec_reader::initializeFactory()
 	// load SEM dynamic.
 	const auto semFolderSearch = BundleInfo::instance()->getSemFolder() + L"/*.gmpi";
 
-	FileFinder it(semFolderSearch.c_str());
+	File Finder it(semFolderSearch.c_str());
 	for (; !it.done(); ++it)
 	{
 		if (!(*it).isFolder)
