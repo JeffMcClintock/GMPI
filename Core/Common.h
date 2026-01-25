@@ -85,6 +85,9 @@ class Register
 	}
 
 public:
+#if defined(__APPLE__)
+	__attribute__((visibility("hidden")))
+#endif
 	static bool withId(const char* moduleIdentifier)
 	{
 		RegisterPlugin(subType((moduleClass*) nullptr), moduleIdentifier,
@@ -94,6 +97,9 @@ public:
 		return false; // value not used, but required.
 	}
 
+#if defined(__APPLE__)
+	__attribute__((visibility("hidden")))
+#endif
 	static bool withXml(const char* xml)
 	{
 		RegisterPluginWithXml(subType((moduleClass*) nullptr), xml,
