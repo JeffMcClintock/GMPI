@@ -217,6 +217,9 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 					events.push(e);
 				}
 				break;
+
+                default:
+                    assert(false); // unsupported type.
 				}
 			}
 		}
@@ -296,6 +299,8 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 				}
 				events.push(e);
 				break;
+            default:
+                assert(false); // unsupported.
 			}
 			}
 		}
@@ -592,6 +597,8 @@ gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_
 			}
 		}
 		break;
+        default:
+            assert(false); // unsupported.
 		}
 	}
 

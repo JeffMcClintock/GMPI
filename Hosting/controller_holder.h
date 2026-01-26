@@ -134,6 +134,10 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 
 			case gmpi::PinDatatype::Blob:
 				break; // TODO uuencode or hex
+                    
+            default:
+                assert(false); // not supported
+                break;
 			}
 		}
 		return false;
