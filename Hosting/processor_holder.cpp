@@ -300,6 +300,8 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 				}
 				events.push(e);
 				break;
+            default:
+                assert(false); // unsupported.
 			}
 			break;
 

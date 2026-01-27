@@ -93,8 +93,11 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 
 				default:
 					assert(false); // unsupported type.
+                break;
 				}
 				break;
+            default:
+                assert(false); // unsupported.
 			}
 			break;
 
@@ -135,7 +138,7 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 			{
 				// TODO !!! const bool value = static_cast<bool>(std::round(def));
 				Blob test;
-				editor->setPin(pin.id, 0, test.size(), test.data());
+				editor->setPin(pin.id, 0, static_cast<int32_t>(test.size()), test.data());
 			}
 			break;
 
@@ -205,6 +208,8 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 							assert(false); // unsupported type.
 						}
 						break;
+                    default:
+                        assert(false); // unsupported type.
 					}
 					break;
 
@@ -272,6 +277,8 @@ void gmpi_controller_holder::notifyGui(GmpiParameter* param)
 					assert(false); // unsupported type.
 				}
 				break;
+            default:
+                assert(false); // unsupported type.
 			}
 			break;
 
@@ -339,6 +346,8 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 								assert(false); // unsupported type.
 							}
 							break;
+                        default:
+                            assert(false); // unsupported.
 						}
 						break;
 
@@ -411,6 +420,8 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 														assert(false); // unsupported type.
 													}
 													break;
+                                                default:
+                                                    assert(false); // unsupported type.
 												}
 												break;
 
@@ -549,10 +560,10 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
                             //                            gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
                         }
                         break;
+                                
                         default:
                             assert(false); // unsupported type.
                         }
-                        break;
                     }
 					break;
 
@@ -616,6 +627,8 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 							assert(false); // unsupported type.
 						}
 						break;
+                    default:
+                        assert(false); // unsupported type.
 					}
 					break;
 
