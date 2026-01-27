@@ -96,6 +96,10 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 				}
 				break;
 			}
+			break;
+
+			default:
+				assert(false); // unsupported type.
 			}
 		}
 		else
@@ -202,6 +206,11 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 						}
 						break;
 					}
+					break;
+
+					default:
+						assert(false); // unsupported
+						break;
 					}
 
 //					gmpi::hosting::my_msg_que_output_stream s(getQueueToDsp(), param->parameterHandle_, "ppc\0"); // "ppc"
@@ -264,6 +273,11 @@ void gmpi_controller_holder::notifyGui(GmpiParameter* param)
 				}
 				break;
 			}
+			break;
+
+			default:
+				assert(false); // unsupported
+				break;
 			}
 		}
 	}
@@ -326,6 +340,11 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 							}
 							break;
 						}
+						break;
+
+						default:
+							assert(false); // unsupported
+							break;
 						}
 
 						if(changed)
@@ -393,6 +412,11 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 													}
 													break;
 												}
+												break;
+
+												default:
+													assert(false); // unsupported
+													break;
 												}
 
 												//					gmpi::hosting::my_msg_que_output_stream s(getQueueToDsp(), param->parameterHandle_, "ppc\0"); // "ppc"
@@ -530,7 +554,12 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
                         }
                         break;
                     }
-                    }
+					break;
+
+					default:
+						assert(false); // unsupported
+						break;
+					}
                 }
             }
 		}
@@ -588,6 +617,11 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 						}
 						break;
 					}
+					break;
+
+					default:
+						assert(false); // unsupported
+						break;
 					}
 				}
 			}
