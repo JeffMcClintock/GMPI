@@ -93,11 +93,8 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 
 				default:
 					assert(false); // unsupported type.
-                break;
+					break;
 				}
-				break;
-            default:
-                assert(false); // unsupported.
 			}
 			break;
 
@@ -198,25 +195,22 @@ void gmpi_controller_holder::initUi(gmpi::api::IParameterObserver* gui)
 						}
 						break;
 
-						case gmpi::PinDatatype::Bool:
-						{
-							const bool value = static_cast<bool>(std::round(param->valueReal()));
-							gui->setParameter(param->info->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
-						}
-						break;
-						default:
-							assert(false); // unsupported type.
-						}
-						break;
-                    default:
-                        assert(false); // unsupported type.
+					case gmpi::PinDatatype::Bool:
+					{
+						const bool value = static_cast<bool>(std::round(param->valueReal()));
+						gui->setParameter(param->info->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
 					}
 					break;
-
 					default:
-						assert(false); // unsupported
-						break;
+						assert(false); // unsupported type.
 					}
+				}
+				break;
+
+				default:
+					assert(false); // unsupported
+					break;
+				}
 
 //					gmpi::hosting::my_msg_que_output_stream s(getQueueToDsp(), param->parameterHandle_, "ppc\0"); // "ppc"
 				}
@@ -266,26 +260,23 @@ void gmpi_controller_holder::notifyGui(GmpiParameter* param)
 				}
 				break;
 
-				case gmpi::PinDatatype::Bool:
-				{
-					const bool value = static_cast<bool>(std::round(param->valueReal()));
-					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
-					gui->notifyPin(pin.id, voice);
-				}
-				break;
-				default:
-					assert(false); // unsupported type.
-				}
-				break;
-            default:
-                assert(false); // unsupported type.
+			case gmpi::PinDatatype::Bool:
+			{
+				const bool value = static_cast<bool>(std::round(param->valueReal()));
+				gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+				gui->notifyPin(pin.id, voice);
 			}
 			break;
-
 			default:
-				assert(false); // unsupported
-				break;
+				assert(false); // unsupported type.
 			}
+		}
+		break;
+
+		default:
+			assert(false); // unsupported
+			break;
+		}
 		}
 	}
 }
@@ -335,26 +326,23 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 							}
 							break;
 
-							case gmpi::PinDatatype::Bool:
-							{
-								assert(data.size() == sizeof(bool));
-								const bool value = *reinterpret_cast<const bool*>(data.data());
-								changed = param->setReal(static_cast<double>(value));
-							}
-							break;
-							default:
-								assert(false); // unsupported type.
-							}
-							break;
-                        default:
-                            assert(false); // unsupported.
+						case gmpi::PinDatatype::Bool:
+						{
+							assert(data.size() == sizeof(bool));
+							const bool value = *reinterpret_cast<const bool*>(data.data());
+							changed = param->setReal(static_cast<double>(value));
 						}
 						break;
-
 						default:
-							assert(false); // unsupported
-							break;
+							assert(false); // unsupported type.
 						}
+					}
+					break;
+
+					default:
+						assert(false); // unsupported
+						break;
+					}
 
 						if(changed)
 						{
@@ -409,26 +397,23 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 													}
 													break;
 
-													case gmpi::PinDatatype::Bool:
-													{
-														const bool value = static_cast<bool>(std::round(param->valueReal()));
-														gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
-														//							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
-													}
-													break;
-													default:
-														assert(false); // unsupported type.
-													}
-													break;
-                                                default:
-                                                    assert(false); // unsupported type.
-												}
-												break;
+											case gmpi::PinDatatype::Bool:
+											{
+												const bool value = static_cast<bool>(std::round(param->valueReal()));
+												gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+												//							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(bool), reinterpret_cast<const uint8_t*>(&value));
+											}
+											break;
+											default:
+												assert(false); // unsupported type.
+											}
+										}
+										break;
 
-												default:
-													assert(false); // unsupported
-													break;
-												}
+										default:
+											assert(false); // unsupported
+											break;
+										}
 
 												//					gmpi::hosting::my_msg_que_output_stream s(getQueueToDsp(), param->parameterHandle_, "ppc\0"); // "ppc"
 											}
@@ -627,8 +612,6 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 							assert(false); // unsupported type.
 						}
 						break;
-                    default:
-                        assert(false); // unsupported type.
 					}
 					break;
 

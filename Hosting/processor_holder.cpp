@@ -290,25 +290,22 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 				}
 				break;
 
-				case gmpi::PinDatatype::Bool:
-				{
-					copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal())));
-				}
-				break;
-				default:
-					assert(false); // unsupported type.
-				}
-				events.push(e);
-				break;
-            default:
-                assert(false); // unsupported.
+			case gmpi::PinDatatype::Bool:
+			{
+				copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal())));
 			}
 			break;
-
 			default:
-				assert(false); // unsupported
-				break;
+				assert(false); // unsupported type.
 			}
+			events.push(e);
+		}
+		break;
+
+		default:
+			assert(false); // unsupported
+			break;
+		}
 		}
 	}
 }

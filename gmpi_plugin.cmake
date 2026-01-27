@@ -362,6 +362,7 @@ function(gmpi_plugin)
         if(FIND_VST3_INDEX GREATER_EQUAL 0)
             add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_VST3
                 POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\Program Files\\Common Files\\VST3"
                 COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName)$(TargetExt)"
                 COMMENT "Copy to VST3 folder"
                 VERBATIM
@@ -373,13 +374,15 @@ function(gmpi_plugin)
             if(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
                     POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win"
                     COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win"
-                    COMMENT "Copy to SynthEdit plugin folder"
+                    COMMENT "Copy to official plugin folder"
                     VERBATIM
                 )
             else()
                 add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
                     POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\Program Files\\Common Files\\SynthEdit\\modules"
                     COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\$(TargetName)$(TargetExt)"
                     COMMENT "Copy to GMPI folder"
                     VERBATIM
@@ -390,6 +393,7 @@ function(gmpi_plugin)
         if(FIND_CLAP_INDEX GREATER_EQUAL 0)
             add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_CLAP
                 POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\Program Files\\Common Files\\CLAP"
                 COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\CLAP\\$(TargetName)$(TargetExt)"
                 COMMENT "Copy to CLAP folder"
                 VERBATIM
