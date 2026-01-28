@@ -323,7 +323,7 @@ class Processor : public api::IProcessor
 	friend class TempBlockPositionSetter;
 
 public:
-	inline static thread_local Processor* constructingProcessor{};
+	inline static thread_local Processor* constructingInstance{};
 
 	Processor();
 	virtual ~Processor() {}
@@ -430,15 +430,15 @@ public:
 	ControlPin() : ControlPinBase< T, pinDatatype >()
 	{
 		// register with the plugin.
-		if (Processor::constructingProcessor)
-			Processor::constructingProcessor->init(*this);
+		if (Processor::constructingInstance)
+			Processor::constructingInstance->init(*this);
 	}
 #if 0
 	ControlPin(T initialValue) : ControlPinBase< T, pinDatatype >(initialValue)
 	{
 		// register with the plugin.
-		if (Processor::constructingProcessor)
-			Processor::constructingProcessor->init(*this);
+		if (Processor::constructingInstance)
+			Processor::constructingInstance->init(*this);
 	}
 #endif
 	PinDirection getDirection() const override

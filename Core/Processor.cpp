@@ -143,21 +143,21 @@ void Processor::midiHelper(const api::Event* e)
 
 Processor::Processor()
 {
-	constructingProcessor = this;
+	constructingInstance = this;
 }
 
 MidiInPin::MidiInPin()
 {
 	// register with the plugin.
-	if (Processor::constructingProcessor)
-		Processor::constructingProcessor->init(*this);
+	if (Processor::constructingInstance)
+		Processor::constructingInstance->init(*this);
 }
 
 MidiOutPin::MidiOutPin()
 {
 	// register with the plugin.
-	if (Processor::constructingProcessor)
-		Processor::constructingProcessor->init(*this);
+	if (Processor::constructingInstance)
+		Processor::constructingInstance->init(*this);
 }
 
 // specialised for audio pins_
@@ -434,14 +434,14 @@ void AudioInPin::preProcessEvent(const api::Event* e)
 AudioInPin::AudioInPin()
 {
     // register with the plugin.
-    if (Processor::constructingProcessor)
-        Processor::constructingProcessor->init(*this);
+    if (Processor::constructingInstance)
+        Processor::constructingInstance->init(*this);
 }
 
 AudioOutPin::AudioOutPin()
 {
     // register with the plugin.
-    if (Processor::constructingProcessor)
-        Processor::constructingProcessor->init(*this);
+    if (Processor::constructingInstance)
+        Processor::constructingInstance->init(*this);
 }
 } // namespace

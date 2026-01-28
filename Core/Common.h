@@ -91,7 +91,7 @@ public:
 	static bool withId(const char* moduleIdentifier)
 	{
 		RegisterPlugin(subType((moduleClass*) nullptr), moduleIdentifier,
-			[]() -> api::IUnknown* { return toUnknown(new moduleClass()); }
+			[]() -> api::IUnknown* { auto m = new moduleClass(); m->constructingInstance = {}; return toUnknown(m); }
 		);
 
 		return false; // value not used, but required.
@@ -103,7 +103,7 @@ public:
 	static bool withXml(const char* xml)
 	{
 		RegisterPluginWithXml(subType((moduleClass*) nullptr), xml,
-			[]() -> api::IUnknown* { return toUnknown(new moduleClass()); }
+			[]() -> api::IUnknown* { auto m = new moduleClass(); m->constructingInstance = {}; return toUnknown(m); }
 		);
 
 		return false;
