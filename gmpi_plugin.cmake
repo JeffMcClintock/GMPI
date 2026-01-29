@@ -358,47 +358,64 @@ function(gmpi_plugin)
         endif()
     endif()
 
-    if(WIN32 AND SE_LOCAL_BUILD)
+    if(SE_LOCAL_BUILD)
+        function(copy_plugin TARGET_NAME DEST_DIR EXTENSION)
+            if(WIN32)
+                add_custom_command(TARGET ${TARGET_NAME}
+                    POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEST_DIR}"
+                    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "${DEST_DIR}\\$(TargetName)$(TargetExt)"
+                    COMMENT "Copy to ${DEST_DIR} folder"
+                    VERBATIM
+                )
+            elseif(APPLE)
+                add_custom_command(TARGET ${TARGET_NAME}
+                    POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${DEST_DIR}"
+                    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_BUNDLE_DIR:${TARGET_NAME}>" "${DEST_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>.${EXTENSION}"
+                    COMMENT "Copy to ${DEST_DIR} folder"
+                    VERBATIM
+                )
+            endif()
+        endfunction()
+
         if(FIND_VST3_INDEX GREATER_EQUAL 0)
-            add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_VST3
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\Program Files\\Common Files\\VST3"
-                COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\VST3\\$(TargetName)$(TargetExt)"
-                COMMENT "Copy to VST3 folder"
-                VERBATIM
-            )
+            copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3
+                        "C:\\Program Files\\Common Files\\VST3" "vst3")
             set_target_properties(${GMPI_PLUGIN_PROJECT_NAME}_VST3 PROPERTIES FOLDER "VST3 plugins")
         endif()
 
         if(FIND_GMPI_INDEX GREATER_EQUAL 0)
             if(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
-                add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
-                    POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win"
-                    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win"
-                    COMMENT "Copy to official plugin folder"
-                    VERBATIM
-                )
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                            "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win" "")
             else()
-                add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}
-                    POST_BUILD
-                    COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\Program Files\\Common Files\\SynthEdit\\modules"
-                    COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\SynthEdit\\modules\\$(TargetName)$(TargetExt)"
-                    COMMENT "Copy to GMPI folder"
-                    VERBATIM
-                )
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                            "C:\\Program Files\\Common Files\\SynthEdit\\modules" "")
             endif()
         endif()
 
         if(FIND_CLAP_INDEX GREATER_EQUAL 0)
-            add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME}_CLAP
-                POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E make_directory "C:\\Program Files\\Common Files\\CLAP"
-                COMMAND copy /Y "$(OutDir)$(TargetName)$(TargetExt)" "C:\\Program Files\\Common Files\\CLAP\\$(TargetName)$(TargetExt)"
-                COMMENT "Copy to CLAP folder"
-                VERBATIM
-            )
+            copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_CLAP
+                        "C:\\Program Files\\Common Files\\CLAP" "clap")
             set_target_properties(${GMPI_PLUGIN_PROJECT_NAME}_CLAP PROPERTIES FOLDER "CLAP plugins")
+        endif()
+
+        if(APPLE)
+            if(FIND_VST3_INDEX GREATER_EQUAL 0)
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3
+                            "/Library/Audio/Plug-Ins/VST3" "vst3")
+            endif()
+
+            if(FIND_GMPI_INDEX GREATER_EQUAL 0)
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                            "/Library/Audio/Plug-Ins/GMPI" "")
+            endif()
+
+            if(FIND_CLAP_INDEX GREATER_EQUAL 0)
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_CLAP
+                            "/Library/Audio/Plug-Ins/CLAP" "clap")
+            endif()
         endif()
     endif()
 
