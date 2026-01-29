@@ -372,7 +372,7 @@ function(gmpi_plugin)
                 add_custom_command(TARGET ${TARGET_NAME}
                     POST_BUILD
                     COMMAND ${CMAKE_COMMAND} -E make_directory "${DEST_DIR}"
-                    COMMAND ${CMAKE_COMMAND} -E copy "$<TARGET_BUNDLE_DIR:${TARGET_NAME}>" "${DEST_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>.${EXTENSION}"
+                    COMMAND ${CMAKE_COMMAND} -E copy_directory "$<TARGET_BUNDLE_DIR:${TARGET_NAME}>" "${DEST_DIR}/$<TARGET_FILE_NAME:${TARGET_NAME}>.${EXTENSION}"
                     COMMENT "Copy to ${DEST_DIR} folder"
                     VERBATIM
                 )
@@ -389,10 +389,10 @@ function(gmpi_plugin)
             if(FIND_GMPI_INDEX GREATER_EQUAL 0)
                 if(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                                "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win" "")
+                                "C:\\SE\\SE16\\SynthEdit2\\mac_assets\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win" "gmpi")
                 else()
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                                "C:\\Program Files\\Common Files\\SynthEdit\\modules" "")
+                                "C:\\Program Files\\Common Files\\SynthEdit\\modules" "gmpi")
                 endif()
             endif()
 
@@ -404,17 +404,17 @@ function(gmpi_plugin)
         endif()
 
         if(APPLE)
-            if(FIND_VST3_INDEX GREATER_EQUAL 0)
+            if(FIND_VST3_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3
                             "/Library/Audio/Plug-Ins/VST3" "vst3")
             endif()
 
-            if(FIND_GMPI_INDEX GREATER_EQUAL 0)
+            if(FIND_GMPI_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                            "/Library/Audio/Plug-Ins/GMPI" "")
+                            "/Library/Audio/Plug-Ins/GMPI" "gmpi")
             endif()
 
-            if(FIND_CLAP_INDEX GREATER_EQUAL 0)
+            if(FIND_CLAP_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_CLAP
                             "/Library/Audio/Plug-Ins/CLAP" "clap")
             endif()
