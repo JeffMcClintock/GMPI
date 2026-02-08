@@ -18,7 +18,7 @@
 */
 
 /*
-#include "GmpiApiEditor.h"
+#include "Core/GmpiApiEditor.h"
 */
 
 #include "GmpiApiCommon.h"
