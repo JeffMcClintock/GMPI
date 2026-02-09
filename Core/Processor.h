@@ -2,7 +2,7 @@
 
 /*
   GMPI - Generalized Music Plugin Interface specification.
-  Copyright 2007-2025 Jeff McClintock.
+  Copyright 2007-2026 Jeff McClintock.
 
   Permission to use, copy, modify, and/or distribute this software for any
   purpose with or without fee is hereby granted, provided that the above
@@ -25,6 +25,9 @@
 
 namespace gmpi
 {
+
+inline constexpr int kUnsetPinIndex = -1;
+inline constexpr int kAutoBlockPosition = -1;
 
 // Pointer to sound processing member function.
 class Processor;
@@ -54,8 +57,8 @@ public:
 	virtual void sendFirstUpdate() = 0;
 
 protected:
-	void sendPinUpdate( int32_t rawSize, const uint8_t* rawData, int32_t blockPosition = - 1 );
-	int idx_ = -1;
+	void sendPinUpdate(std::span<const uint8_t> raw, int32_t blockPosition = kAutoBlockPosition ) const;
+	int idx_ = kUnsetPinIndex;
 	class Processor* plugin_ = {};
 	ProcessorMemberPtr eventHandler_ = {};
 };
@@ -66,9 +69,9 @@ class ControlPinBase : public PinBase
 {
 public:
 	ControlPinBase() = default;
-	void sendPinUpdate(int blockPosition = -1)
+	void sendPinUpdate(int blockPosition = kAutoBlockPosition) const
 	{
-		PinBase::sendPinUpdate( rawSize(), rawData(), blockPosition );
+		PinBase::sendPinUpdate( getRaw(), blockPosition);
 	}
 	void setBuffer( float* /*buffer*/ ) override
 	{
@@ -76,15 +79,15 @@ public:
 	}
 	const T& getValue() const
 	{
-		assert( idx_ != -1 && "remember init() in constructor?" );
+		assert( idx_ != kUnsetPinIndex && "remember init() in constructor?" );
 		return value_;
 	}
-	operator T()
+	operator T() const
 	{
-		assert( idx_ != -1 && "remember init() in constructor?" );
+		assert( idx_ != kUnsetPinIndex && "remember init() in constructor?" );
 		return value_;
 	}
-	void setValue( const T &value, int blockPosition = -1 )
+	void setValue( const T &value, int blockPosition = kAutoBlockPosition )
 	{
 		if(value != value_) // avoid unnesc updates
 		{
@@ -101,33 +104,18 @@ public:
 		}
 		return value_;
 	}
-	bool operator==(T other)
+	bool operator==(T other) const
 	{
 		assert( plugin_ != nullptr && "Don't forget init() on each pin in your constructor." );
 		return other == value_;
 	}
-
-	void setValueRaw(std::span<const uint8_t> bytes)
+	void setRaw(std::span<const uint8_t> bytes)
 	{
 		valueFromData<T>(bytes, value_);
 	}
-	/*
-	virtual void setValueRaw(int size, const uint8_t* data)
+	std::span<const uint8_t> getRaw() const
 	{
-		valueFromData<T>(size, data, value_);
-	}
-	virtual void setValueRaw(size_t size, const uint8_t* data)
-	{
-		valueFromData<T>(static_cast<int>(size), data, value_);
-	}
-	*/
-	/*virtual*/ int rawSize() const
-	{
-		return dataSize<T>(value_);
-	}
-	/*virtual*/ const uint8_t* rawData()
-	{
-		return dataPtr<T>(value_);
+		return { dataPtr(value_), static_cast<size_t>(dataSize(value_)) };
 	}
 	PinDatatype getDatatype() const override
 	{
@@ -137,7 +125,7 @@ public:
 	{
 		if(e->eventType == api::EventType::PinSet)
 		{
-			setValueRaw(e->payload());
+			setRaw(e->payload());
 			freshValue_ = true;
 		}
 	}
@@ -177,7 +165,7 @@ public:
 	{
 		return buffer_;
 	}
-	float getValue(int bufferPos = -1) const;
+	float getValue(int bufferPos = kAutoBlockPosition) const;
 	operator float() const
 	{
 		return getValue();
@@ -185,10 +173,6 @@ public:
 	bool operator==(float other) const
 	{
 		return other == getValue();
-	}
-	virtual void setValueRaw(int /*size*/, const uint8_t* /*data*/)
-	{
-		assert(false && "Audio-rate pins_ don't support setValueRaw");
 	}
 	PinDatatype getDatatype() const override
 	{
@@ -254,11 +238,11 @@ public:
     AudioOutPin();
     
 	// Indicate output pin's value changed, but it's not streaming (a 'one-off' change).
-	void setUpdated(int blockPosition = -1)
+	void setUpdated(int blockPosition = kAutoBlockPosition)
 	{
 		setStreaming( false, blockPosition );
 	}
-	void setStreaming(bool isStreaming, int blockPosition = -1);
+	void setStreaming(bool isStreaming, int blockPosition = kAutoBlockPosition);
 	void sendFirstUpdate() override
 	{
 		setStreaming( true );
@@ -311,8 +295,8 @@ public:
 		assert(false && "MIDI pins_ don't have a buffer");
 	}
 
-	void send(gmpi::midi2::message_view msg, int blockPosition = -1);
-	void send(const unsigned char* data, int size, int blockPosition = -1);
+	void send(gmpi::midi2::message_view msg, int blockPosition = kAutoBlockPosition) const;
+	void send(const unsigned char* data, int size, int blockPosition = kAutoBlockPosition) const;
 	void sendFirstUpdate() override {} // N/A.
 };
 
@@ -334,7 +318,7 @@ public:
 	void process(int32_t count, const api::Event* events) override;
 
 	// overrides
-	virtual void onGraphStart();	// called on very first sample.
+	virtual void onGraphStart(); // called on very first sample.
 	virtual void onSetPins() {}  // one or more pins_ updated.  Check pin update flags to determine which ones.
 	virtual void onMidiMessage(int pin, std::span<const uint8_t> midiMessage) {}
 
@@ -433,14 +417,6 @@ public:
 		if (Processor::constructingInstance)
 			Processor::constructingInstance->init(*this);
 	}
-#if 0
-	ControlPin(T initialValue) : ControlPinBase< T, pinDatatype >(initialValue)
-	{
-		// register with the plugin.
-		if (Processor::constructingInstance)
-			Processor::constructingInstance->init(*this);
-	}
-#endif
 	PinDirection getDirection() const override
 	{
 		return pinDirection_;

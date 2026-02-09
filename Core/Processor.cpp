@@ -163,7 +163,7 @@ MidiOutPin::MidiOutPin()
 // specialised for audio pins_
 float AudioPinBase::getValue(int bufferPos) const
 {
-	if (bufferPos < 0)
+    if (bufferPos == kAutoBlockPosition)
 	{
 		assert(plugin_ != nullptr && "err: This pin was not initialized.");
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.getValue( someBufferPosition );");
@@ -177,7 +177,7 @@ float AudioPinBase::getValue(int bufferPos) const
 
 void PinBase::initialize(Processor* plugin, int PinIndex, ProcessorMemberPtr handler)
 {
-	assert(idx_ == -1 && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
+    assert(idx_ == kUnsetPinIndex && "pin initialized twice?"); // check your constructor's calls to init() for duplicates.
 	assert(PinDirection::In == getDirection() || !handler); // only input pins can have event handlers.
 
 	idx_ = PinIndex;
@@ -192,17 +192,17 @@ void PinBase::processEvent(const api::Event* e)
 }
 
 // Pins
-void PinBase::sendPinUpdate(int32_t rawSize, const uint8_t* rawData, int32_t blockPosition)
+void PinBase::sendPinUpdate(std::span<const uint8_t> raw, int32_t blockPosition) const
 {
 	assert(plugin_ != nullptr && "err: Please don't forgot to call init(pinWhatever) in contructor.");
 	assert(plugin_->debugIsOpen_ && "err: Please don't update output pins in constructor or open().");
 
-	if (blockPosition == -1)
+	if (blockPosition == kAutoBlockPosition)
 	{
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.setValue( value, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host->setPin(blockPosition, getIndex(), rawSize, rawData);
+	plugin_->host->setPin(blockPosition, getIndex(), raw.size(), raw.data());
 }
 
 ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
@@ -233,10 +233,10 @@ ReturnCode Processor::setBuffer(int32_t PinIndex, float* buffer)
 	return ReturnCode::Ok;
 }
 
-void MidiOutPin::send(gmpi::midi2::message_view msg, int blockPosition)
+void MidiOutPin::send(gmpi::midi2::message_view msg, int blockPosition) const
 {
-	assert(blockPosition >= -1 && "MIDI Out pin can't use negative timestamps");
-	if (blockPosition == -1)
+	assert(blockPosition >= kAutoBlockPosition && "MIDI Out pin can't use negative timestamps");
+	if (blockPosition == kAutoBlockPosition)
 	{
 		assert(plugin_->blockPosExact_ && "err: Please use - midiPin.send( data, size, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
@@ -244,7 +244,7 @@ void MidiOutPin::send(gmpi::midi2::message_view msg, int blockPosition)
 	plugin_->host->setPin(blockPosition, getIndex(), static_cast<int32_t>(msg.size()), msg.data());
 }
 
-void MidiOutPin::send(const unsigned char* data, int size, int blockPosition)
+void MidiOutPin::send(const unsigned char* data, int size, int blockPosition) const
 {
 	send({ static_cast<const uint8_t*>(data) , static_cast<size_t>(size) }, blockPosition);
 }
@@ -254,7 +254,7 @@ void AudioOutPin::setStreaming(bool isStreaming, int blockPosition)
 	assert(plugin_ && "Don't forget init() in your DSP class constructor for each pin");
 	assert(plugin_->debugIsOpen_ && "Can't setStreaming() until after module open().");
 
-	if (blockPosition == -1)
+	if (blockPosition == kAutoBlockPosition)
 	{
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.setStreaming( isStreaming, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
