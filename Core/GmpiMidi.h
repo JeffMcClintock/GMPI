@@ -1,4 +1,8 @@
 #pragma once
+
+// SPDX-License-Identifier: ISC
+// Copyright 2007-2026 Jeff McClintock.
+
 #include <stdint.h>
 #include <algorithm>
 #include <assert.h>
