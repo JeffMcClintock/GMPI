@@ -188,7 +188,7 @@ void PinBase::sendPinUpdate(std::span<const uint8_t> raw, int32_t blockPosition)
 		assert(plugin_->blockPosExact_ && "err: Please use - pin.setValue( value, someBufferPosition );");
 		blockPosition = plugin_->getBlockPosition();
 	}
-	plugin_->host->setPin(blockPosition, getIndex(), raw.size(), raw.data());
+	plugin_->host->setPin(blockPosition, getIndex(), static_cast<int32_t>(raw.size()), raw.data());
 }
 
 ProcessorMemberPtr MidiInPin::getDefaultEventHandler()
