@@ -19,6 +19,9 @@ ReturnCode Processor::open(IUnknown* phost)
 
 void Processor::process(int32_t count, const api::Event* events)
 {
+	_Analysis_assume_(events != nullptr); // analyzer hint only
+
+	assert(events);
 	assert(count > 0);
 
 #if defined(_DEBUG)
@@ -62,12 +65,14 @@ void Processor::process(int32_t count, const api::Event* events)
 		// PRE-PROCESS EVENT
 		bool pins_set_flag = false;
 		auto e = next_event;
+		_Analysis_assume_(e != nullptr); // analyzer hint only
+
 		do
 		{
 			preProcessEvent(e); // updates all pin values
 			pins_set_flag = pins_set_flag || e->eventType == api::EventType::PinSet || e->eventType == api::EventType::PinStreamingStart || e->eventType == api::EventType::PinStreamingStop;
 			e = e->next;
-		} while (e && e->timeDelta == blockPos_); // cur_timeStamp );
+		} while (e && e->timeDelta == blockPos_);
 
 		// PROCESS EVENT
 		e = next_event;

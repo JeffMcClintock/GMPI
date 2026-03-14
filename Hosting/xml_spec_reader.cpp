@@ -176,7 +176,8 @@ void RegisterPin(
 	{
 		if (const auto parameterIdAt = pin->Attribute("parameterId"); parameterIdAt)
 		{
-			sscanf(parameterIdAt, "%d", &pind.parameterId);
+			const auto parsed = sscanf(parameterIdAt, "%d", &pind.parameterId);
+			assert(parsed == 1);
 		}
 
 		// host-connect
@@ -190,7 +191,10 @@ void RegisterPin(
 				// field id can be stored as int (plugin XML), or as enum text (sems XML)
 				if (isdigit(*parameterField))
 				{
-					sscanf(parameterField, "%d", (int*)&pind.parameterFieldType);
+                   int parameterFieldValue = static_cast<int>(pind.parameterFieldType);
+					const auto parsed = sscanf(parameterField, "%d", &parameterFieldValue);
+					assert(parsed == 1);
+					pind.parameterFieldType = static_cast<gmpi::Field>(parameterFieldValue);
 				}
 				else
 				{

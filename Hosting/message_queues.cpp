@@ -243,6 +243,7 @@ bool QueuedUsers::ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames
 			auto waiter = waitingClientsHead;
 
 			// remove it.
+			_Analysis_assume_(waitingClientsHead != nullptr); // analyzer hint only
 			waitingClientsHead->inQue_ = false;
 			waitingClientsHead = waitingClientsHead->next_;
 
