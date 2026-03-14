@@ -4,6 +4,11 @@
 #include <assert.h>
 #include "Processor.h"
 
+#if !defined(_WIN32) && !defined(_Analysis_assume_)
+// _Analysis_assume_ is a MSVC static-analysis hint; make it a no-op off Windows.
+#define _Analysis_assume_(x) ((void)0)
+#endif
+
 namespace gmpi
 {
 ReturnCode Processor::open(IUnknown* phost)
