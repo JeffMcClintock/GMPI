@@ -24,9 +24,6 @@ ReturnCode Processor::open(IUnknown* phost)
 
 void Processor::process(int32_t count, const api::Event* events)
 {
-	_Analysis_assume_(events != nullptr); // analyzer hint only
-
-	assert(events);
 	assert(count > 0);
 
 #if defined(_DEBUG)
@@ -35,7 +32,7 @@ void Processor::process(int32_t count, const api::Event* events)
 
 	blockPos_ = 0;
 	int remain = count;
-	const api::Event* next_event = events;
+	auto next_event = events;
 
 	for (;;)
 	{
