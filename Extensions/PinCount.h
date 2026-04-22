@@ -10,7 +10,7 @@
 namespace synthedit
 {
 	
-struct DECLSPEC_NOVTABLE IProcessorPinsCallback : gmpi::api::IUnknown
+struct DECLSPEC_NOVTABLE IPinsCallback : gmpi::api::IUnknown
 {
     virtual gmpi::ReturnCode onPin(gmpi::PinDirection direction, gmpi::PinDatatype datatype) = 0;
 
@@ -35,7 +35,7 @@ public:
 };
 
 // helper class to retrieve pin information.
-struct PinInformation : public synthedit::IProcessorPinsCallback
+struct PinInformation : public synthedit::IPinsCallback
 {
 	struct PinInfo
 	{
@@ -59,7 +59,7 @@ struct PinInformation : public synthedit::IProcessorPinsCallback
 		return gmpi::ReturnCode::Ok;
 	}
 
-	GMPI_QUERYINTERFACE_METHOD(synthedit::IProcessorPinsCallback);
+	GMPI_QUERYINTERFACE_METHOD(synthedit::IPinsCallback);
 	GMPI_REFCOUNT
 };
 
