@@ -25,7 +25,7 @@ public:
 #endif
 
 // SynthEdit-specific. Extension to GMPI to provide support for loading files from the plugins resources (be they embedded or file-based).
-// Locate skin resources and make SynthEdit imbedd them during save-as-vst.
+// Resources can be fonts and images from the skin system, audio and MIDI files etc. Makes SynthEdit aware they need to be imbedded during export-to-vst.
 struct DECLSPEC_NOVTABLE IEmbeddedFileSupport : public gmpi::api::IUnknown
 {
 	virtual gmpi::ReturnCode findResourceUri(const char* fileName, /*const char* resourceType,*/ gmpi::api::IString* returnFullUri) = 0;
