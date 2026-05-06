@@ -280,6 +280,7 @@ public:
 
 class gmpi_controller_holder :
 	public gmpi::api::IEditorHost
+	, public gmpi::api::IControllerHost
 	, public gmpi::api::IParameterObserver
 	, public gmpi::hosting::interThreadQueUser
 	, public gmpi::hosting::IController
@@ -348,9 +349,44 @@ public:
 	std::string getPreset();
 	void setPresetXmlFromDaw(const std::string& xml);
 
-	// IParameterObserver
+	// IParameterObserver / IControllerHost (identical signature; one impl serves both vtables).
+	// Writes the value into patchManager so subsequent initUi calls deliver
+	// it to the editor. This is what makes a plugin's <Controller/> able to
+	// stash state (e.g. a pointer to its app object) before the editor opens.
 	gmpi::ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) override
 	{
+		auto* param = patchManager.getParameter(parameterHandle);
+		if (!param)
+			return gmpi::ReturnCode::Ok;
+
+		if (fieldId == gmpi::Field::Value)
+		{
+			switch (param->info->datatype)
+			{
+			case gmpi::PinDatatype::Blob:
+				param->setBlob({ data, static_cast<size_t>(size) });
+				break;
+			case gmpi::PinDatatype::Float32:
+				if (size == sizeof(float))
+					param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data)));
+				break;
+			case gmpi::PinDatatype::Int32:
+				if (size == sizeof(int32_t))
+					param->setReal(static_cast<double>(*reinterpret_cast<const int32_t*>(data)));
+				break;
+			case gmpi::PinDatatype::Bool:
+				if (size == sizeof(bool))
+					param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data)));
+				break;
+			default:
+				break;
+			}
+		}
+		else if (fieldId == gmpi::Field::Normalized && size == sizeof(float))
+		{
+			param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data)));
+		}
+
 		return gmpi::ReturnCode::Ok;
 	}
 
@@ -360,6 +396,7 @@ public:
 	gmpi::ReturnCode queryInterface(const gmpi::api::Guid* iid, void** returnInterface) override
 	{
 		GMPI_QUERYINTERFACE(gmpi::api::IEditorHost);
+		GMPI_QUERYINTERFACE(gmpi::api::IControllerHost);
 		GMPI_QUERYINTERFACE(gmpi::api::IParameterObserver);
 		return gmpi::ReturnCode::NoSupport;
 	}
