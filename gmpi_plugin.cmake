@@ -209,7 +209,7 @@ function(gmpi_plugin)
             # here is the plist output file
             set(PLIST_OUT "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}-Info.plist")
 
-            # Xcode’s intermediate Info.plist path (what Build Settings shows) Cmake secretly copies the generated plist here.
+            # Xcodeï¿½s intermediate Info.plist path (what Build Settings shows) Cmake secretly copies the generated plist here.
             set(PLIST_DEST "${CMAKE_CURRENT_BINARY_DIR}/CMakeFiles/${SUB_PROJECT_NAME}.dir/Info.plist")
 
             # Ensure a stub plist exists at configure time (avoids "file not found" during project generation)
@@ -312,7 +312,7 @@ function(gmpi_plugin)
 
         # copy plugin to components folder. NOTE: Requires user to have read-write permissions on folder.
         if(SE_LOCAL_BUILD)
-            SET(AU_DEST "/Library/Audio/Plug-Ins/Components")
+            SET(AU_DEST "$ENV{HOME}/Library/Audio/Plug-Ins/Components")
             add_custom_command(TARGET ${SUB_PROJECT_NAME}
                 POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -346,7 +346,7 @@ function(gmpi_plugin)
 
         # copy plugin to CLAP folder. NOTE: Requires user to have read-write permissions on folder.
         if(APPLE AND SE_LOCAL_BUILD)
-            SET(CLAP_DEST "/Library/Audio/Plug-Ins/CLAP")
+            SET(CLAP_DEST "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP")
             add_custom_command(TARGET ${SUB_PROJECT_NAME}
                 POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E copy_directory
@@ -406,17 +406,17 @@ function(gmpi_plugin)
         if(APPLE)
             if(FIND_VST3_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3
-                            "/Library/Audio/Plug-Ins/VST3" "vst3")
+                            "$ENV{HOME}/Library/Audio/Plug-Ins/VST3" "vst3")
             endif()
 
             if(FIND_GMPI_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                            "/Library/Audio/Plug-Ins/GMPI" "gmpi")
+                            "$ENV{HOME}/Library/Audio/Plug-Ins/GMPI" "gmpi")
             endif()
 
             if(FIND_CLAP_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_CLAP
-                            "/Library/Audio/Plug-Ins/CLAP" "clap")
+                            "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP" "clap")
             endif()
         endif()
     endif()
