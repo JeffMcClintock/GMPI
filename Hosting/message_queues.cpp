@@ -238,7 +238,9 @@ bool QueuedUsers::ServiceWaitersIncremental(IWriteableQue* que, int sampleFrames
 	// End of GUI frame? Clear clients ready for next frame.
 	if (cumulativesampleFrames > sampleFramesPerCycle)
 	{
-		cumulativesampleFrames -= sampleFramesPerCycle;
+		// Modulo (not -=) so callers passing a large sentinel sampleFrames (e.g. UI-thread
+		// timer passes 100000) don't grow the accumulator unbounded and overflow INT_MAX.
+		cumulativesampleFrames %= sampleFramesPerCycle;
 
 		int size = 0;
 		//			_RPT0(_CRT_WARN, "_________\n");
