@@ -43,7 +43,7 @@ endfunction()
 ################################################################
 
 function(gmpi_plugin)
-    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE)
+    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE USE_STAGING)
     set(oneValueArgs PROJECT_NAME)
     set(multiValueArgs FORMATS_LIST SOURCE_FILES)
     cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -387,7 +387,10 @@ function(gmpi_plugin)
             endif()
 
             if(FIND_GMPI_INDEX GREATER_EQUAL 0)
-                if(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
+                if(GMPI_PLUGIN_USE_STAGING)
+                    copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                                "C:\\Program Files\\Common Files\\SynthEdit\\modules-staged" "gmpi")
+                elseif(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
                                 "C:\\SE\\SE16\\SynthEdit2\\PlugIns\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win" "gmpi")
                 else()
@@ -410,8 +413,13 @@ function(gmpi_plugin)
             endif()
 
             if(FIND_GMPI_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
-                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                            "$ENV{HOME}/Library/Audio/Plug-Ins/GMPI" "gmpi")
+                if(GMPI_PLUGIN_USE_STAGING)
+                    copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                                "$ENV{HOME}/Library/Audio/Plug-Ins/GMPI-staged" "gmpi")
+                else()
+                    copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                                "$ENV{HOME}/Library/Audio/Plug-Ins/GMPI" "gmpi")
+                endif()
             endif()
 
             if(FIND_CLAP_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
