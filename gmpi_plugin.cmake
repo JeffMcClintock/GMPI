@@ -388,8 +388,9 @@ function(gmpi_plugin)
 
             if(FIND_GMPI_INDEX GREATER_EQUAL 0)
                 if(GMPI_PLUGIN_USE_STAGING)
+                    # Debug: stage to modules-staged; Release: fall back to normal modules folder
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                                "C:\\Program Files\\Common Files\\SynthEdit\\modules-staged" "gmpi")
+                                "$<IF:$<CONFIG:Debug>,C:\\Program Files\\Common Files\\SynthEdit\\modules-staged,C:\\Program Files\\Common Files\\SynthEdit\\modules>" "gmpi")
                 elseif(GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
                                 "C:\\SE\\SE16\\SynthEdit2\\PlugIns\\$(TargetName)$(TargetExt)\\Contents\\x86_64-win" "gmpi")
@@ -414,8 +415,9 @@ function(gmpi_plugin)
 
             if(FIND_GMPI_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 if(GMPI_PLUGIN_USE_STAGING)
+                    # Debug: stage to GMPI-staged; Release: fall back to normal GMPI folder
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
-                                "$ENV{HOME}/Library/Audio/Plug-Ins/GMPI-staged" "gmpi")
+                                "$<IF:$<CONFIG:Debug>,$ENV{HOME}/Library/Audio/Plug-Ins/GMPI-staged,$ENV{HOME}/Library/Audio/Plug-Ins/GMPI>" "gmpi")
                 else()
                     copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
                                 "$ENV{HOME}/Library/Audio/Plug-Ins/GMPI" "gmpi")
