@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <vector>
 #include "Processor.h"
 
 /*
@@ -23,12 +24,12 @@ The basic theory of 'power saving' in GMPI is:
 4.  Set the output pin status to 'not-streaming'.
 
 Once all input and output pins are silent, the SDK will automatically sleep the
-module. FilterBase just helps with that: it watches the output signal, and only
-once the output has settled to a steady (unchanging) value does it let the
-module go to sleep.
+module. FilterBase just helps with that: it watches the output signal(s), and
+only once every output has settled to a steady (unchanging) value does it let
+the module go to sleep.
 
 * For step 1, implement isFilterSettling() and return 'true' if the input is silent.
-* For step 2, implement getOutputPin() to tell the base class which output to watch.
+* For step 2, register each audio output with addOutputPin() (from your constructor).
 * Steps 3 and 4 are automatic.
 
 USAGE:
@@ -38,17 +39,18 @@ USAGE:
         AudioInPin pinSignal;
         AudioOutPin pinOutput;
 
+        MyFilter()
+        {
+            // Tell the base class which output(s) to watch for silence.
+            // A stereo filter would register both: addOutputPin(pinL); addOutputPin(pinR);
+            addOutputPin(pinOutput);
+        }
+
         // Called to determine when the filter is settling. Typically: are all
         // inputs quiet (not streaming)?
         bool isFilterSettling() override
         {
             return !pinSignal.isStreaming();
-        }
-
-        // Lets the base class monitor the filter's output signal.
-        AudioOutPin& getOutputPin() override
-        {
-            return pinOutput;
         }
 
         void onSetPins() override
@@ -85,13 +87,26 @@ protected:
 	// The filter's normal process function, saved while subProcessSettling() runs.
 	SubProcessPtr actualSubProcess{};
 
-	int   stabilityCheckCounter = 0; // counts down to the next StabilityCheck().
-	float static_output = {};        // the steady value the output settled to.
+	int stabilityCheckCounter = 0; // counts down to the next StabilityCheck().
+
+	// The audio output(s) the base class watches for silence, and the steady value
+	// each one settled to (parallel arrays, populated by addOutputPin()).
+	std::vector<AudioOutPin*> outputPins;
+	std::vector<float>        staticOutputs;
 
 	// How many consecutive 'flat' output samples we require before declaring the
 	// filter settled, and how many of those are still outstanding.
 	static constexpr int historyCount = 32;
 	int historyIdx = 0;
+
+	// Register an audio output for the base class to monitor / hold static / sleep.
+	// Call once per output from your constructor (a mono filter calls it once, a
+	// stereo filter twice, etc).
+	void addOutputPin(AudioOutPin& pin)
+	{
+		outputPins.push_back(&pin);
+		staticOutputs.push_back(0.0f);
+	}
 
 public:
 	ReturnCode open(api::IUnknown* phost) override
@@ -116,23 +131,22 @@ public:
 	// Return true when no input is feeding the filter (so it will decay to silence).
 	virtual bool isFilterSettling() = 0;
 
-	// The output pin the base class watches for silence.
-	virtual AudioOutPin& getOutputPin() = 0;
-
 	// Override to detect and reset numeric overflow in your filter's state.
 	virtual void StabilityCheck() {}
 
 	// --- provided by the base class ---------------------------------------
 
-	// Called once the output has stopped changing: switch to emitting a constant,
-	// and tell downstream modules this output is no longer streaming (so the host
-	// can sleep us). Override if your filter has more than one output to tidy up.
+	// Called once every output has stopped changing: switch to emitting a constant,
+	// and tell downstream modules these outputs are no longer streaming (so the host
+	// can sleep us). Override if your filter needs extra tidy-up.
 	virtual void OnFilterSettled()
 	{
 		setSubProcess(&FilterBase::subProcessStatic);
 
 		// assuming the settle check is always made at the start of the block.
-		getOutputPin().setStreaming(false, getBlockPosition());
+		const int blockPosition = getBlockPosition();
+		for (auto* pin : outputPins)
+			pin->setStreaming(false, blockPosition);
 	}
 
 	// Provides a counter to check the filter periodically. Call this FIRST in
@@ -146,8 +160,8 @@ public:
 		}
 	}
 
-	// Runs the real filter, then watches the tail of the output buffer. Once the
-	// output hasn't moved for 'historyCount' samples the filter is settled.
+	// Runs the real filter, then watches the tail of each output buffer. Once EVERY
+	// output has held its final value for 'historyCount' samples the filter is settled.
 	void subProcessSettling(int sampleFrames)
 	{
 		if (historyIdx <= 0)
@@ -160,32 +174,49 @@ public:
 
 		(this->*(actualSubProcess))(sampleFrames);
 
-		// the value the output is converging toward.
-		static_output = *(getBuffer(getOutputPin()) + sampleFrames - 1);
+		// the value each output is converging toward.
+		for (size_t p = 0; p < outputPins.size(); ++p)
+			staticOutputs[p] = *(getBuffer(*outputPins[p]) + sampleFrames - 1);
 
+		// Walk the last 'todo' samples in order. The filter is "still moving" at a
+		// sample if ANY output differs there from its final value - that restarts
+		// the settle countdown.
 		const int todo = (std::min)(historyIdx, sampleFrames);
-		auto o = getBuffer(getOutputPin()) + sampleFrames - todo;
+		const int firstSample = sampleFrames - todo;
 		for (int i = 0; i < todo; ++i)
 		{
 			constexpr float INSIGNIFICANT_SAMPLE = 0.000001f;
-			if (std::fabs(static_output - *o) > INSIGNIFICANT_SAMPLE)
+			bool moving = false;
+			for (size_t p = 0; p < outputPins.size(); ++p)
+			{
+				const float sample = *(getBuffer(*outputPins[p]) + firstSample + i);
+				if (std::fabs(staticOutputs[p] - sample) > INSIGNIFICANT_SAMPLE)
+				{
+					moving = true;
+					break;
+				}
+			}
+
+			if (moving)
 				historyIdx = historyCount; // still moving: restart the count.
 
 			--historyIdx;
-			++o;
 		}
 	}
 
-	// The output has settled to a constant: repeat it until the host sleeps us.
-	// (Assumes a single output; override OnFilterSettled() for anything fancier.)
+	// Every output has settled to a constant: repeat it until the host sleeps us.
 	void subProcessStatic(int sampleFrames)
 	{
-		auto output = getBuffer(getOutputPin());
-		for (int s = sampleFrames; s > 0; s--)
-			*output++ = static_output;
+		for (size_t p = 0; p < outputPins.size(); ++p)
+		{
+			auto output = getBuffer(*outputPins[p]);
+			const float value = staticOutputs[p];
+			for (int s = sampleFrames; s > 0; s--)
+				*output++ = value;
+		}
 	}
 
-	// If the filter is settling, start monitoring the output for silence.
+	// If the filter is settling, start monitoring the output(s) for silence.
 	// Call this LAST in your onSetPins().
 	void initSettling()
 	{
