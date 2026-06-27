@@ -187,8 +187,15 @@ inline const uint8_t* dataPtr<Blob>(const Blob& value)
 template <typename T>
 inline void valueFromData(std::span<const uint8_t> bytes, T& returnValue)
 {
-	assert(bytes.size() == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
 	static_assert(std::is_trivially_copyable<T>::value, "T must be trivially copyable");
+
+	// No data supplied: the host can't encode a string default for some datatypes (e.g. a 'struct'
+	// or 'object' pin), so it sends an empty value. Treat that as "keep the existing/default value"
+	// rather than a datatype mismatch - otherwise an unconnected struct/object pin asserts at init.
+	if (bytes.empty())
+		return;
+
+	assert(bytes.size() == sizeof(T) && "check pin datatype matches XML"); // Have you re-scanned modules since last change?
 	std::memcpy(&returnValue, bytes.data(), bytes.size());
 }
 
