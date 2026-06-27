@@ -447,8 +447,14 @@ typedef ControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
 template <typename T> using StructInPin  = ControlPin<T, PinDirection::In,  PinDatatype::Struct>;
 template <typename T> using StructOutPin = ControlPin<T, PinDirection::Out, PinDatatype::Struct>;
 
-// OBJECT - a reference-counted, COM-like object (api::ISharedBlob) passed by pointer (addRef/release).
-// Unlike Blob (which is copied by value), only the pointer is sent between modules - the data is shared, not duplicated.
+// OBJECT - a reference-counted, COM-like object passed by pointer (addRef/release).
+// Unlike Blob (which is copied by value), only the pointer is sent between modules - the object is shared, not duplicated.
+//
+// The pins are templated on the interface you expect (e.g. ObjectInPin<api::ISharedBlob>). The pin resolves
+// that interface via queryInterface() for you, so user code is spared the boilerplate AND the unsafe assumption
+// that the object implements a particular interface - getValue() simply returns nullptr if it doesn't.
+// The template defaults to api::IUnknown, so ObjectInPin<>/ObjectOutPin<> give you the raw, generic object.
+//
 // These don't use the ControlPin<T> template because the value has reference semantics, not value semantics.
 class ObjectPinBase : public PinBase
 {
@@ -460,12 +466,20 @@ public:
 	ProcessorMemberPtr getDefaultEventHandler() override { return {}; }
 	void sendFirstUpdate() override {}
 
-	api::ISharedBlob* getValue() const { return value_; }
+	// The raw object, regardless of interface (e.g. for forwarding it unchanged to an output pin).
+	api::IUnknown* getRawObject() const { return value_; }
 
 protected:
-	api::ISharedBlob* value_ = nullptr;
+	void sendObject() const
+	{
+		// send out only the pointer, not the object's data.
+		sendPinUpdate({ reinterpret_cast<const uint8_t*>(&value_), sizeof(value_) });
+	}
+
+	api::IUnknown* value_ = nullptr;
 };
 
+template <typename T = api::IUnknown>
 class ObjectInPin final : public ObjectPinBase
 {
 public:
@@ -485,10 +499,20 @@ public:
 			if (value_)
 				value_->release();
 
-			// the payload carries the pointer itself (8 bytes), not the blob's data.
+			value_ = nullptr;
+			typed_ = nullptr;
+
+			// the payload carries the pointer itself (8 bytes), not the object's data.
 			const auto bytes = e->payload();
 			assert(bytes.size() == sizeof(value_) && "check pin datatype matches XML");
 			std::memcpy(&value_, bytes.data(), sizeof(value_));
+
+			// Resolve the requested interface once, here, so user code needn't. typed_ is a borrowed
+			// pointer - value_ keeps the object alive - so balance the queryInterface() reference count.
+			if (value_ && value_->queryInterface(&T::guid, reinterpret_cast<void**>(&typed_)) == ReturnCode::Ok)
+				typed_->release();
+			else
+				typed_ = nullptr;
 
 			freshValue_ = true;
 		}
@@ -500,10 +524,17 @@ public:
 	}
 	bool isUpdated() const { return freshValue_; }
 
+	// The object as interface T, or nullptr if absent / the object doesn't implement T.
+	T* getValue() const { return typed_; }
+	T* operator->() const { return typed_; }
+	explicit operator bool() const { return typed_ != nullptr; }
+
 private:
+	T* typed_ = nullptr;      // value_ queried to interface T (borrowed pointer).
 	bool freshValue_ = false; // true = value_ has been updated by host on current sample_clock
 };
 
+template <typename T = api::IUnknown>
 class ObjectOutPin final : public ObjectPinBase
 {
 public:
@@ -515,22 +546,20 @@ public:
 	}
 	PinDirection getDirection() const override { return PinDirection::Out; }
 
-	api::ISharedBlob* operator=(api::ISharedBlob* value)
+	// Send an object out the pin (the module retains ownership; only the pointer is transmitted).
+	T* operator=(T* value)
 	{
-		value_ = value;
-
-		// send out only the pointer, not the data.
-		sendPinUpdate({ reinterpret_cast<const uint8_t*>(&value_), sizeof(value_) });
-
-		return value_;
+		value_ = static_cast<api::IUnknown*>(value);
+		sendObject();
+		return value;
 	}
-	const ObjectInPin& operator=(const ObjectInPin& pin)
+
+	// Forward an object arriving on any input pin, preserving its original identity.
+	template <typename U>
+	const ObjectInPin<U>& operator=(const ObjectInPin<U>& pin)
 	{
-		value_ = pin.getValue();
-
-		// send out only the pointer, not the data.
-		sendPinUpdate({ reinterpret_cast<const uint8_t*>(&value_), sizeof(value_) });
-
+		value_ = pin.getRawObject();
+		sendObject();
 		return pin;
 	}
 };
