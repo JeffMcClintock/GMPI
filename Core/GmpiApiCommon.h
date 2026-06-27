@@ -54,9 +54,9 @@ enum class PinDatatype : int32_t
     Int32 = 8,
     Int64,
     Blob,
-    Class,
+    Struct,
     String,
-    Blob2,
+    Object,
 };
 
 namespace api
@@ -105,6 +105,19 @@ struct DECLSPEC_NOVTABLE IString : IUnknown
     // {AB8FFB21-44FF-42B7-8885-29431399E7E4}
     inline static const Guid guid =
     { 0xAB8FFB21, 0x44FF, 0x42B7, { 0x88, 0x85, 0x29, 0x43, 0x13, 0x99, 0xE7, 0xE4} };
+};
+
+// INTERFACE 'ISharedBlob' aka Blob2
+// A reference-counted, immutable binary object passed by-reference (addRef/release)
+// through pins of the 'Object' datatype. Unlike 'Blob' (which is copied by value),
+// only the pointer is sent between modules - the data itself is shared, not duplicated.
+struct DECLSPEC_NOVTABLE ISharedBlob : IUnknown
+{
+    virtual ReturnCode read(const uint8_t** returnData, int64_t* returnSize) = 0;
+
+    // {770D50E5-796D-4495-9C3E-6C21EBEA7F72}
+    inline static const Guid guid =
+    { 0x770D50E5, 0x796D, 0x4495, { 0x9C, 0x3E, 0x6C, 0x21, 0xEB, 0xEA, 0x7F, 0x72} };
 };
 
 // INTERFACE 'IPluginFactory'

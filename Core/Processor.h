@@ -440,6 +440,101 @@ typedef ControlPin<std::string, PinDirection::Out>	StringOutPin;
 typedef ControlPin<int, PinDirection::In, PinDatatype::Enum>	EnumInPin;
 typedef ControlPin<int, PinDirection::Out, PinDatatype::Enum>	EnumOutPin;
 
+// STRUCT - a strongly-typed, fixed-layout binary value carried by-value (copied like Blob, but with a named type).
+// Unlike Object (a shared pointer), the bytes are copied between modules. Reuses the ControlPin<T> value machinery:
+// T must be trivially-copyable; output pins additionally require T to be equality-comparable (e.g. defaulted operator==).
+// Usage:  StructInPin<MyGeometry> pinGeometry;   (matches XML datatype="struct" or "struct:MyGeometry")
+template <typename T> using StructInPin  = ControlPin<T, PinDirection::In,  PinDatatype::Struct>;
+template <typename T> using StructOutPin = ControlPin<T, PinDirection::Out, PinDatatype::Struct>;
+
+// OBJECT - a reference-counted, COM-like object (api::ISharedBlob) passed by pointer (addRef/release).
+// Unlike Blob (which is copied by value), only the pointer is sent between modules - the data is shared, not duplicated.
+// These don't use the ControlPin<T> template because the value has reference semantics, not value semantics.
+class ObjectPinBase : public PinBase
+{
+public:
+	// overrides for audio pins.
+	void setBuffer(float*) override {}
+
+	PinDatatype getDatatype() const override { return PinDatatype::Object; }
+	ProcessorMemberPtr getDefaultEventHandler() override { return {}; }
+	void sendFirstUpdate() override {}
+
+	api::ISharedBlob* getValue() const { return value_; }
+
+protected:
+	api::ISharedBlob* value_ = nullptr;
+};
+
+class ObjectInPin final : public ObjectPinBase
+{
+public:
+	ObjectInPin()
+	{
+		// register with the plugin.
+		if (Processor::constructingInstance)
+			Processor::constructingInstance->init(*this);
+	}
+	PinDirection getDirection() const override { return PinDirection::In; }
+
+	void preProcessEvent(const api::Event* e) override
+	{
+		if (e->eventType == api::EventType::PinSet)
+		{
+			// release previous value.
+			if (value_)
+				value_->release();
+
+			// the payload carries the pointer itself (8 bytes), not the blob's data.
+			const auto bytes = e->payload();
+			assert(bytes.size() == sizeof(value_) && "check pin datatype matches XML");
+			std::memcpy(&value_, bytes.data(), sizeof(value_));
+
+			freshValue_ = true;
+		}
+	}
+	void postProcessEvent(const api::Event* e) override
+	{
+		if (e->eventType == api::EventType::PinSet)
+			freshValue_ = false;
+	}
+	bool isUpdated() const { return freshValue_; }
+
+private:
+	bool freshValue_ = false; // true = value_ has been updated by host on current sample_clock
+};
+
+class ObjectOutPin final : public ObjectPinBase
+{
+public:
+	ObjectOutPin()
+	{
+		// register with the plugin.
+		if (Processor::constructingInstance)
+			Processor::constructingInstance->init(*this);
+	}
+	PinDirection getDirection() const override { return PinDirection::Out; }
+
+	api::ISharedBlob* operator=(api::ISharedBlob* value)
+	{
+		value_ = value;
+
+		// send out only the pointer, not the data.
+		sendPinUpdate({ reinterpret_cast<const uint8_t*>(&value_), sizeof(value_) });
+
+		return value_;
+	}
+	const ObjectInPin& operator=(const ObjectInPin& pin)
+	{
+		value_ = pin.getValue();
+
+		// send out only the pointer, not the data.
+		sendPinUpdate({ reinterpret_cast<const uint8_t*>(&value_), sizeof(value_) });
+
+		return pin;
+	}
+};
+
 // When sending values out a pin, it's cleaner if the block-position is known,
 // however in subProcess(), we can't usually identify a specific block position automatically.
 // This helper class lets you set the block-position manually in able to use shorthand pin setting syntax. e.g. pinOut = 3;

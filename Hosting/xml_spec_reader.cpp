@@ -45,6 +45,8 @@ static const std::unordered_map<std::string, gmpi::PinDatatype> pinDatatypeInfo 
 	{"enum",		gmpi::PinDatatype::Enum},
 	{"double",		gmpi::PinDatatype::Float64},
 	{"audio",		gmpi::PinDatatype::Audio},
+	{"object",		gmpi::PinDatatype::Object},
+	{"struct",		gmpi::PinDatatype::Struct},
 };
 
 static const std::unordered_map<std::string, HostControls> hostControlsInfo =
@@ -315,7 +317,10 @@ void RegisterPin(
 	{
 		const std::string pin_datatype(dt);
 
-		if (auto dt = lookup(pin_datatype, pinDatatypeInfo); dt)
+		// "struct:typename" / "object:typename" carry a type-name suffix; match on the base datatype.
+		const std::string base_datatype = pin_datatype.substr(0, pin_datatype.find(':'));
+
+		if (auto dt = lookup(base_datatype, pinDatatypeInfo); dt)
 		{
 			pind.datatype = dt.value();
 
