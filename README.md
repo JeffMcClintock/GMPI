@@ -15,6 +15,7 @@ GMPI:
 * Has a permissive open-source license (No fees, contracts or NDAs)
 * Has cross-platform support
 * MIDI 1.0, MPE, and MIDI 2.0 support
+* Parameter support, include floating-point, integer, boolean, and string types
 * Thread-safe and race-condition-free by default
 * Supports an optional cross-platform drawing option [GMPI UI](https://github.com/JeffMcClintock/gmpi_ui)
 * A clean and bloat-free API surface
