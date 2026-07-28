@@ -234,6 +234,10 @@ void gmpi_processor::setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo con
 	if (auto param = patchManager.setParameterNormalised(id, valueNormalized); param)
 	{
 		sendParameterToProcessor(info, param, sampleOffset);
+
+		// queue it for the GUI too (drained to the dsp-to-ui queue after process()),
+		// so DAW automation is reflected in the editor.
+		pendingControllerQueueClients.AddWaiter(param);
 	}
 }
 
