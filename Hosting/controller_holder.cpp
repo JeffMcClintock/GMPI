@@ -32,8 +32,11 @@ void gmpi_controller_holder::init(gmpi::hosting::pluginInfo& pinfo)
 
 void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 {
-	gmpi::shared_ptr<gmpi::api::IUnknown> unknown(unknownEditor);
-	auto editor = unknown.as<gmpi::api::IEditor>();
+	// we're borrowing 'unknownEditor', not adopting it: queryInterface addRefs,
+	// whereas constructing a shared_ptr from the raw pointer would steal the caller's reference.
+	gmpi::shared_ptr<gmpi::api::IEditor> editor;
+	if (unknownEditor)
+		unknownEditor->queryInterface(&gmpi::api::IEditor::guid, editor.put_void());
 
 	if(editor.isNull())
 	{
