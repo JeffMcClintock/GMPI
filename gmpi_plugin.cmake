@@ -274,6 +274,16 @@ function(gmpi_plugin)
                 SUFFIX ".${TARGET_EXTENSION}"
             )
         endif()
+
+        if(UNIX AND NOT APPLE AND GMPI_PLUGIN_HAS_XML)
+            # Linux: no resource embedding or bundle; place the XML beside the
+            # binary (<binary>.xml) where the module scanner looks for it.
+            add_custom_command(TARGET ${SUB_PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "${CMAKE_CURRENT_SOURCE_DIR}/${GMPI_PLUGIN_PROJECT_NAME}.xml"
+                    "$<TARGET_FILE:${SUB_PROJECT_NAME}>.xml"
+                VERBATIM)
+        endif()
     endforeach()
 
     list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
