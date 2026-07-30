@@ -233,7 +233,7 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 
     void init(gmpi::hosting::pluginInfo const& info);
 	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info, int32_t blockSize, float sampleRate);
-	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value);
+	void setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double value, bool sendToEditor = false);
     void setHostControlFromDaw(gmpi::hosting::HostControls hc, double value);
 	void sendParameterToProcessor(gmpi::hosting::pluginInfo const& info, GmpiParameter* param, int sampleOffset);
 

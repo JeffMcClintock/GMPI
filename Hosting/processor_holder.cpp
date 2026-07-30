@@ -229,15 +229,16 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 	return true;
 }
 
-void gmpi_processor::setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double valueNormalized)
+void gmpi_processor::setParameterNormalizedFromDaw(gmpi::hosting::pluginInfo const& info, int sampleOffset, int id, double valueNormalized, bool sendToEditor)
 {
 	if (auto param = patchManager.setParameterNormalised(id, valueNormalized); param)
 	{
 		sendParameterToProcessor(info, param, sampleOffset);
 
-		// queue it for the GUI too (drained to the dsp-to-ui queue after process()),
+		// For CLAP queue it for the GUI too (drained to the dsp-to-ui queue after process()),
 		// so DAW automation is reflected in the editor.
-		pendingControllerQueueClients.AddWaiter(param);
+		if(sendToEditor)
+			pendingControllerQueueClients.AddWaiter(param);
 	}
 }
 
