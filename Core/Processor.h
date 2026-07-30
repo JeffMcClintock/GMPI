@@ -306,7 +306,7 @@ public:
 	// overrides
 	virtual void onGraphStart(); // called on very first sample.
 	virtual void onSetPins() {}  // one or more pins_ updated.  Check pin update flags to determine which ones.
-	virtual void onMidiMessage(int pin, std::span<const uint8_t> midiMessage) {}
+	virtual void onMidiMessage(int /*pin*/, std::span<const uint8_t> /*midiMessage*/) {}
 
 	// access to the DAW
 	gmpi::shared_ptr<api::IProcessorHost> host;
