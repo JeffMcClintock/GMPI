@@ -269,8 +269,12 @@ function(gmpi_plugin)
                 BUNDLE_EXTENSION "${TARGET_EXTENSION}"
         )
         else()
+            # PREFIX "" so Linux does not produce libFoo.gmpi where Windows and
+            # macOS produce Foo.gmpi. No-op on Windows, where the shared-module
+            # prefix is already empty.
             set_target_properties(${SUB_PROJECT_NAME}
                 PROPERTIES
+                PREFIX ""
                 SUFFIX ".${TARGET_EXTENSION}"
             )
         endif()
@@ -378,7 +382,7 @@ function(gmpi_plugin)
                 set_source_files_properties(${xml_path} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
             endif()
         else()
-            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES SUFFIX ".clap")
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".clap")
         endif()
 
         # copy plugin to CLAP folder. NOTE: Requires user to have read-write permissions on folder.
@@ -510,6 +514,18 @@ function(gmpi_plugin)
             if(FIND_GMPI_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
                             "$ENV{HOME}/.local/share/SynthEdit/modules" "gmpi")
+
+                # The sidecar goes too. On Windows and macOS the XML is embedded
+                # as a resource; on Linux it is a file beside the binary, so
+                # installing the binary alone leaves a module the scanner cannot
+                # read its metadata from.
+                if(GMPI_PLUGIN_HAS_XML)
+                    add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME} POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "$<TARGET_FILE:${GMPI_PLUGIN_PROJECT_NAME}>.xml"
+                            "$ENV{HOME}/.local/share/SynthEdit/modules/"
+                        VERBATIM)
+                endif()
             endif()
         endif()
     endif()
