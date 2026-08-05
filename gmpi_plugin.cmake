@@ -305,6 +305,33 @@ function(gmpi_plugin)
                 target_sources(${SUB_PROJECT_NAME} PUBLIC ${xml_path})
                 set_source_files_properties(${xml_path} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
             endif()
+        elseif(UNIX)
+            # Linux VST3s are bundle DIRECTORIES, not bare shared objects - a host
+            # scanning ~/.vst3 looks for "<name>.vst3/Contents/<arch>-linux/<name>.so"
+            # and ignores a loose .so entirely. Build a plain .so, then assemble the
+            # bundle around it after linking.
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".so")
+
+            set(vst3_bundle "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}.vst3")
+            set(vst3_bundle_arch "${vst3_bundle}/Contents/${CMAKE_SYSTEM_PROCESSOR}-linux")
+
+            add_custom_command(TARGET ${SUB_PROJECT_NAME} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E make_directory "${vst3_bundle_arch}"
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    "$<TARGET_FILE:${SUB_PROJECT_NAME}>" "${vst3_bundle_arch}/"
+                COMMENT "Assembling VST3 bundle ${SUB_PROJECT_NAME}.vst3"
+                VERBATIM
+            )
+
+            if(GMPI_PLUGIN_HAS_XML)
+                add_custom_command(TARGET ${SUB_PROJECT_NAME} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E make_directory "${vst3_bundle}/Contents/Resources"
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                        "${CMAKE_CURRENT_SOURCE_DIR}/${SUB_PROJECT_NAME}.xml"
+                        "${vst3_bundle}/Contents/Resources/"
+                    VERBATIM
+                )
+            endif()
         else()
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES SUFFIX ".vst3")
         endif()
