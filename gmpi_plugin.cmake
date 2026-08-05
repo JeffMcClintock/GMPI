@@ -413,6 +413,30 @@ function(gmpi_plugin)
                     COMMENT "Copy to ${DEST_DIR} folder"
                     VERBATIM
                 )
+            elseif(UNIX)
+                # Only VST3 is a bundle DIRECTORY on Linux (assembled above);
+                # .clap and .gmpi are plain shared objects. $<TARGET_BUNDLE_DIR>
+                # is macOS-only, so the VST3 source path is spelled out.
+                if(EXTENSION STREQUAL "vst3")
+                    add_custom_command(TARGET ${TARGET_NAME}
+                        POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEST_DIR}"
+                        COMMAND ${CMAKE_COMMAND} -E copy_directory
+                            "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.vst3"
+                            "${DEST_DIR}/${TARGET_NAME}.vst3"
+                        COMMENT "Copy to ${DEST_DIR}"
+                        VERBATIM
+                    )
+                else()
+                    add_custom_command(TARGET ${TARGET_NAME}
+                        POST_BUILD
+                        COMMAND ${CMAKE_COMMAND} -E make_directory "${DEST_DIR}"
+                        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                            "$<TARGET_FILE:${TARGET_NAME}>" "${DEST_DIR}/"
+                        COMMENT "Copy to ${DEST_DIR}"
+                        VERBATIM
+                    )
+                endif()
             endif()
         endfunction()
         
@@ -464,6 +488,28 @@ function(gmpi_plugin)
             if(FIND_CLAP_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
                 copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_CLAP
                             "$ENV{HOME}/Library/Audio/Plug-Ins/CLAP" "clap")
+            endif()
+        endif()
+
+        if(UNIX AND NOT APPLE)
+            # The per-user locations every Linux host scans. Without this the
+            # bundles only ever exist in the build tree, and a DAW quite
+            # correctly never finds them - which looks exactly like a plugin
+            # that fails to load.
+            if(FIND_VST3_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3 "$ENV{HOME}/.vst3" "vst3")
+            endif()
+
+            if(FIND_CLAP_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_CLAP "$ENV{HOME}/.clap" "clap")
+            endif()
+
+            # SynthEdit's own third-party module folder - see
+            # SynthEditWayland/linux-package/README.md. XDG_DATA_HOME is not
+            # consulted here because the scanner does not either.
+            if(FIND_GMPI_INDEX GREATER_EQUAL 0 AND NOT GMPI_PLUGIN_IS_OFFICIAL_MODULE)
+                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}
+                            "$ENV{HOME}/.local/share/SynthEdit/modules" "gmpi")
             endif()
         endif()
     endif()
