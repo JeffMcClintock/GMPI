@@ -20,6 +20,24 @@ typedef api::IUnknown* (*CreatePluginPtr)();
 gmpi::ReturnCode RegisterPlugin(api::PluginSubtype subType, const char* uniqueId, CreatePluginPtr create);
 gmpi::ReturnCode RegisterPluginWithXml(api::PluginSubtype subType, const char* xml, CreatePluginPtr create);
 
+// Builds a plugin's XML on demand. Capture-less, like CreatePluginPtr.
+typedef std::string (*CreateXmlPtr)();
+
+// As RegisterPluginWithXml, but the XML is not built until the host asks for
+// it -- which is after the DLL has finished its static initialization.
+//
+// For a plugin whose XML is GENERATED rather than written out, that timing is
+// the difference between working and not. Static initializers run in the order
+// they appear in a translation unit, so a generator that reads anything
+// registered later in the same file sees an empty table if it runs eagerly.
+// Deferring costs nothing: getPluginInformation() is only reached during a
+// host's plugin scan.
+//
+// The id cannot be deferred with it -- the factory keys on the id at
+// registration time -- so it is passed separately rather than parsed back out
+// of the XML.
+gmpi::ReturnCode RegisterPluginLazyXml(api::PluginSubtype subType, const char* uniqueId, CreateXmlPtr createXml, CreatePluginPtr create);
+
 template< class moduleClass >
 class Register
 {

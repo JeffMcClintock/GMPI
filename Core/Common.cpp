@@ -38,6 +38,7 @@ public:
 
     ReturnCode RegisterPlugin(const char* uniqueId, PluginSubtype subType, CreatePluginPtr create);
     ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create);
+    ReturnCode RegisterPluginLazyXml(PluginSubtype subType, const char* uniqueId, CreateXmlPtr createXml, CreatePluginPtr create);
 
     // IUnknown methods
     GMPI_QUERYINTERFACE_METHOD(IPluginFactory);
@@ -46,7 +47,17 @@ public:
 private:
     // a map of all registered IIDs.
     std::map<std::pair<PluginSubtype, std::string>, CreatePluginPtr> pluginMap;
-    std::vector<std::string> xmls;
+
+    // One entry per registered plugin, in registration order, because that is
+    // the order the host enumerates them in. `xml` is either supplied up front
+    // or built by `createXml` the first time it is asked for.
+    struct PluginXml
+    {
+        std::string   xml;
+        CreateXmlPtr  createXml{};
+        bool          built{};
+    };
+    std::vector<PluginXml> xmls;
 };
 
 MpFactory& Factory()
@@ -85,6 +96,10 @@ namespace gmpi
     ReturnCode RegisterPluginWithXml(PluginSubtype subType, const char* xml, CreatePluginPtr create)
 	{
 		return Factory().RegisterPluginWithXml(subType, xml, create);
+	}
+    ReturnCode RegisterPluginLazyXml(PluginSubtype subType, const char* uniqueId, CreateXmlPtr createXml, CreatePluginPtr create)
+	{
+		return Factory().RegisterPluginLazyXml(subType, uniqueId, createXml, create);
 	}
 }
 
@@ -127,7 +142,22 @@ ReturnCode MpFactory::RegisterPluginWithXml(PluginSubtype subType, const char* x
 
     pluginMap[{ subType, uniqueId }] = create;
 
-	xmls.push_back(xmlstr);
+	xmls.push_back({ xmlstr, nullptr, true });
+
+    return ReturnCode::Ok;
+}
+
+ReturnCode MpFactory::RegisterPluginLazyXml(PluginSubtype subType, const char* uniqueId, CreateXmlPtr createXml, CreatePluginPtr create)
+{
+    if (!create || !createXml || !uniqueId)
+        return ReturnCode::Fail;
+
+    // already registered this plugin?
+    assert(pluginMap.find({ subType, uniqueId }) == pluginMap.end());
+
+    pluginMap[{ subType, uniqueId }] = create;
+
+    xmls.push_back({ {}, createXml, false });
 
     return ReturnCode::Ok;
 }
@@ -185,8 +215,18 @@ ReturnCode MpFactory::getPluginInformation(int32_t index, IString* returnXml)
         return ReturnCode::Fail;
     }
 
-    returnXml->setData(xmls[static_cast<size_t>(index)].data(),
-                       static_cast<int32_t>(xmls[static_cast<size_t>(index)].size()));
+    auto& entry = xmls[static_cast<size_t>(index)];
+
+    // Deferred registrations build their XML here, once. By now the DLL's
+    // static initialization has long finished, so a generator can rely on
+    // everything the plugin registered.
+    if (!entry.built)
+    {
+        entry.xml = entry.createXml ? entry.createXml() : std::string{};
+        entry.built = true;
+    }
+
+    returnXml->setData(entry.xml.data(), static_cast<int32_t>(entry.xml.size()));
     return ReturnCode::Ok;
 }
 
