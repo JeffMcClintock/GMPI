@@ -69,6 +69,17 @@ function(gmpi_plugin)
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU")
     endif()
 
+    # STANDALONE is an application, not a plugin: a window with a menu bar
+    # wrapping one plugin, the way JUCE's standalone target does. Only the
+    # Linux/Wayland shell exists so far - dropping it elsewhere keeps a
+    # cross-platform project's CMakeLists identical on every machine, rather
+    # than making each one guard the format itself.
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "STANDALONE" FIND_STANDALONE_INDEX)
+    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0 AND (NOT UNIX OR APPLE))
+        message(STATUS "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): STANDALONE skipped (Linux only for now)")
+        list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
+    endif()
+
     #if building an AU, we're gonna need the GMPI also (for scanning the plist)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
     if(FIND_AU_INDEX GREATER_EQUAL 0)
@@ -177,16 +188,32 @@ function(gmpi_plugin)
         if(kind STREQUAL "CLAP")
             list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/CLAP/wrapperClap.cpp)
         endif()
-        
+
+        if(kind STREQUAL "STANDALONE")
+            # The entry point goes in the EXECUTABLE, not in Standalone_Wrapper:
+            # a main() inside a static archive is never pulled in, because
+            # nothing references it.
+            list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/linux/MainWayland.cpp)
+        endif()
+
         # Organize SDK files in IDE
         source_group(sdk FILES ${FORMAT_SDK_FILES})
 
-        add_library(${SUB_PROJECT_NAME} MODULE
-            ${GMPI_PLUGIN_SOURCE_FILES}
-            ${FORMAT_SDK_FILES}
-            ${resource_srcs}
-            ${wrapper_srcs}
-        )
+        if(kind STREQUAL "STANDALONE")
+            add_executable(${SUB_PROJECT_NAME}
+                ${GMPI_PLUGIN_SOURCE_FILES}
+                ${FORMAT_SDK_FILES}
+                ${resource_srcs}
+                ${wrapper_srcs}
+            )
+        else()
+            add_library(${SUB_PROJECT_NAME} MODULE
+                ${GMPI_PLUGIN_SOURCE_FILES}
+                ${FORMAT_SDK_FILES}
+                ${resource_srcs}
+                ${wrapper_srcs}
+            )
+        endif()
 
         # Target-based includes
         if(plugin_includes)
@@ -262,7 +289,11 @@ function(gmpi_plugin)
 
         endif()
             
-        if(APPLE)
+        if(kind STREQUAL "STANDALONE")
+            # An application, so no bundle and no plugin extension - just
+            # Foo_STANDALONE, which is also what you type to run it.
+            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX "")
+        elseif(APPLE)
             set_target_properties(${SUB_PROJECT_NAME}
             PROPERTIES
                 BUNDLE TRUE
@@ -294,6 +325,18 @@ function(gmpi_plugin)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "VST3" FIND_VST3_INDEX)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "CLAP" FIND_CLAP_INDEX)
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "STANDALONE" FIND_STANDALONE_INDEX)
+
+    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0)
+        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_STANDALONE)
+
+        # PUBLIC on the wrapper's side, so the generated Wayland protocol
+        # headers and the gmpi_ui include paths reach MainWayland.cpp, which
+        # this executable compiles itself.
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE Standalone_Wrapper)
+
+        set_target_properties(${SUB_PROJECT_NAME} PROPERTIES FOLDER "standalone apps")
+    endif()
 
     if(FIND_VST3_INDEX GREATER_EQUAL 0)
         set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_VST3)
