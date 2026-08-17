@@ -58,6 +58,14 @@ public:
 	{
 		events.clear();
 	}
+
+	// How many events are queued for the next process() call. For a host that
+	// needs to report whether anything was actually scheduled - "nothing
+	// happened" and "nothing was asked for" are otherwise indistinguishable.
+	size_t size() const
+	{
+		return events.size();
+	}
 };
 
 /*
