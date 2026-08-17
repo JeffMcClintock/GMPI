@@ -11,6 +11,7 @@
 // SynthEditLib/Base64.h predates this and now forwards here, so there is one
 // implementation rather than two.
 
+#include <array>
 #include <cstdint>
 #include <span>
 #include <string>
