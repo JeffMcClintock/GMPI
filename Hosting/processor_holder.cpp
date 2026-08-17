@@ -211,6 +211,33 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 						copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal())));
 					}
 					break;
+
+					case gmpi::PinDatatype::Blob:
+					{
+						// Seed the pin with the parameter's CURRENT bytes, not a
+						// default. A processor can be created at any time - after
+						// restartComponent, for offline rendering, or on state
+						// restore - and without this it would start with an empty
+						// blob and never be told otherwise, since blobs only reach
+						// it when they CHANGE. The parameter owns the storage and
+						// outlives this event queue.
+						auto* v = std::get_if<std::vector<uint8_t>>(&param->value_);
+						if (!v || v->empty())
+							continue; // nothing stored yet; a later change will deliver it
+
+						e.size_ = static_cast<int32_t>(v->size());
+						if (v->size() > 8)
+						{
+							e.oversizeData_ = v->data();
+						}
+						else
+						{
+							std::fill(std::begin(e.data_), std::end(e.data_), uint8_t{});
+							std::copy(v->begin(), v->end(), e.data_);
+						}
+					}
+					break;
+
 					default:
 						assert(false); // unsupported type.
 					}
