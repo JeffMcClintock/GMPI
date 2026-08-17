@@ -70,12 +70,13 @@ function(gmpi_plugin)
     endif()
 
     # STANDALONE is an application, not a plugin: a window with a menu bar
-    # wrapping one plugin, the way JUCE's standalone target does. Linux and
-    # Windows have a shell; macOS does not yet, and dropping the format there
-    # keeps a cross-platform project's CMakeLists identical on every machine
-    # rather than making each one guard the format itself.
+    # wrapping one plugin, the way JUCE's standalone target does. Linux, Windows
+    # and macOS all have a shell now; the guard stays because the format is
+    # still dropped rather than fatal on anything else, which keeps a
+    # cross-platform project's CMakeLists identical on every machine rather than
+    # making each one guard the format itself.
     list(FIND GMPI_PLUGIN_FORMATS_LIST "STANDALONE" FIND_STANDALONE_INDEX)
-    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0 AND NOT (WIN32 OR (UNIX AND NOT APPLE)))
+    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0 AND NOT (WIN32 OR UNIX))
         message(STATUS "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): STANDALONE skipped (no shell on this platform yet)")
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
     endif()
@@ -195,6 +196,8 @@ function(gmpi_plugin)
             # nothing references it.
             if(WIN32)
                 list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/windows/MainWin32.cpp)
+            elseif(APPLE)
+                list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/mac/MainMac.mm)
             else()
                 list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/linux/MainWayland.cpp)
             endif()
@@ -294,8 +297,8 @@ function(gmpi_plugin)
         endif()
             
         if(kind STREQUAL "STANDALONE")
-            # An application, so no bundle and no plugin extension - just
-            # Foo_STANDALONE, which is also what you type to run it.
+            # An application, so no plugin extension - just Foo_STANDALONE,
+            # which on Windows and Linux is also what you type to run it.
             #
             # ".exe" on Windows, and not because it is prettier: a file without
             # it is not executable at all there, so the blanket SUFFIX "" that
@@ -305,6 +308,32 @@ function(gmpi_plugin)
                 set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".exe")
             else()
                 set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX "")
+            endif()
+
+            if(APPLE)
+                # A .app, unlike the bare binary the other two platforms get,
+                # and the reason is not tidiness:
+                #
+                #  * an app that opens an audio INPUT needs
+                #    NSMicrophoneUsageDescription in an Info.plist, or macOS
+                #    refuses the device. A bare Mach-O has no Info.plist, so the
+                #    permission is attributed to whatever launched it - the
+                #    Terminal - which is both confusing and unreliable.
+                #  * NSHighResolutionCapable is what stops AppKit handing the
+                #    editor a 1x backing store on a Retina display and scaling
+                #    it up.
+                #
+                # The binary is still directly runnable, at
+                # Foo_STANDALONE.app/Contents/MacOS/Foo_STANDALONE, which is the
+                # path a test harness or the MCP server should launch.
+                set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
+                    MACOSX_BUNDLE TRUE
+                    MACOSX_BUNDLE_INFO_PLIST "${GMPI_ADAPTORS}/wrapper/Standalone/mac/Info.plist.in"
+                    MACOSX_BUNDLE_BUNDLE_NAME "${GMPI_PLUGIN_PROJECT_NAME}"
+                    MACOSX_BUNDLE_GUI_IDENTIFIER "com.gmpi.standalone.${GMPI_PLUGIN_PROJECT_NAME}"
+                    MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
+                    MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+                )
             endif()
         elseif(APPLE)
             set_target_properties(${SUB_PROJECT_NAME}
