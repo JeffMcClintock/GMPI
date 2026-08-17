@@ -70,13 +70,13 @@ function(gmpi_plugin)
     endif()
 
     # STANDALONE is an application, not a plugin: a window with a menu bar
-    # wrapping one plugin, the way JUCE's standalone target does. Only the
-    # Linux/Wayland shell exists so far - dropping it elsewhere keeps a
-    # cross-platform project's CMakeLists identical on every machine, rather
-    # than making each one guard the format itself.
+    # wrapping one plugin, the way JUCE's standalone target does. Linux and
+    # Windows have a shell; macOS does not yet, and dropping the format there
+    # keeps a cross-platform project's CMakeLists identical on every machine
+    # rather than making each one guard the format itself.
     list(FIND GMPI_PLUGIN_FORMATS_LIST "STANDALONE" FIND_STANDALONE_INDEX)
-    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0 AND (NOT UNIX OR APPLE))
-        message(STATUS "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): STANDALONE skipped (Linux only for now)")
+    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0 AND NOT (WIN32 OR (UNIX AND NOT APPLE)))
+        message(STATUS "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): STANDALONE skipped (no shell on this platform yet)")
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
     endif()
 
@@ -193,7 +193,11 @@ function(gmpi_plugin)
             # The entry point goes in the EXECUTABLE, not in Standalone_Wrapper:
             # a main() inside a static archive is never pulled in, because
             # nothing references it.
-            list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/linux/MainWayland.cpp)
+            if(WIN32)
+                list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/windows/MainWin32.cpp)
+            else()
+                list(APPEND FORMAT_SDK_FILES ${GMPI_ADAPTORS}/wrapper/Standalone/linux/MainWayland.cpp)
+            endif()
         endif()
 
         # Organize SDK files in IDE
@@ -292,7 +296,16 @@ function(gmpi_plugin)
         if(kind STREQUAL "STANDALONE")
             # An application, so no bundle and no plugin extension - just
             # Foo_STANDALONE, which is also what you type to run it.
-            set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX "")
+            #
+            # ".exe" on Windows, and not because it is prettier: a file without
+            # it is not executable at all there, so the blanket SUFFIX "" that
+            # is right everywhere else would produce a target that builds and
+            # then cannot be run.
+            if(WIN32)
+                set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".exe")
+            else()
+                set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX "")
+            endif()
         elseif(APPLE)
             set_target_properties(${SUB_PROJECT_NAME}
             PROPERTIES
