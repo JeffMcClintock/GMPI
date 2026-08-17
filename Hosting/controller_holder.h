@@ -10,6 +10,8 @@ gmpi::hosting::gmpi_processor plugin;
 #include "Core/base64.h"
 #include <variant>
 #include <functional>
+#include <cassert> // setFromXml's datatype-mismatch assert
+#include <cstdlib> // strtod / atof, ditto
 #include "GmpiApiAudio.h"
 #include "GmpiSdkCommon.h"
 #include "Hosting/xml_spec_reader.h"
@@ -32,6 +34,26 @@ constexpr bool is_scalar(gmpi::PinDatatype dt)
 	default:
 		return true;
 	}
+}
+
+// True if the whole string parses as a number; trailing whitespace tolerated.
+// Only used to assert that a scalar pin's preset text really is scalar - see
+// setFromXml. Deliberately not a parser: atof() still does the conversion.
+inline bool isNumericText(const char* s)
+{
+	if (!s)
+		return false;
+
+	char* end{};
+	(void)std::strtod(s, &end);
+
+	if (end == s)
+		return false; // no conversion at all
+
+	while (*end == ' ' || *end == '\t' || *end == '\r' || *end == '\n')
+		++end;
+
+	return *end == '\0'; // nothing but the number
 }
 
 struct GmpiParameter : public QueClient // also host-controls, might need to rename it.
@@ -124,6 +146,13 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 	{
 		if (is_scalar(info->datatype))
 		{
+			// Each pin has a fixed datatype, so a scalar pin whose preset text
+			// is not a number means the WRITER put the wrong thing in the
+			// preset. Say so rather than silently storing atof()'s 0.0, which
+			// would surface the corruption somewhere quieter and further away.
+			// An empty attribute is tolerated - "no value" is a legitimate
+			// encoding, not a datatype mismatch.
+			assert(isNumericText(textValue) || (textValue && !*textValue));
 			return setReal(atof(textValue));
 		}
 		else
