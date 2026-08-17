@@ -300,6 +300,26 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 				copyValueToEvent(e, static_cast<bool>(std::round(param->valueReal())));
 			}
 			break;
+
+			case gmpi::PinDatatype::Blob:
+			{
+				// The parameter owns the bytes; the event points into that
+				// storage for payloads over the 8 inline bytes. Safe because
+				// queue drain and the next parameter update happen on the same
+				// thread, so the vector cannot move underneath the event.
+				const auto& v = std::get<std::vector<uint8_t>>(param->value_);
+				e.size_ = static_cast<int32_t>(v.size());
+				if (v.size() > 8)
+				{
+					e.oversizeData_ = v.data();
+				}
+				else
+				{
+					std::fill(std::begin(e.data_), std::end(e.data_), uint8_t{});
+					std::copy(v.begin(), v.end(), e.data_);
+				}
+			}
+			break;
 			default:
 				assert(false); // unsupported type.
 			}
@@ -328,6 +348,30 @@ bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my
 		{
 			constexpr int sampleOffset{};
 			sendParameterToProcessor(*info, param, sampleOffset);
+		}
+
+		return true;
+	}
+	break;
+
+	case id_to_long("ppc3"): // Patch parameter change, blob payload. See
+	                         // GmpiParameter::getQueMessage for the framing and
+	                         // gmpi_controller_holder::setParameter for the sender.
+	{
+		int32_t size{};
+		strm >> size;
+
+		std::vector<uint8_t> bytes(static_cast<size_t>(size));
+		if (size > 0)
+			strm.Read(bytes.data(), static_cast<unsigned int>(size));
+
+		if (auto* param = patchManager.getParameter(handle); param)
+		{
+			if (param->setBlob(bytes))
+			{
+				constexpr int sampleOffset{};
+				sendParameterToProcessor(*info, param, sampleOffset);
+			}
 		}
 
 		return true;

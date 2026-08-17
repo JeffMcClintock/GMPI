@@ -322,6 +322,13 @@ public:
 
 	std::function<void(GmpiParameter*)> notifyDaw = [](GmpiParameter*) {};
 
+	// Transport for parameter types the DAW's own parameter mechanism cannot
+	// carry (currently blobs). Installed by each wrapper; default no-op keeps
+	// hosts that never need it working unchanged. The parameter's
+	// getQueMessage() already frames these ("ppc3"); the wrapper only moves
+	// the framed bytes to the processor's ui->dsp queue.
+	std::function<void(GmpiParameter*)> sendNonNativeParameterToProcessor = [](GmpiParameter*) {};
+
 	void init(gmpi::hosting::pluginInfo& info);
 
 	// send initial value of all parameters to GUI
@@ -364,7 +371,13 @@ public:
 			switch (param->info->datatype)
 			{
 			case gmpi::PinDatatype::Blob:
-				param->setBlob({ data, static_cast<size_t>(size) });
+				// Unlike scalars, blobs cannot ride the DAW's normalized-value
+				// path (notifyDaw/performEdit speak doubles), so a changed blob
+				// goes to the processor through the wrapper-installed hook
+				// below - each wrapper supplies its own transport (VST3: a
+				// binary IMessage into the processor's ui->dsp queue).
+				if (param->setBlob({ data, static_cast<size_t>(size) }))
+					sendNonNativeParameterToProcessor(param);
 				break;
 			case gmpi::PinDatatype::Float32:
 				if (size == sizeof(float))
