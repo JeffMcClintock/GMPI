@@ -497,11 +497,24 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 		if(!v)
 			continue;
 
-		//		values.dataType = param.info->datatype;
-		//		values.rawValues_.push_back(ParseToRaw(param.dataType, v));
-
-		const double value = std::stod(v);
-		param.setReal(value);
+		// Dispatch on the pin's datatype, exactly as the controller-side reader
+		// does (gmpi_controller_holder::setPresetXmlFromDaw) - the two loops are
+		// otherwise identical, and the commented-out lines this replaces were
+		// the forgotten TODO for precisely this.
+		//
+		// Until now this called std::stod() on every parameter whatever its
+		// datatype. That was latent for as long as blobs serialised as "0", and
+		// became reachable the moment a blob was first written as text (base64,
+		// so it can live in an XML attribute): std::stod on base64 throws
+		// std::invalid_argument("stod: no conversion"). setPresetUnsafe runs on
+		// the host's MAIN thread during project load, so the exception unwound
+		// into the host's event loop, where nothing catches it, and the DAW
+		// aborted rather than the preset merely failing to load.
+		//
+		// GmpiParameter::setFromXml is now the single implementation both ends
+		// of the round-trip share, so the reader cannot drift from the writer
+		// again.
+		param.setFromXml(v);
 
 		// This block seems messy. Should updating a parameter be a single function call?
 					// (would need to pass 'updateProcessor')
