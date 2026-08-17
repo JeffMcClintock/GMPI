@@ -7,6 +7,7 @@ gmpi::hosting::gmpi_processor plugin;
 
 #include <unordered_map>
 #include <span>
+#include "Core/base64.h"
 #include <variant>
 #include <functional>
 #include "GmpiApiAudio.h"
@@ -133,7 +134,10 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 				return setBlob({ reinterpret_cast<const uint8_t*>(textValue), reinterpret_cast<const uint8_t*>(textValue) + strlen(textValue) });
 
 			case gmpi::PinDatatype::Blob:
-				break; // TODO uuencode or hex
+				// Base64: presets are XML, blobs are arbitrary bytes. Encoded
+				// by getPresetUnsafe(); the codec lives in GMPI/Core so both
+				// ends of the round-trip share one implementation.
+				return setBlob(gmpi::base64Decode(textValue));
                     
             default:
                 assert(false); // not supported

@@ -586,6 +586,14 @@ std::string gmpi_processor::getPresetUnsafe()
 
 	for (auto& [handle, parameter] : patchManager.parameters)
 	{
+		// Non-stateful parameters must never be written. They exist to carry
+		// live, session-only values - TIDE's 'controllerPtr' is a blob holding
+		// a raw pointer - and restoring one from a file hands the plug-in a
+		// dangling pointer from a previous run. Harmless while blobs
+		// serialised as "0"; fatal once they round-trip properly.
+		if (!parameter.info->is_stateful)
+			continue;
+
 		auto paramElement = doc.NewElement("Param");
 		element->LinkEndChild(paramElement);
 		paramElement->SetAttribute("id", handle);
@@ -595,7 +603,34 @@ std::string gmpi_processor::getPresetUnsafe()
 
 		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
 
-		paramElement->SetAttribute("val", parameter.valueReal());
+		// valueReal() is the DOUBLE accessor, so using it for a blob writes
+		// "0" and silently discards the bytes - which is why blob parameters
+		// never survived a preset round-trip. Text and binary go out as text.
+		switch (parameter.info->datatype)
+		{
+		case gmpi::PinDatatype::Blob:
+		{
+			if (auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
+				paramElement->SetAttribute("val", gmpi::base64Encode(*v).c_str());
+			else
+				paramElement->SetAttribute("val", "");
+		}
+		break;
+
+		case gmpi::PinDatatype::String:
+		{
+			if (auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
+				paramElement->SetAttribute("val",
+					std::string(reinterpret_cast<const char*>(v->data()), v->size()).c_str());
+			else
+				paramElement->SetAttribute("val", "");
+		}
+		break;
+
+		default:
+			paramElement->SetAttribute("val", parameter.valueReal());
+			break;
+		}
 
 #if 0  // TODO??
 		// MIDI learn.
