@@ -11,6 +11,13 @@
 #include "GmpiApiEditor.h"
 #include "parse_enum.h"
 
+// Announces pluginInfo::version, so that a wrapper can compile against an SDK
+// that predates it. The wrappers live in their own repository (GMPI_Wrappers)
+// and are routinely checked out at a different revision to this one; a wrapper
+// that simply named the field would fail to compile against every older SDK
+// rather than falling back to the version it used to hardcode.
+#define GMPI_HOSTING_PLUGININFO_HAS_VERSION 1
+
 namespace tinyxml2
 {
 	class XMLElement;
@@ -148,6 +155,16 @@ struct paramInfo
 	bool is_stateful{ true };
 };
 
+// What a plugin that declares no `version` attribute reports. It is the string
+// every wrapper hardcoded before the attribute existed, so a plugin that never
+// opts in is described to a host exactly as it always was.
+//
+// gmpi_plugin.cmake hardcodes this same default for the macOS bundle and the
+// Windows VERSIONINFO resource. Two literals, but both in THIS repository and
+// both commented as being the other's pair, which a wrapper-side copy could not
+// be - the wrappers are a separate repository at an independent revision.
+constexpr const char* defaultPluginVersion = "1.0.0";
+
 struct pluginInfo
 {
 	std::string id;
@@ -163,6 +180,25 @@ struct pluginInfo
 	std::string vendorName;
 	std::string vendorUrl;
 	std::string vendorEmail;
+
+	// The `version` attribute of <Plugin>, or defaultPluginVersion when it
+	// declares none. Never empty.
+	//
+	// THE AUTHORITATIVE ANSWER to what version a plugin is. Everything that
+	// describes the plugin while it is loaded comes from here: the VST3 factory
+	// reports this string, the CLAP descriptor carries it, and plist_util turns
+	// it into the AU component's version - all of them reading the plugin's own
+	// XML through this parser, so they cannot disagree with each other.
+	//
+	// gmpi_plugin.cmake also stamps a version on the macOS bundle and the
+	// Windows VERSIONINFO resource, and normally that is this same attribute out
+	// of this same XML. It is NOT the same read, though: CMake cannot call this
+	// parser, so it finds the element textually and takes the first one it sees
+	// (gmpi_find_plugin_element). Where the two can part company - no element
+	// found at all, a <Plugin ...> tag that begins a line inside a comment, a
+	// module registering several plugins - what a host is told is this field,
+	// and the resource is the thing that is stale.
+	std::string version{ defaultPluginVersion };
 };
 
 void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins);

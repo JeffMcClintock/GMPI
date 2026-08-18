@@ -1,5 +1,155 @@
 # settings that apply to every plugin format
 
+# The directory this file lives in, captured while it is still being read.
+# gmpi_version.rc.in sits beside it and gmpi_plugin() has to find it, but a
+# function body cannot ask: CMAKE_CURRENT_LIST_DIR has dynamic scope, so inside
+# a function it names the list file that CALLED it - the consumer's
+# plugins/Foo/CMakeLists.txt - and not the file the function was defined in.
+set(GMPI_PLUGIN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
+################################ plugin version #########################################
+#
+# A plugin's version is written in exactly ONE place: the `version` attribute of
+# the <Plugin> element in its metadata XML.
+#
+#     <Plugin id="Acme: Gain" name="Gain" vendor="Acme" version="2.1.0">
+#
+# and from there it reaches everything that describes the plugin:
+#
+#   * the VST3 factory reports it to the host (MyVstPluginFactory::getClassInfo2)
+#   * plist_util turns it into the AU component's version and CFBundleVersion
+#   * the macOS bundle's CFBundleShortVersionString / CFBundleVersion, below
+#   * a generated Windows VERSIONINFO resource, below
+#
+# The XML rather than the CMake project version, for a structural reason and not
+# a stylistic one: MyVstPluginFactory.cpp is compiled ONCE into the shared
+# VST3_Wrapper static library, so no per-plugin compile definition can ever
+# reach it. A version that lives in CMake can only be handed to a runtime
+# consumer as a define, and that route is closed. The XML, on the other hand, is
+# already parsed per-plugin at load. So the version travels with the plugin's
+# own description and CMake reads it from there - which costs a regex here, and
+# nothing at runtime.
+#
+# What that costs: CMake cannot ask the SDK's parser, so it finds the attribute
+# textually (gmpi_find_plugin_element), and the file it found it in becomes a
+# configure dependency so that a bumped version cannot go stale.
+
+# Locate the first <Plugin ...> opening tag in an ordered list of FILES, and
+# return the tag text (out_tag) and the file it came from (out_file) so the
+# caller can read its attributes. Both are empty when no file holds such a tag,
+# which is not an error - it describes every plugin written before this existed.
+# Files that do not exist are skipped, so a caller may name a candidate
+# speculatively.
+#
+# The first tag found wins, so a module registering several plugins is described
+# by its first one.
+#
+# This is a text search, not a parse, and the pattern is built to keep it out of
+# trouble:
+#
+#   * whitespace is required directly after "Plugin", so <PluginList> cannot
+#     match;
+#   * [^>] cannot cross the end of a tag, so the <?xml version="1.0"?>
+#     declaration and any `version=` on some other element cannot be picked up;
+#   * the tag must BEGIN a line (only indentation before it), because prose
+#     mentioning a tag does so mid-sentence. GMPI-plugins' own
+#     Gain_with_resource_xml.cpp has "...must exactly match the XML's <Plugin
+#     id="...">." in a comment, and without this it matched, beating the real
+#     element in the .xml beside it.
+#
+# What remains: a <Plugin ...> tag written at the start of a line inside a
+# comment is still indistinguishable from the real thing, because that is also
+# where the real one is written. The cost of being fooled is a wrong name or
+# version in a resource, never a broken build.
+function(gmpi_find_plugin_element out_tag out_file)
+    cmake_parse_arguments(ARG "" "" "FILES" ${ARGN})
+
+    foreach(candidate IN LISTS ARG_FILES)
+        if(NOT EXISTS "${candidate}" OR IS_DIRECTORY "${candidate}")
+            continue()
+        endif()
+
+        file(READ "${candidate}" contents)
+        string(REGEX MATCH "[\r\n][ \t]*(<Plugin[ \t\r\n][^>]*>)" tag "${contents}")
+        set(tag "${CMAKE_MATCH_1}")
+
+        if(NOT tag STREQUAL "")
+            set(${out_tag} "${tag}" PARENT_SCOPE)
+            set(${out_file} "${candidate}" PARENT_SCOPE)
+            return()
+        endif()
+    endforeach()
+
+    set(${out_tag} "" PARENT_SCOPE)
+    set(${out_file} "" PARENT_SCOPE)
+endfunction()
+
+# One attribute out of an XML opening tag, or "" when the tag does not carry it.
+# The leading whitespace class is what stops `version` matching the tail of a
+# longer attribute name.
+function(gmpi_xml_attribute out tag name)
+    string(REGEX MATCH "[ \t\r\n]${name}[ \t\r\n]*=[ \t\r\n]*\"([^\"]*)\"" matched "${tag}")
+
+    if(matched STREQUAL "")
+        set(${out} "" PARENT_SCOPE)
+    else()
+        set(${out} "${CMAKE_MATCH_1}" PARENT_SCOPE)
+    endif()
+endfunction()
+
+# VERSIONINFO's FILEVERSION is four 16-bit integers, not a string, so reduce the
+# declared version to at most four numbers and pad the rest with zeros. A
+# version with a non-numeric tail ("2.1.0-beta") keeps its leading numbers here
+# and its full text in the string fields beside them - which is how Windows
+# treats its own.
+#
+# A version that begins with no digit at all ("v1.2", "beta") reduces to nothing,
+# and 1,0,0,0 is substituted for the zero that would otherwise be written - the
+# same substitution wrapper/common/plist_util.cpp makes for the AudioUnit's
+# version integer, for the same reason: an installer or updater comparing
+# FILEVERSION reads 0.0.0.0 as older than every build already shipped, so a
+# plugin whose versions are all "v"-prefixed would publish one release after
+# another that no comparison could tell apart. Which is the exact failure this
+# resource exists to prevent, so it must not be reintroduced by the parse.
+#
+# The string fields are untouched and still say what the author wrote, so
+# Explorer's Details tab shows "v1.2" beside a FILEVERSION of 1.0.0.0. A plugin
+# that declares 0.0.0 outright is indistinguishable from an unparseable one here
+# and gets the same treatment.
+function(gmpi_version_quad out version)
+    string(REGEX MATCH "^[0-9]+(\\.[0-9]+)*" numeric "${version}")
+    string(REPLACE "." ";" parts "${numeric}")
+
+    set(quad "")
+    foreach(i RANGE 3)
+        list(LENGTH parts count)
+        if(i LESS count)
+            list(GET parts ${i} part)
+        else()
+            set(part 0)
+        endif()
+
+        # "007" would be read as octal by the resource compiler.
+        string(REGEX REPLACE "^0+([0-9])" "\\1" part "${part}")
+
+        if(part GREATER 65535)
+            set(part 65535)
+        endif()
+
+        list(APPEND quad "${part}")
+    endforeach()
+
+    list(JOIN quad "," quad_csv)
+
+    if(quad_csv STREQUAL "0,0,0,0")
+        set(quad_csv "1,0,0,0")
+    endif()
+
+    set(${out} "${quad_csv}" PARENT_SCOPE)
+endfunction()
+
+################################ plugin version #########################################
+
 function(gmpi_target)
     set(options)
     set(oneValueArgs PROJECT_NAME)
@@ -219,6 +369,114 @@ function(gmpi_plugin)
         endif()
     endif()
 
+    # How the plugin describes itself. Read once here; the macOS bundle keys and
+    # the Windows VERSIONINFO resource below are the consumers. See the comment
+    # block above gmpi_find_plugin_element() for why the XML is the source.
+    #
+    # Search order matters, and the rule is: only ever read the XML this build
+    # actually uses.
+    #
+    #   * SOURCE_FILES first. A Register<>::withXml() plugin keeps its metadata
+    #     as a raw string literal in its C++, and that string is what every
+    #     wrapper's factory parses at load - so it is the plugin's real identity
+    #     whatever else is lying around.
+    #   * <PROJECT_NAME>.xml only under HAS_XML, which is the option that
+    #     actually compiles it into the module. Without HAS_XML a file of that
+    #     name is not part of the build at all, and trusting it is worse than
+    #     ignoring it: GMPI-plugins/plugins/FreqAnalyser has a leftover one
+    #     describing a plugin with a different id to the one the source
+    #     registers, so reading it would have stamped a version onto a binary
+    #     that reports something else at runtime - the exact drift this is here
+    #     to close.
+    set(plugin_xml_candidates "")
+    foreach(src IN LISTS GMPI_PLUGIN_SOURCE_FILES)
+        if(IS_ABSOLUTE "${src}")
+            list(APPEND plugin_xml_candidates "${src}")
+        else()
+            list(APPEND plugin_xml_candidates "${CMAKE_CURRENT_SOURCE_DIR}/${src}")
+        endif()
+    endforeach()
+    if(GMPI_PLUGIN_HAS_XML)
+        list(APPEND plugin_xml_candidates "${CMAKE_CURRENT_SOURCE_DIR}/${GMPI_PLUGIN_PROJECT_NAME}.xml")
+    endif()
+
+    gmpi_find_plugin_element(plugin_xml_tag plugin_xml_file FILES ${plugin_xml_candidates})
+
+    if(plugin_xml_tag STREQUAL "")
+        # WARNING rather than STATUS, and the difference matters because this is
+        # the one outcome here that produces a WRONG binary rather than a
+        # defaulted one.
+        #
+        # A module with no <Plugin> element anywhere CMake looked still has one
+        # somewhere - a plugin that really had none would register nothing and
+        # load as empty - so the wrappers go on parsing it and reporting the
+        # author's real version to the DAW, while the resource and the bundle
+        # keys below say 1.0.0. Two answers to the same question, from one
+        # build, which is the precise failure this whole mechanism exists to
+        # remove. It is also silent: nothing at runtime looks wrong, the version
+        # is simply wrong in the one place a user goes to read it off the file.
+        #
+        # STATUS would be the right level for an author who has merely not
+        # opted in - that case is the `version` attribute being absent, a few
+        # lines down, and says nothing at all. This one is the search failing,
+        # which is not a choice anybody made. It fires on none of the SDK's own
+        # sample plugins, so it is signal rather than a warning to learn to
+        # ignore.
+        message(WARNING
+            "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): no <Plugin> element was found in "
+            "this plugin's sources, so the version, vendor and product name stamped on the "
+            "built files are defaults (${GMPI_PLUGIN_PROJECT_NAME} / GMPI / 1.0.0) and will "
+            "not match what the plugin reports to a host.\n"
+            "Looked for a <Plugin ...> tag at the start of a line in each of SOURCE_FILES, "
+            "and in ${GMPI_PLUGIN_PROJECT_NAME}.xml when HAS_XML is set. If the metadata "
+            "lives somewhere else, add that file to SOURCE_FILES.")
+    endif()
+
+    gmpi_xml_attribute(plugin_version   "${plugin_xml_tag}" "version")
+    gmpi_xml_attribute(plugin_vendor    "${plugin_xml_tag}" "vendor")
+    gmpi_xml_attribute(plugin_nice_name "${plugin_xml_tag}" "name")
+
+    if(plugin_version STREQUAL "")
+        # The documented default: a plugin that declares no version still
+        # builds, and is described exactly as every wrapper already described
+        # it - the VST3 and CLAP factories both hardcoded "1.0.0" and the AU's
+        # version integer was 65536, which is the same thing. (The macOS
+        # standalone bundle said "1.0" here; it now says "1.0.0" like the rest,
+        # which is the point of having one answer.)
+        #
+        # Kept in step with gmpi::hosting::defaultPluginVersion, which is in
+        # this same repository (Hosting/xml_spec_reader.h).
+        set(plugin_version "1.0.0")
+    endif()
+    if(plugin_vendor STREQUAL "")
+        # Matches the fallback in Hosting/xml_spec_reader.cpp, so the vendor a
+        # host is told and the vendor on the file's Details tab are the same.
+        set(plugin_vendor "GMPI")
+    endif()
+    if(plugin_nice_name STREQUAL "")
+        # Not the reader's fallback (it uses the plugin id, which CMake has no
+        # reason to prefer) - just the target name, which is what an author
+        # would recognise on a file's Details tab.
+        set(plugin_nice_name "${GMPI_PLUGIN_PROJECT_NAME}")
+    endif()
+
+    # Whatever file the XML was found in is a configure input, C++ source
+    # included. The version is read once, here, and baked into a bundle key and
+    # a resource script; without this a bumped version would reach the plugin's
+    # own factory - it is compiled in - while the bundle and the .exe went on
+    # reporting the old one until something unrelated happened to re-run CMake.
+    # Two releases indistinguishable on disk is the exact bug this whole
+    # mechanism exists to fix, so it must not be reintroduced one layer down.
+    #
+    # The price is a re-configure whenever that file's timestamp moves, which
+    # for a Register<>::withXml() plugin means every edit to the source holding
+    # its XML. Nothing is rebuilt that would not have been rebuilt anyway; it
+    # costs the configure step, which is why the file is registered only when
+    # there was a <Plugin> element in it to read.
+    if(NOT plugin_xml_file STREQUAL "")
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${plugin_xml_file}")
+    endif()
+
     foreach(kind IN LISTS GMPI_PLUGIN_FORMATS_LIST)
         if(kind STREQUAL "GMPI")
             set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME})
@@ -264,11 +522,72 @@ function(gmpi_plugin)
         # Organize SDK files in IDE
         source_group(sdk FILES ${FORMAT_SDK_FILES})
 
+        # A VERSIONINFO resource, per target because the file name and the file
+        # type differ per format. macOS and Linux carry this metadata in the
+        # bundle or not at all; on Windows it has to be compiled in.
+        set(version_srcs "")
+        if(WIN32)
+            # A plugin that ships its own .rc is left alone if that .rc already
+            # declares a VERSIONINFO: a binary may hold only one, and the
+            # author's is the more specific. Only HAS_XML compiles such a file,
+            # and the .rc it names may well have been written by hand.
+            set(author_rc_has_version FALSE)
+            if(GMPI_PLUGIN_HAS_XML AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${GMPI_PLUGIN_PROJECT_NAME}.rc")
+                file(READ "${CMAKE_CURRENT_SOURCE_DIR}/${GMPI_PLUGIN_PROJECT_NAME}.rc" author_rc_text)
+                string(FIND "${author_rc_text}" "VERSIONINFO" author_rc_version_pos)
+                if(NOT author_rc_version_pos EQUAL -1)
+                    set(author_rc_has_version TRUE)
+                    message(STATUS "gmpi_plugin(${SUB_PROJECT_NAME}): keeping the VERSIONINFO in ${GMPI_PLUGIN_PROJECT_NAME}.rc, not generating one")
+                endif()
+            endif()
+
+            if(NOT author_rc_has_version)
+                if(kind STREQUAL "STANDALONE")
+                    set(GMPI_RC_FILETYPE "VFT_APP")
+                    set(GMPI_RC_ORIGINAL_FILENAME "${SUB_PROJECT_NAME}.exe")
+                    set(GMPI_RC_DESCRIPTION "${plugin_nice_name} (standalone application)")
+                else()
+                    # AU never reaches here - it is removed from the format list
+                    # on anything but macOS - so the lower-cased format name is
+                    # the file extension, exactly as TARGET_EXTENSION works out
+                    # below.
+                    string(TOLOWER "${kind}" version_rc_extension)
+                    set(GMPI_RC_FILETYPE "VFT_DLL")
+                    set(GMPI_RC_ORIGINAL_FILENAME "${SUB_PROJECT_NAME}.${version_rc_extension}")
+                    set(GMPI_RC_DESCRIPTION "${plugin_nice_name} (${kind} plug-in)")
+                endif()
+
+                set(GMPI_RC_VERSION "${plugin_version}")
+                gmpi_version_quad(GMPI_RC_VERSION_QUAD "${plugin_version}")
+                set(GMPI_RC_COMPANY "${plugin_vendor}")
+                set(GMPI_RC_PRODUCT "${plugin_nice_name}")
+                set(GMPI_RC_INTERNAL_NAME "${SUB_PROJECT_NAME}")
+
+                if(plugin_xml_file STREQUAL "")
+                    set(GMPI_RC_SOURCE "no <Plugin> element found - defaults used")
+                else()
+                    set(GMPI_RC_SOURCE "${plugin_xml_file}")
+                endif()
+
+                # Every value above is interpolated into a double-quoted string
+                # in the resource script, so a quote inside one would end the
+                # value early and leave a script that will not compile.
+                foreach(rc_value COMPANY DESCRIPTION INTERNAL_NAME ORIGINAL_FILENAME PRODUCT SOURCE VERSION)
+                    string(REPLACE "\"" "'" GMPI_RC_${rc_value} "${GMPI_RC_${rc_value}}")
+                endforeach()
+
+                set(version_srcs "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}.version.rc")
+                configure_file("${GMPI_PLUGIN_CMAKE_DIR}/gmpi_version.rc.in" "${version_srcs}" @ONLY)
+                source_group(resources FILES ${version_srcs})
+            endif()
+        endif()
+
         if(kind STREQUAL "STANDALONE")
             add_executable(${SUB_PROJECT_NAME}
                 ${GMPI_PLUGIN_SOURCE_FILES}
                 ${FORMAT_SDK_FILES}
                 ${resource_srcs}
+                ${version_srcs}
                 ${wrapper_srcs}
             )
         else()
@@ -276,6 +595,7 @@ function(gmpi_plugin)
                 ${GMPI_PLUGIN_SOURCE_FILES}
                 ${FORMAT_SDK_FILES}
                 ${resource_srcs}
+                ${version_srcs}
                 ${wrapper_srcs}
             )
         endif()
@@ -384,20 +704,32 @@ function(gmpi_plugin)
                 # The binary is still directly runnable, at
                 # Foo_STANDALONE.app/Contents/MacOS/Foo_STANDALONE, which is the
                 # path a test harness or the MCP server should launch.
+                # The version the author declared, verbatim, in both keys.
+                # Apple wants period-separated integers in these, so a version
+                # with a tail ("2.1.0-beta") will be rejected by App Store
+                # validation - it is fine everywhere else, and reporting
+                # something the author did not write would be worse.
                 set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
                     MACOSX_BUNDLE TRUE
                     MACOSX_BUNDLE_INFO_PLIST "${GMPI_ADAPTORS}/wrapper/Standalone/mac/Info.plist.in"
                     MACOSX_BUNDLE_BUNDLE_NAME "${GMPI_PLUGIN_PROJECT_NAME}"
                     MACOSX_BUNDLE_GUI_IDENTIFIER "com.gmpi.standalone.${GMPI_PLUGIN_PROJECT_NAME}"
-                    MACOSX_BUNDLE_BUNDLE_VERSION "1.0"
-                    MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+                    MACOSX_BUNDLE_BUNDLE_VERSION "${plugin_version}"
+                    MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
                 )
             endif()
         elseif(APPLE)
+            # The version keys reach CMake's own bundle Info.plist template,
+            # which is what the .vst3, .clap and .gmpi bundles get. The .component
+            # does not keep them: plist_util overwrites the AU's Info.plist
+            # wholesale after the build, and writes the same version there from
+            # the same XML attribute.
             set_target_properties(${SUB_PROJECT_NAME}
             PROPERTIES
                 BUNDLE TRUE
                 BUNDLE_EXTENSION "${TARGET_EXTENSION}"
+                MACOSX_BUNDLE_BUNDLE_VERSION "${plugin_version}"
+                MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
         )
         else()
             # PREFIX "" so Linux does not produce libFoo.gmpi where Windows and

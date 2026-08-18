@@ -534,6 +534,11 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 		else
 			info.vendorName = "GMPI";
 
+		// Optional. Left at defaultPluginVersion when absent or blank, so the
+		// field is never empty and a consumer needs no fallback of its own.
+		if (auto s = pluginE->Attribute("version"); s && *s)
+			info.version = s;
+
 		// PARAMETERS
 		if (auto parametersE = pluginE->FirstChildElement("Parameters"); parametersE)
 		{
