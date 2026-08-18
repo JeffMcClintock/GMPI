@@ -20,7 +20,21 @@ function(gmpi_target)
     # target_compile_features(${GMPI_TARGET_PROJECT_NAME} PUBLIC cxx_std_17)
 
     if(APPLE)
-        # Guard Apple-specific frameworks
+        # These eight cache entries are filled in by gmpi_find_frameworks() in
+        # the wrapper repo (wrapper/cmake/GmpiFrameworks.cmake), which each
+        # wrapper calls; nothing in this SDK produces them, so their exact names
+        # are a contract between the two repos.
+        #
+        # Each expands to nothing when no wrapper has been configured yet, which
+        # includes the first configure of a project that add_subdirectory's the
+        # wrappers AFTER its plugins - the ordering the note in gmpi_plugin()
+        # below calls legal, and the one this tree uses. A plugin that links a
+        # WRAPPER survives it: the wrappers link these frameworks with the plain
+        # target_link_libraries signature, which puts them in the wrapper's link
+        # INTERFACE too, so the module gets them regardless of what this call
+        # saw. A standalone-only project has no such fallback - its plugin links
+        # no wrapper at all - which is why Standalone/CMakeLists.txt finds every
+        # framework named below, OpenGL included, whether it uses it or not.
         target_link_libraries(${GMPI_TARGET_PROJECT_NAME} PRIVATE
             ${COREFOUNDATION_LIBRARY}
             ${COCOA_LIBRARY}
@@ -81,6 +95,45 @@ function(gmpi_plugin)
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
     endif()
 
+    # Standalone_Wrapper's Linux arm probes its dependencies and declines to
+    # build when one is absent, so that a missing pipewire SDK costs the bare app
+    # rather than the whole tree. Drop the format on the same machines: the
+    # executable below links Standalone_Wrapper by name, and a name that never
+    # becomes a target is only a raw linker flag as far as CMake is concerned --
+    # the configure passes and the default build then fails, on exactly the
+    # machines the wrapper's decline exists to protect.
+    #
+    # `if(TARGET Standalone_Wrapper)` cannot answer this. A plain name in
+    # target_link_libraries is not resolved until generate time, so a project may
+    # legally add_subdirectory() the wrappers AFTER the plugins that link them,
+    # and every consumer in this tree does -- nothing obliges a third-party one
+    # to order it the other way, so no wrapper target can be relied on to exist
+    # at any point inside this function. Running the wrapper's own probe is the
+    # only answer available this early, and it is the very file the wrapper
+    # includes, so the two cannot disagree.
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "STANDALONE" FIND_STANDALONE_INDEX)
+    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0)
+        if(NOT GMPI_ADAPTORS)
+            message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_ADAPTORS to be set.")
+        endif()
+
+        # OPTIONAL, over an explicitly emptied variable so nothing can leak in
+        # from the caller's scope: this SDK and the wrappers are separate repos
+        # and can be checked out at mismatched revisions. A wrapper tree that
+        # predates the probe is one where nothing ever declined, so assume the
+        # wrapper builds -- exactly the behaviour before this check existed --
+        # rather than failing the configure over a file that on Windows and
+        # macOS has nothing to say anyway.
+        set(GMPI_STANDALONE_MISSING_DEPENDENCIES "")
+        include("${GMPI_ADAPTORS}/wrapper/Standalone/dependencies.cmake" OPTIONAL)
+
+        if(GMPI_STANDALONE_MISSING_DEPENDENCIES)
+            list(JOIN GMPI_STANDALONE_MISSING_DEPENDENCIES ", " _standalone_missing_pretty)
+            message(STATUS "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): STANDALONE skipped -- Standalone_Wrapper cannot be built here, missing: ${_standalone_missing_pretty}")
+            list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
+        endif()
+    endif()
+
     #if building an AU, we're gonna need the GMPI also (for scanning the plist)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
     if(FIND_AU_INDEX GREATER_EQUAL 0)
@@ -97,6 +150,11 @@ function(gmpi_plugin)
 ################################ plist utility ##########################################
     if(FIND_AU_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
+            # Spelled out rather than sharing the wrappers' GMPI_HOSTING_SRCS:
+            # this is a different, smaller set - the XML reader and the dynamic
+            # loader, none of the plugin-hosting layer - and gmpi_plugin() runs
+            # in the CONSUMING project's scope, where a variable set inside the
+            # wrapper repo's own directories does not exist.
             set(plist_srcs
                 ${GMPI_SDK}/Hosting/xml_spec_reader.h
                 ${GMPI_SDK}/Hosting/xml_spec_reader.cpp
