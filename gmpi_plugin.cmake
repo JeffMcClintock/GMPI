@@ -20,7 +20,21 @@ function(gmpi_target)
     # target_compile_features(${GMPI_TARGET_PROJECT_NAME} PUBLIC cxx_std_17)
 
     if(APPLE)
-        # Guard Apple-specific frameworks
+        # These eight cache entries are filled in by gmpi_find_frameworks() in
+        # the wrapper repo (wrapper/cmake/GmpiFrameworks.cmake), which each
+        # wrapper calls; nothing in this SDK produces them, so their exact names
+        # are a contract between the two repos.
+        #
+        # Each expands to nothing when no wrapper has been configured yet, which
+        # includes the first configure of a project that add_subdirectory's the
+        # wrappers AFTER its plugins - the ordering the note in gmpi_plugin()
+        # below calls legal, and the one this tree uses. A plugin that links a
+        # WRAPPER survives it: the wrappers link these frameworks with the plain
+        # target_link_libraries signature, which puts them in the wrapper's link
+        # INTERFACE too, so the module gets them regardless of what this call
+        # saw. A standalone-only project has no such fallback - its plugin links
+        # no wrapper at all - which is why Standalone/CMakeLists.txt finds every
+        # framework named below, OpenGL included, whether it uses it or not.
         target_link_libraries(${GMPI_TARGET_PROJECT_NAME} PRIVATE
             ${COREFOUNDATION_LIBRARY}
             ${COCOA_LIBRARY}
@@ -136,6 +150,11 @@ function(gmpi_plugin)
 ################################ plist utility ##########################################
     if(FIND_AU_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
+            # Spelled out rather than sharing the wrappers' GMPI_HOSTING_SRCS:
+            # this is a different, smaller set - the XML reader and the dynamic
+            # loader, none of the plugin-hosting layer - and gmpi_plugin() runs
+            # in the CONSUMING project's scope, where a variable set inside the
+            # wrapper repo's own directories does not exist.
             set(plist_srcs
                 ${GMPI_SDK}/Hosting/xml_spec_reader.h
                 ${GMPI_SDK}/Hosting/xml_spec_reader.cpp
