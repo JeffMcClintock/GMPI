@@ -86,6 +86,13 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 				}
 				break;
 
+				// A String parameter holds a vector<uint8_t> in the same variant
+				// arm a Blob does (see GmpiParameter::setToDefault), and a
+				// String PIN takes the same raw bytes - which is what the
+				// "ppc3" queue message and notifyGui both already hand it. This
+				// arm had Blob alone, so a plug-in whose editor read a text pin
+				// got its initial value from nowhere and asserted below.
+				case gmpi::PinDatatype::String:
 				case gmpi::PinDatatype::Blob:
 				{
 					const auto& value = std::get<std::vector<uint8_t>>(param->value_); // param->value_;
@@ -270,6 +277,41 @@ void gmpi_controller_holder::notifyGui(GmpiParameter* param)
 				gui->notifyPin(pin.id, voice);
 			}
 			break;
+
+			case gmpi::PinDatatype::Blob:
+			case gmpi::PinDatatype::String:
+			{
+				// The non-scalar arm, which used to fall through to the
+				// assert below. Every OTHER push to an editor now has one -
+				// initUi's Value switch and the "ppc3" queue message - so the
+				// one path that lacked it was the one a host uses to say "this
+				// parameter changed, tell the GUI", and any host that said it
+				// about a blob asserted in a debug build. (initUi covered Blob
+				// but not String; the missing label was added with this arm, so
+				// the three agree rather than two of them agreeing.)
+				//
+				// Raw bytes, exactly as the "ppc3" arm of onQueMessageReady
+				// delivers them: a String pin's value IS its bytes, and a Blob
+				// pin's is whatever the plug-in put there. Base64 belongs to
+				// the preset FILE, not to this in-memory hand-off.
+				//
+				// get_if rather than get, unlike the sites above: this arm is
+				// reached for EVERY stateful parameter at once when a host
+				// reverts a patch, so a spec whose pin datatype disagrees with
+				// its parameter's would throw out of a UI update rather than
+				// mismatching one parameter. Say so in a debug build and leave
+				// the pin alone in a release one.
+				const auto* value = std::get_if<std::vector<uint8_t>>(&param->value_);
+				assert(value); // pin says text/binary, parameter holds a number
+
+				if (value)
+				{
+					gui->setPin(pin.id, 0, static_cast<int32_t>(value->size()), value->data());
+					gui->notifyPin(pin.id, voice);
+				}
+			}
+			break;
+
 			default:
 				assert(false); // unsupported type.
 			}
@@ -634,7 +676,7 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 	return false; // failed to consume message.
 }
 
-void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
+bool gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 {
 	std::string name, category;
 
@@ -645,8 +687,12 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 
 	auto presetXml = parentXml->FirstChildElement("Preset");
 
+	// No <Preset> element: garbage, an empty file, or a document of some other
+	// kind. Nothing below has run, so the store is exactly as the caller left
+	// it - said out loud rather than returned void, because a caller restoring
+	// from a file has no other way to find out its file was not one.
 	if (!presetXml)
-		return;
+		return false;
 
 	tinyxml2::XMLNode* parametersE{};
 	parametersE = presetXml;
@@ -702,16 +748,26 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 
 		auto& param = (*it).second;
 
+		// The reader has to filter exactly as writePresetXml does, or the pair
+		// is not a round trip. The writer skips non-stateful parameters
+		// because they hold values good for one run only - a raw pointer to a
+		// live object being the case that matters - so any <Param> naming one
+		// came from a file written before that rule existed, or from another
+		// tool. Taking it would overwrite a pointer the plug-in's controller
+		// published moments ago during init() with a stale number from disk.
+		//
+		// It is also skipped from the reset-to-default pass below, for the
+		// same reason and with the same effect: whatever is live stays live.
+		if (!param.info->is_stateful)
+			continue;
+
 		parametersInPreset.insert(paramHandle);
 
 		//??			if (info.ignoreProgramChange)
 		//				continue;
 
 		//auto& values = params[paramHandle];
-		/* no stateful parameters in preset we assume
-					if (!parameter.stateful_) // For VST2 wrapper aeffect ptr. prevents it being inadvertently zeroed.
-						continue;
-
+		/*
 					// possibly need to handle elsewhere
 					if (parameter.ignorePc_ && ignoreProgramChange) // a short time period after plugin loads, ignore-PC parameters will no longer overwrite existing value.
 						continue;
@@ -781,9 +837,11 @@ void gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
 //#endif
 
 //	calcHash();
+
+	return true;
 }
 
-std::string gmpi_controller_holder::getPreset()
+std::string writePresetXml(const std::unordered_map<int, GmpiParameter>& parameters)
 {
 	tinyxml2::XMLDocument doc;
 	// TiXmlDeclaration* decl = new TiXmlDeclaration("1.0", "", "");
@@ -816,8 +874,28 @@ std::string gmpi_controller_holder::getPreset()
 		element->SetAttribute("category", category.c_str());
 #endif
 
-	for (auto& [handle, parameter] : patchManager.parameters)
+	for (const auto& [handle, parameter] : parameters)
 	{
+		// Non-stateful parameters must never be written. They exist to carry
+		// live, session-only values - TIDE's 'controllerPtr' is a blob holding
+		// a raw pointer - and restoring one from a file hands the plug-in a
+		// dangling pointer from a previous run. Harmless while blobs
+		// serialised as "0"; fatal once they round-trip properly.
+		//
+		// HOST CONTROLS ARE NOT FILTERED HERE, and that is a deliberate
+		// omission rather than an oversight. Tempo, song position and the two
+		// halves of the time signature are stateful, so they pass this test and
+		// go into every document: a SawDemo session file carries id="-2",
+		// "-3", "-6" and "-7", all zero, which is measured and not assumed.
+		// It is noise in a standalone's user-visible session.xml - there is no
+		// transport to have produced a value - but adding the filter would take
+		// them out of the getState chunk every DAW wrapper hands its host, and
+		// that is a change to the shared format rather than a tidy-up. Both
+		// RESET passes do skip them, so nothing applies a stale one over a
+		// value the host has published.
+		if (!parameter.info->is_stateful)
+			continue;
+
 		auto paramElement = doc.NewElement("Param");
 		element->LinkEndChild(paramElement);
 		paramElement->SetAttribute("id", handle);
@@ -827,7 +905,63 @@ std::string gmpi_controller_holder::getPreset()
 
 		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
 
-		paramElement->SetAttribute("val", parameter.valueReal());
+		// valueReal() is the DOUBLE accessor, so using it for a blob writes
+		// "0" and silently discards the bytes - which is why blob parameters
+		// never survived a preset round-trip. Text and binary go out as text.
+		switch (parameter.info->datatype)
+		{
+		case gmpi::PinDatatype::Blob:
+		{
+			if (const auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
+				paramElement->SetAttribute("val", gmpi::base64Encode(*v).c_str());
+			else
+				paramElement->SetAttribute("val", "");
+		}
+		break;
+
+		case gmpi::PinDatatype::String:
+		{
+			// KNOWN LOSSY, in two ways, and both are the format's limits rather
+			// than this loop's - a String parameter is a byte vector and an XML
+			// attribute is not.
+			//
+			// An embedded NUL TRUNCATES the value here: SetAttribute takes a C
+			// string, so "ab\0cd" is written as "ab" and reads back as two
+			// bytes. Measured, not assumed.
+			//
+			// A control character is written RAW - 0x01, and also a literal tab
+			// or newline, none of which this escapes. tinyxml2 hands all of them
+			// straight back on a re-read, so a round trip through THIS library
+			// is lossless and nothing downstream notices; but the document is
+			// not well-formed XML (0x01 is not a legal XML 1.0 character at all,
+			// and attribute-value normalisation flattens a literal tab or
+			// newline to a space), so any conformant reader that opens the file
+			// will reject or alter it.
+			//
+			// Nothing checks for either. The standalone re-parses what it wrote
+			// before writing it out, which catches a malformed DOCUMENT, but not
+			// this - tinyxml2 accepts its own output. AU2_Wrapper::SaveState has
+			// no check of any kind and is NEWLY exposed: strings used to leave
+			// here as valueReal()'s "0", so this arm is the first time their
+			// bytes have reached a host at all.
+			//
+			// The fix, when a plug-in needs one, is in the FORMAT: escape on the
+			// way out and unescape on the way in, or spell a String the way a
+			// Blob is spelled and base64 it. Both change what every wrapper
+			// writes, so both belong with the DAW-side preset story rather than
+			// in a widening of this switch.
+			if (const auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
+				paramElement->SetAttribute("val",
+					std::string(reinterpret_cast<const char*>(v->data()), v->size()).c_str());
+			else
+				paramElement->SetAttribute("val", "");
+		}
+		break;
+
+		default:
+			paramElement->SetAttribute("val", parameter.valueReal());
+			break;
+		}
 
 #if 0  // TODO??
 		// MIDI learn.
@@ -846,6 +980,40 @@ std::string gmpi_controller_holder::getPreset()
 	doc.Accept(&printer);
 
 	return printer.CStr();
+}
+
+std::string gmpi_controller_holder::getPresetXml() const
+{
+	return writePresetXml(patchManager.parameters);
+}
+
+void gmpi_controller_holder::notifyControllerOfPreset(gmpi::api::IParameterObserver* pluginController) const
+{
+	if (!pluginController)
+		return;
+
+	constexpr int32_t voice{};
+
+	for (const auto& [handle, param] : patchManager.parameters)
+	{
+		if (!param.info || !param.info->is_stateful)
+			continue;
+
+		if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&param.value_); bytes)
+		{
+			pluginController->setParameter(
+				param.info->id, gmpi::Field::Value, voice,
+				static_cast<int32_t>(bytes->size()), bytes->data());
+		}
+		else
+		{
+			const double value = param.valueReal();
+			pluginController->setParameter(
+				param.info->id, gmpi::Field::Value, voice,
+				static_cast<int32_t>(sizeof(value)),
+				reinterpret_cast<const uint8_t*>(&value));
+		}
+	}
 }
 
 

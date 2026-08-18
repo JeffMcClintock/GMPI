@@ -544,6 +544,26 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 	// except for preset name and category
 	for (auto& [paramHandle, param] : patchManager.parameters)
 	{
+		// The same guard the controller's reset pass applies
+		// (gmpi_controller_holder::setPresetXmlFromDaw), copied here because
+		// the two loops are otherwise the same loop and had no business
+		// disagreeing about what a preset is allowed to reset.
+		//
+		// A host control - tempo, song position, time signature - is the HOST's
+		// value and not the patch's; a non-stateful parameter holds something
+		// good for this run only, a raw pointer to a live object being the case
+		// that matters. Neither is a thing a preset should be able to revoke by
+		// simply not mentioning it, which is what this pass otherwise does.
+		//
+		// It bites hardest on the non-stateful ones, because writePresetXml
+		// skips those, so no file we write ever mentions one and every one of
+		// them was reset on every setState. A host control IS written (it is
+		// stateful, so it passes that filter) and so was usually spared by being
+		// found in the preset - but an empty <Preset/>, or any document written
+		// by something else, left it just as exposed.
+		if (HostControls::None != param.info->hostConnect || !param.info->is_stateful)
+			continue;
+
 #if 0
 		if (info.hostControl == HC_PROGRAM_NAME || HC_PROGRAM_CATEGORY == info.hostControl)
 			continue;
@@ -566,102 +586,16 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 
 std::string gmpi_processor::getPresetUnsafe()
 {
-	tinyxml2::XMLDocument doc;
-	// TiXmlDeclaration* decl = new TiXmlDeclaration("1.0", "", "");
-	doc.LinkEndChild(doc.NewDeclaration());
-
-	auto element = doc.NewElement("Preset");
-	doc.LinkEndChild(element);
-
-#if 0 // TODO
-	{
-		char txt[20];
-#if defined(_MSC_VER)
-		sprintf_s(txt, "%08x", pluginId);
-#else
-		snprintf(txt, std::size(txt), "%08x", pluginId);
-#endif
-		element->SetAttribute("pluginId", txt);
-	}
-
-	if (!presetNameOverride.empty())
-	{
-		element->SetAttribute("name", presetNameOverride.c_str());
-	}
-	else if (!name.empty())
-	{
-		element->SetAttribute("name", name.c_str());
-	}
-
-	if (!category.empty())
-		element->SetAttribute("category", category.c_str());
-#endif
-
-	for (auto& [handle, parameter] : patchManager.parameters)
-	{
-		// Non-stateful parameters must never be written. They exist to carry
-		// live, session-only values - TIDE's 'controllerPtr' is a blob holding
-		// a raw pointer - and restoring one from a file hands the plug-in a
-		// dangling pointer from a previous run. Harmless while blobs
-		// serialised as "0"; fatal once they round-trip properly.
-		if (!parameter.info->is_stateful)
-			continue;
-
-		auto paramElement = doc.NewElement("Param");
-		element->LinkEndChild(paramElement);
-		paramElement->SetAttribute("id", handle);
-
-		//const int voice = 0;
-		//auto& raw = parameter.rawValues_[voice];
-
-		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
-
-		// valueReal() is the DOUBLE accessor, so using it for a blob writes
-		// "0" and silently discards the bytes - which is why blob parameters
-		// never survived a preset round-trip. Text and binary go out as text.
-		switch (parameter.info->datatype)
-		{
-		case gmpi::PinDatatype::Blob:
-		{
-			if (auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
-				paramElement->SetAttribute("val", gmpi::base64Encode(*v).c_str());
-			else
-				paramElement->SetAttribute("val", "");
-		}
-		break;
-
-		case gmpi::PinDatatype::String:
-		{
-			if (auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
-				paramElement->SetAttribute("val",
-					std::string(reinterpret_cast<const char*>(v->data()), v->size()).c_str());
-			else
-				paramElement->SetAttribute("val", "");
-		}
-		break;
-
-		default:
-			paramElement->SetAttribute("val", parameter.valueReal());
-			break;
-		}
-
-#if 0  // TODO??
-		// MIDI learn.
-		if (parameter->MidiAutomation != -1)
-		{
-			paramElement->SetAttribute("MIDI", parameter->MidiAutomation);
-
-			if (!parameter->MidiAutomationSysex.empty())
-				paramElement->SetAttribute("MIDI_SYSEX", WStringToUtf8(parameter->MidiAutomationSysex));
-		}
-#endif
-	}
-
-	tinyxml2::XMLPrinter printer;
-	// printer.SetIndent(" ");
-	doc.Accept(&printer);
-
-	return printer.CStr();
+	// The whole body moved to writePresetXml (controller_holder.cpp), which the
+	// controller's store now shares. The two used to be copies of one loop and
+	// had drifted: the blob/string arms and the non-stateful filter were added
+	// here and never there, so which half of the plug-in a host asked decided
+	// whether a blob survived.
+	//
+	// "Unsafe" still means what it always did - patchManager is the PROCESSOR's
+	// store, written from the audio thread by pollMessage, so reading it is only
+	// safe while no audio callback can run.
+	return writePresetXml(patchManager.parameters);
 }
 
 // IAudioPluginHost

@@ -142,6 +142,37 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 		return true;
 	}
 
+	// Whether setFromXml would STORE this text rather than assert on it - the
+	// same question its two asserts ask, asked before the fact instead of after.
+	// The scalar one is literally written in terms of this call; the other - the
+	// switch's `default:` - fires on exactly the datatypes the last line here
+	// excludes. So a caller that tests here and a debug build that trips there
+	// cannot come to disagree.
+	//
+	// Who needs it: setFromXml's asserts mean "the WRITER put the wrong thing in
+	// this preset", which is a defect report about input that came from code.
+	// Text read out of a FILE is not that - a file on disk is editable by
+	// anybody, so garbage in one is an ordinary event and not a bug. Whoever
+	// decided to trust a file is the one that has to ask this first, and then
+	// decline the whole document rather than reach a value that will abort a
+	// debug build and silently become 0.0 in a release one. The standalone
+	// wrapper's SessionState::restore is the caller this was written for.
+	bool acceptsXmlText(const char* textValue) const
+	{
+		if (is_scalar(info->datatype))
+		{
+			// An empty attribute is tolerated - "no value" is a legitimate
+			// encoding, not a datatype mismatch.
+			return isNumericText(textValue) || (textValue && !*textValue);
+		}
+
+		// The only two non-scalar datatypes setFromXml knows how to store; the
+		// switch below asserts on anything else (Midi reaches here, and there
+		// is no preset encoding for one).
+		return info->datatype == gmpi::PinDatatype::String
+			|| info->datatype == gmpi::PinDatatype::Blob;
+	}
+
 	bool setFromXml(const char* textValue)
 	{
 		if (is_scalar(info->datatype))
@@ -150,9 +181,7 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 			// is not a number means the WRITER put the wrong thing in the
 			// preset. Say so rather than silently storing atof()'s 0.0, which
 			// would surface the corruption somewhere quieter and further away.
-			// An empty attribute is tolerated - "no value" is a legitimate
-			// encoding, not a datatype mismatch.
-			assert(isNumericText(textValue) || (textValue && !*textValue));
+			assert(acceptsXmlText(textValue));
 			return setReal(atof(textValue));
 		}
 		else
@@ -210,6 +239,23 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 		}
 	}
 };
+
+// Writes a parameter store out as a <Preset> document - the format
+// GmpiParameter::setFromXml reads back, and the one every wrapper hands its
+// host through getState/setState.
+//
+// ONE writer, because there are two stores of the identical type: the
+// processor's PatchManager and the controller's ControllerPatchManager both
+// hold std::unordered_map<int, GmpiParameter>. They used to have a preset
+// writer each, and the two had already drifted - the processor's learned to
+// base64 a blob and to skip non-stateful parameters, the controller's went on
+// writing valueReal() for every datatype, so which of them a host asked
+// decided whether a blob survived. Anything a caller wants added to the format
+// (a name, a per-parameter datatype tag) belongs here, where both get it.
+//
+// Takes the map rather than either holder so neither side has to know the
+// other exists.
+std::string writePresetXml(const std::unordered_map<int, GmpiParameter>& parameters);
 
 class ControllerPatchManager
 {
@@ -386,8 +432,38 @@ public:
 
 	void notifyGui(GmpiParameter* param);
 
-	std::string getPreset();
-	void setPresetXmlFromDaw(const std::string& xml);
+	// The controller's parameters as a <Preset> document. Const because reading
+	// the store changes nothing, which is what lets a caller capture state from
+	// a `const` reference and be sure it did not.
+	std::string getPresetXml() const;
+
+	// The name the wrappers have always called it by, kept so their call sites
+	// do not all have to move.
+	std::string getPreset() { return getPresetXml(); }
+
+	// Reads a <Preset> document into the store. TRUE when it found one, false
+	// when the text held no <Preset> element - in which case NOTHING was
+	// changed, not even the reset-to-default pass, so a caller can tell "that
+	// was not a preset" apart from "that was an empty preset" (which does reset
+	// every stateful parameter, and is how a revert-to-defaults is spelled).
+	bool setPresetXmlFromDaw(const std::string& xml);
+
+	// Hand the current parameter values to the plugin's own <Controller/>.
+	//
+	// A plugin whose state IS a parameter has no other way to learn that its
+	// state was restored: the controller is created and initialize()d, and then
+	// nothing ever tells it what the preset said. It is not one of m_editors -
+	// those are IEditors and get setPin - so initUi does not reach it either.
+	//
+	// Encoding is the PARAMETER's datatype, not a pin's: a plugin controller has
+	// no pins. Blobs and strings arrive as their raw bytes, scalars as a double.
+	// Non-stateful parameters are skipped for the same reason the preset writer
+	// skips them - they hold things valid only for the run that published them,
+	// such as a raw pointer to a live object.
+	//
+	// Null is accepted and does nothing, so a caller need not test for a plugin
+	// that declares no controller.
+	void notifyControllerOfPreset(gmpi::api::IParameterObserver* pluginController) const;
 
 	// IParameterObserver / IControllerHost (identical signature; one impl serves both vtables).
 	// Writes the value into patchManager so subsequent initUi calls deliver
