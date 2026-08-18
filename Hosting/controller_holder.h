@@ -188,13 +188,14 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 		{
 			switch (info->datatype)
 			{
+			// Base64, both of them: presets are XML, and a string parameter is
+			// a byte vector rather than text - an embedded NUL truncated it and
+			// a control character made the document ill-formed. The codec lives
+			// in GMPI/Core so both ends of the round trip share one
+			// implementation; writePresetXml is the other end and carries the
+			// full argument.
 			case gmpi::PinDatatype::String:
-				return setBlob({ reinterpret_cast<const uint8_t*>(textValue), reinterpret_cast<const uint8_t*>(textValue) + strlen(textValue) });
-
 			case gmpi::PinDatatype::Blob:
-				// Base64: presets are XML, blobs are arbitrary bytes. Encoded
-				// by getPresetUnsafe(); the codec lives in GMPI/Core so both
-				// ends of the round-trip share one implementation.
 				return setBlob(gmpi::base64Decode(textValue));
                     
             default:

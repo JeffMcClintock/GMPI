@@ -905,54 +905,43 @@ std::string writePresetXml(const std::unordered_map<int, GmpiParameter>& paramet
 
 		//const auto val = RawToUtf8B(parameter.dataType, raw.data(), raw.size());
 
-		// valueReal() is the DOUBLE accessor, so using it for a blob writes
-		// "0" and silently discards the bytes - which is why blob parameters
-		// never survived a preset round-trip. Text and binary go out as text.
+		// valueReal() is the DOUBLE accessor, so a non-scalar written through
+		// it becomes "0" with its bytes silently discarded - which is why
+		// neither a blob nor a string ever survived a preset round-trip.
+		//
+		// STRING IS BASE64 TOO, spelled exactly as a Blob is. That costs a
+		// readable session.xml and buys three things an XML attribute cannot
+		// otherwise give it, because a String parameter is a byte vector and not
+		// text:
+		//
+		//   an embedded NUL used to TRUNCATE the value, because SetAttribute
+		//   takes a C string - and XML 1.0 cannot represent U+0000 at all, so
+		//   escaping could never have fixed that one, only a byte encoding can;
+		//
+		//   a control character used to be written RAW. tinyxml2 hands it
+		//   straight back, so a round trip through this library looked lossless,
+		//   but 0x01 is not a legal XML 1.0 character and attribute-value
+		//   normalisation flattens a literal tab or newline to a space, so the
+		//   document was one a conformant reader may reject or alter;
+		//
+		//   bytes that are not valid UTF-8 used to reach the host verbatim.
+		//   AU2_Wrapper::SaveState puts this document through
+		//   CFStringCreateWithCString, which answers NULL to exactly that and
+		//   then passes the NULL to CFDictionaryAddValue.
+		//
+		// One encoding, in the one writer every wrapper shares, answers all
+		// three - and makes `val` pure ASCII, so the last of them cannot come
+		// back at some other call site. Nothing that ever worked is lost: until
+		// the commit before this one a String went out as valueReal()'s "0", so
+		// no file in existence holds a String value this could fail to read.
+		// GmpiParameter::setFromXml is the other half - change neither alone.
 		switch (parameter.info->datatype)
 		{
+		case gmpi::PinDatatype::String:
 		case gmpi::PinDatatype::Blob:
 		{
 			if (const auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
 				paramElement->SetAttribute("val", gmpi::base64Encode(*v).c_str());
-			else
-				paramElement->SetAttribute("val", "");
-		}
-		break;
-
-		case gmpi::PinDatatype::String:
-		{
-			// KNOWN LOSSY, in two ways, and both are the format's limits rather
-			// than this loop's - a String parameter is a byte vector and an XML
-			// attribute is not.
-			//
-			// An embedded NUL TRUNCATES the value here: SetAttribute takes a C
-			// string, so "ab\0cd" is written as "ab" and reads back as two
-			// bytes. Measured, not assumed.
-			//
-			// A control character is written RAW - 0x01, and also a literal tab
-			// or newline, none of which this escapes. tinyxml2 hands all of them
-			// straight back on a re-read, so a round trip through THIS library
-			// is lossless and nothing downstream notices; but the document is
-			// not well-formed XML (0x01 is not a legal XML 1.0 character at all,
-			// and attribute-value normalisation flattens a literal tab or
-			// newline to a space), so any conformant reader that opens the file
-			// will reject or alter it.
-			//
-			// Nothing checks for either. The standalone re-parses what it wrote
-			// before writing it out, which catches a malformed DOCUMENT, but not
-			// this - tinyxml2 accepts its own output. AU2_Wrapper::SaveState has
-			// no check of any kind and is NEWLY exposed: strings used to leave
-			// here as valueReal()'s "0", so this arm is the first time their
-			// bytes have reached a host at all.
-			//
-			// The fix, when a plug-in needs one, is in the FORMAT: escape on the
-			// way out and unescape on the way in, or spell a String the way a
-			// Blob is spelled and base64 it. Both change what every wrapper
-			// writes, so both belong with the DAW-side preset story rather than
-			// in a widening of this switch.
-			if (const auto* v = std::get_if<std::vector<uint8_t>>(&parameter.value_); v)
-				paramElement->SetAttribute("val",
-					std::string(reinterpret_cast<const char*>(v->data()), v->size()).c_str());
 			else
 				paramElement->SetAttribute("val", "");
 		}
