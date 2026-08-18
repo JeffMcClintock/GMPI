@@ -81,6 +81,45 @@ function(gmpi_plugin)
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
     endif()
 
+    # Standalone_Wrapper's Linux arm probes its dependencies and declines to
+    # build when one is absent, so that a missing pipewire SDK costs the bare app
+    # rather than the whole tree. Drop the format on the same machines: the
+    # executable below links Standalone_Wrapper by name, and a name that never
+    # becomes a target is only a raw linker flag as far as CMake is concerned --
+    # the configure passes and the default build then fails, on exactly the
+    # machines the wrapper's decline exists to protect.
+    #
+    # `if(TARGET Standalone_Wrapper)` cannot answer this. A plain name in
+    # target_link_libraries is not resolved until generate time, so a project may
+    # legally add_subdirectory() the wrappers AFTER the plugins that link them,
+    # and every consumer in this tree does -- nothing obliges a third-party one
+    # to order it the other way, so no wrapper target can be relied on to exist
+    # at any point inside this function. Running the wrapper's own probe is the
+    # only answer available this early, and it is the very file the wrapper
+    # includes, so the two cannot disagree.
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "STANDALONE" FIND_STANDALONE_INDEX)
+    if(FIND_STANDALONE_INDEX GREATER_EQUAL 0)
+        if(NOT GMPI_ADAPTORS)
+            message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_ADAPTORS to be set.")
+        endif()
+
+        # OPTIONAL, over an explicitly emptied variable so nothing can leak in
+        # from the caller's scope: this SDK and the wrappers are separate repos
+        # and can be checked out at mismatched revisions. A wrapper tree that
+        # predates the probe is one where nothing ever declined, so assume the
+        # wrapper builds -- exactly the behaviour before this check existed --
+        # rather than failing the configure over a file that on Windows and
+        # macOS has nothing to say anyway.
+        set(GMPI_STANDALONE_MISSING_DEPENDENCIES "")
+        include("${GMPI_ADAPTORS}/wrapper/Standalone/dependencies.cmake" OPTIONAL)
+
+        if(GMPI_STANDALONE_MISSING_DEPENDENCIES)
+            list(JOIN GMPI_STANDALONE_MISSING_DEPENDENCIES ", " _standalone_missing_pretty)
+            message(STATUS "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): STANDALONE skipped -- Standalone_Wrapper cannot be built here, missing: ${_standalone_missing_pretty}")
+            list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "STANDALONE")
+        endif()
+    endif()
+
     #if building an AU, we're gonna need the GMPI also (for scanning the plist)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
     if(FIND_AU_INDEX GREATER_EQUAL 0)
