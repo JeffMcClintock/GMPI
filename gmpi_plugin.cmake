@@ -233,6 +233,22 @@ function(gmpi_plugin)
         list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU")
     endif()
 
+    # AU3 - the AUv3 app extension - is handled OUTSIDE the per-format loop
+    # below: the loop's shape is one MODULE library per format, and an AUv3 is
+    # two executables (the .appex and the containing app) plus an assembly
+    # step. Note whether it was asked for, then take it off the list the loop
+    # walks.
+    #
+    # macOS only, for now: the extension and app targets below are AppKit
+    # bundles. On iOS the AU3 wrapper library builds (see
+    # GMPI_Wrappers/wrapper/AU3), but an iOS containing app needs signing
+    # identities this repo cannot supply.
+    list(FIND GMPI_PLUGIN_FORMATS_LIST "AU3" FIND_AU3_INDEX)
+    list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU3")
+    if(NOT APPLE OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        set(FIND_AU3_INDEX -1)
+    endif()
+
     # STANDALONE is an application, not a plugin: a window with a menu bar
     # wrapping one plugin, the way JUCE's standalone target does. Linux, Windows
     # and macOS all have a shell now; the guard stays because the format is
@@ -284,9 +300,9 @@ function(gmpi_plugin)
         endif()
     endif()
 
-    #if building an AU, we're gonna need the GMPI also (for scanning the plist)
+    #if building an AU or AU3, we're gonna need the GMPI also (for scanning the plist)
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
-    if(FIND_AU_INDEX GREATER_EQUAL 0)
+    if(FIND_AU_INDEX GREATER_EQUAL 0 OR FIND_AU3_INDEX GREATER_EQUAL 0)
         list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
         if(FIND_GMPI_INDEX LESS 0)
             list(APPEND GMPI_PLUGIN_FORMATS_LIST "GMPI")
@@ -298,7 +314,7 @@ function(gmpi_plugin)
     endif()
 
 ################################ plist utility ##########################################
-    if(FIND_AU_INDEX GREATER_EQUAL 0)
+    if(FIND_AU_INDEX GREATER_EQUAL 0 OR FIND_AU3_INDEX GREATER_EQUAL 0)
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
             # Spelled out rather than sharing the wrappers' GMPI_HOSTING_SRCS:
             # this is a different, smaller set - the XML reader and the dynamic
@@ -838,6 +854,132 @@ function(gmpi_plugin)
                 VERBATIM
             )
         endif()
+    endif()
+
+    if(FIND_AU3_INDEX GREATER_EQUAL 0)
+        # The AUv3 app extension: <Plugin>_AU3.appex inside <Plugin>_AU3App.app.
+        # Two executables and an assembly step, which is why this lives outside
+        # the MODULE-per-format loop above.
+        set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_AU3)
+        set(AU3_APP_NAME ${GMPI_PLUGIN_PROJECT_NAME}_AU3App)
+
+        # ---- the .appex ----
+        # The same plugin sources every other format target compiles (so
+        # MP_GetFactory resolves), plus the wrapper's force-link entry - the
+        # extension's principal class is looked up by NAME from the Info.plist,
+        # so without wrapperAu3.mm the linker strips it out of the static
+        # library. See that file.
+        add_executable(${SUB_PROJECT_NAME} MACOSX_BUNDLE
+            ${GMPI_PLUGIN_SOURCE_FILES}
+            ${sdk_srcs}
+            ${resource_srcs}
+            ${GMPI_ADAPTORS}/wrapper/AU3/wrapperAu3.mm
+        )
+        source_group(sdk FILES ${sdk_srcs})
+
+        if(plugin_includes)
+            target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${plugin_includes})
+        endif()
+        target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${GMPI_ADAPTORS})
+
+        gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
+
+        target_link_libraries(${SUB_PROJECT_NAME} PRIVATE AU3_Wrapper)
+
+        # App-extension entry point; Foundation provides it.
+        target_link_options(${SUB_PROJECT_NAME} PRIVATE "-e" "_NSExtensionMain")
+
+        if(GMPI_PLUGIN_HAS_XML)
+            set_source_files_properties(${GMPI_PLUGIN_PROJECT_NAME}.xml PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        endif()
+
+        # The identifier must be PREFIXED by the containing app's - that pair
+        # is how the system ties extension to app.
+        set(AU3_APP_BUNDLE_ID "com.gmpi.au3.${GMPI_PLUGIN_PROJECT_NAME}")
+        set(AU3_APPEX_BUNDLE_ID "${AU3_APP_BUNDLE_ID}.extension")
+
+        # CMake's default bundle plist is only a stub to link against; the real
+        # one - NSExtension, AudioComponents, the identity fourCCs - is written
+        # over it by plist_util scanning the built GMPI module, exactly as the
+        # AU2 .component's plist is. One derivation, so the v2 and v3 releases
+        # of a plugin cannot disagree about who they are.
+        set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
+            BUNDLE_EXTENSION "appex"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "${AU3_APPEX_BUNDLE_ID}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${plugin_version}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
+        )
+
+        add_dependencies(${SUB_PROJECT_NAME} plist_util ${GMPI_PLUGIN_PROJECT_NAME})
+
+        add_custom_command(TARGET ${SUB_PROJECT_NAME}
+            POST_BUILD
+            COMMAND $<TARGET_FILE:plist_util>
+                "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"       # input: GMPI bundle to scan
+                "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>/Contents/Info.plist" # output: Info.plist to overwrite
+                --au3 "${SUB_PROJECT_NAME}" "${AU3_APPEX_BUNDLE_ID}"
+            COMMENT "Overwriting Info.plist in AU3 appex with plist_util"
+            VERBATIM
+        )
+
+        # ---- the containing app ----
+        # An .appex cannot exist on its own; this app's one job is carrying it
+        # in PlugIns/, where LaunchServices finds and registers it.
+        add_executable(${AU3_APP_NAME} MACOSX_BUNDLE
+            ${GMPI_ADAPTORS}/wrapper/AU3/mac/HostAppMain.mm
+        )
+        target_link_libraries(${AU3_APP_NAME} PRIVATE ${COCOA_LIBRARY})
+        set_target_properties(${AU3_APP_NAME} PROPERTIES
+            MACOSX_BUNDLE_INFO_PLIST "${GMPI_ADAPTORS}/wrapper/AU3/mac/HostApp-Info.plist.in"
+            MACOSX_BUNDLE_BUNDLE_NAME "${GMPI_PLUGIN_PROJECT_NAME}"
+            MACOSX_BUNDLE_GUI_IDENTIFIER "${AU3_APP_BUNDLE_ID}"
+            MACOSX_BUNDLE_BUNDLE_VERSION "${plugin_version}"
+            MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
+        )
+
+        # ---- assembly ----
+        # An always-run custom target, NOT a POST_BUILD on the app: a change to
+        # the appex alone leaves the app up-to-date, and its POST_BUILD would
+        # not re-run - deploying a stale extension that looks exactly like
+        # "my change did nothing". Signed inside-out, ad-hoc; the sandbox
+        # entitlement is the one thing the extension cannot load without.
+        set(AU3_ASSEMBLE_COMMANDS
+            COMMAND ${CMAKE_COMMAND} -E make_directory
+                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>/Contents/PlugIns"
+            COMMAND ${CMAKE_COMMAND} -E copy_directory
+                "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
+                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>/Contents/PlugIns/${SUB_PROJECT_NAME}.appex"
+            COMMAND codesign --force --sign - --entitlements "${GMPI_ADAPTORS}/wrapper/AU3/appex.entitlements"
+                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>/Contents/PlugIns/${SUB_PROJECT_NAME}.appex"
+            COMMAND codesign --force --sign -
+                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
+        )
+
+        # Install and register for local development, INSIDE the assemble
+        # target so it always runs after a fresh appex is in place - the
+        # copy_plugin() route the other formats use is a POST_BUILD on their
+        # one target, and here that ordering trap is the whole reason assemble
+        # exists.
+        if(SE_LOCAL_BUILD)
+            list(APPEND AU3_ASSEMBLE_COMMANDS
+                COMMAND ${CMAKE_COMMAND} -E copy_directory
+                    "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
+                    "$ENV{HOME}/Applications/${AU3_APP_NAME}.app"
+                COMMAND pluginkit -a
+                    "$ENV{HOME}/Applications/${AU3_APP_NAME}.app/Contents/PlugIns/${SUB_PROJECT_NAME}.appex"
+            )
+        endif()
+
+        add_custom_target(${SUB_PROJECT_NAME}_assemble ALL
+            ${AU3_ASSEMBLE_COMMANDS}
+            COMMENT "Assembling ${AU3_APP_NAME}.app with ${SUB_PROJECT_NAME}.appex"
+            VERBATIM
+        )
+        add_dependencies(${SUB_PROJECT_NAME}_assemble ${SUB_PROJECT_NAME} ${AU3_APP_NAME})
+
+        set_target_properties(${SUB_PROJECT_NAME} PROPERTIES FOLDER "AU3 plugins")
+        set_target_properties(${AU3_APP_NAME} PROPERTIES FOLDER "AU3 plugins")
+        set_target_properties(${SUB_PROJECT_NAME}_assemble PROPERTIES FOLDER "AU3 plugins")
     endif()
 
     if(FIND_CLAP_INDEX GREATER_EQUAL 0)
