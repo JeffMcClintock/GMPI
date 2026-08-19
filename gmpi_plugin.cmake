@@ -238,15 +238,22 @@ function(gmpi_plugin)
     # two executables (the .appex and the containing app) plus an assembly
     # step. Note whether it was asked for, then take it off the list the loop
     # walks.
-    #
-    # macOS only, for now: the extension and app targets below are AppKit
-    # bundles. On iOS the AU3 wrapper library builds (see
-    # GMPI_Wrappers/wrapper/AU3), but an iOS containing app needs signing
-    # identities this repo cannot supply.
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU3" FIND_AU3_INDEX)
     list(REMOVE_ITEM GMPI_PLUGIN_FORMATS_LIST "AU3")
-    if(NOT APPLE OR CMAKE_SYSTEM_NAME STREQUAL "iOS")
+    if(NOT APPLE)
         set(FIND_AU3_INDEX -1)
+    endif()
+
+    # iOS has exactly one plugin format - the AUv3 extension - so on an iOS
+    # configure every other format simply is not built there, the way AU is
+    # not built on Windows. A plugin whose format list never mentions AU3
+    # produces no targets at all on iOS, which is correct: there is nothing it
+    # could ship.
+    if(CMAKE_SYSTEM_NAME STREQUAL "iOS")
+        set(GMPI_PLUGIN_FORMATS_LIST "")
+        set(GMPI_AU3_IOS TRUE)
+    else()
+        set(GMPI_AU3_IOS FALSE)
     endif()
 
     # STANDALONE is an application, not a plugin: a window with a menu bar
@@ -300,9 +307,13 @@ function(gmpi_plugin)
         endif()
     endif()
 
-    #if building an AU or AU3, we're gonna need the GMPI also (for scanning the plist)
+    #if building an AU or AU3, we're gonna need the GMPI also (for scanning the plist).
+    # Except on iOS: an iOS-built module cannot be LOADED by the macOS machine
+    # running the build, so there the plist comes from plist_util's --xml mode
+    # reading the plugin's metadata straight from source, and no GMPI module is
+    # needed (or buildable).
     list(FIND GMPI_PLUGIN_FORMATS_LIST "AU" FIND_AU_INDEX)
-    if(FIND_AU_INDEX GREATER_EQUAL 0 OR FIND_AU3_INDEX GREATER_EQUAL 0)
+    if((FIND_AU_INDEX GREATER_EQUAL 0 OR FIND_AU3_INDEX GREATER_EQUAL 0) AND NOT GMPI_AU3_IOS)
         list(FIND GMPI_PLUGIN_FORMATS_LIST "GMPI" FIND_GMPI_INDEX)
         if(FIND_GMPI_INDEX LESS 0)
             list(APPEND GMPI_PLUGIN_FORMATS_LIST "GMPI")
@@ -314,7 +325,39 @@ function(gmpi_plugin)
     endif()
 
 ################################ plist utility ##########################################
-    if(FIND_AU_INDEX GREATER_EQUAL 0 OR FIND_AU3_INDEX GREATER_EQUAL 0)
+    if(FIND_AU3_INDEX GREATER_EQUAL 0 AND GMPI_AU3_IOS)
+        # Cross-compiling: plist_util must RUN on this machine, so the iOS
+        # toolchain in effect for every real target cannot build it. One raw
+        # host-compiler invocation instead of a nested CMake project - the tool
+        # is three sources and a framework.
+        #
+        # The path is set OUTSIDE the once-only guard: gmpi_plugin() is a
+        # function, so the second plugin in a project enters here with fresh
+        # variables but the target already made.
+        set(GMPI_AU3_PLIST_UTIL_HOST "${CMAKE_BINARY_DIR}/plist_util_host")
+        if(NOT TARGET plist_util_host)
+            add_custom_command(
+                OUTPUT "${GMPI_AU3_PLIST_UTIL_HOST}"
+                COMMAND xcrun -sdk macosx clang++ -std=c++20
+                    "${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp"
+                    "${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp"
+                    "${GMPI_SDK}/Hosting/dynamic_linking.cpp"
+                    -I "${GMPI_SDK}/Core"
+                    -I "${GMPI_ADAPTORS}/wrapper/common"
+                    -framework CoreFoundation
+                    -o "${GMPI_AU3_PLIST_UTIL_HOST}"
+                DEPENDS
+                    "${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp"
+                    "${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp"
+                    "${GMPI_SDK}/Hosting/dynamic_linking.cpp"
+                COMMENT "Building plist_util for the build host"
+                VERBATIM
+            )
+            add_custom_target(plist_util_host DEPENDS "${GMPI_AU3_PLIST_UTIL_HOST}")
+        endif()
+    endif()
+
+    if(FIND_AU_INDEX GREATER_EQUAL 0 OR (FIND_AU3_INDEX GREATER_EQUAL 0 AND NOT GMPI_AU3_IOS))
         if(NOT TARGET plist_util) # ensure only built once if multiple AU plugins in same project
             # Spelled out rather than sharing the wrappers' GMPI_HOSTING_SRCS:
             # this is a different, smaller set - the XML reader and the dynamic
@@ -859,9 +902,22 @@ function(gmpi_plugin)
     if(FIND_AU3_INDEX GREATER_EQUAL 0)
         # The AUv3 app extension: <Plugin>_AU3.appex inside <Plugin>_AU3App.app.
         # Two executables and an assembly step, which is why this lives outside
-        # the MODULE-per-format loop above.
+        # the MODULE-per-format loop above. One block serves macOS and iOS;
+        # $<TARGET_BUNDLE_CONTENT_DIR> is what absorbs the layouts (.app/Contents
+        # on macOS, the flat .app on iOS).
         set(SUB_PROJECT_NAME ${GMPI_PLUGIN_PROJECT_NAME}_AU3)
         set(AU3_APP_NAME ${GMPI_PLUGIN_PROJECT_NAME}_AU3App)
+
+        if(GMPI_AU3_IOS AND plugin_xml_file STREQUAL "")
+            # On iOS the appex plist can only come from the plugin's declared
+            # metadata (no loadable module to scan), and the search above found
+            # none - which on macOS merely mis-stamps a version, but here means
+            # an extension with no identity at all.
+            message(FATAL_ERROR
+                "gmpi_plugin(${GMPI_PLUGIN_PROJECT_NAME}): AU3 on iOS needs the plugin's "
+                "<Plugin> metadata XML, and none was found in SOURCE_FILES or "
+                "${GMPI_PLUGIN_PROJECT_NAME}.xml. Add the file holding it to SOURCE_FILES.")
+        endif()
 
         # ---- the .appex ----
         # The same plugin sources every other format target compiles (so
@@ -882,7 +938,18 @@ function(gmpi_plugin)
         endif()
         target_include_directories(${SUB_PROJECT_NAME} PRIVATE ${GMPI_ADAPTORS})
 
-        gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
+        if(GMPI_AU3_IOS)
+            # Not gmpi_target(): its APPLE arm links Cocoa and OpenGL, which do
+            # not exist on iOS. The frameworks the appex really needs arrive
+            # through AU3_Wrapper's link interface; only the config defines are
+            # wanted here.
+            target_compile_definitions(${SUB_PROJECT_NAME} PRIVATE
+                $<$<CONFIG:Debug>:_DEBUG>
+                $<$<CONFIG:Release>:NDEBUG>
+            )
+        else()
+            gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
+        endif()
 
         target_link_libraries(${SUB_PROJECT_NAME} PRIVATE AU3_Wrapper)
 
@@ -900,9 +967,12 @@ function(gmpi_plugin)
 
         # CMake's default bundle plist is only a stub to link against; the real
         # one - NSExtension, AudioComponents, the identity fourCCs - is written
-        # over it by plist_util scanning the built GMPI module, exactly as the
-        # AU2 .component's plist is. One derivation, so the v2 and v3 releases
-        # of a plugin cannot disagree about who they are.
+        # over it by plist_util. On macOS that scans the built GMPI module,
+        # exactly as the AU2 .component's plist is made; on iOS the module
+        # cannot be loaded by the machine doing the building, so the HOST-built
+        # plist_util reads the same metadata from the plugin's own declaration
+        # (--xml). One derivation either way, so the v2 and v3 releases of a
+        # plugin cannot disagree about who they are.
         set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
             BUNDLE_EXTENSION "appex"
             MACOSX_BUNDLE_GUI_IDENTIFIER "${AU3_APPEX_BUNDLE_ID}"
@@ -910,27 +980,58 @@ function(gmpi_plugin)
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
         )
 
-        add_dependencies(${SUB_PROJECT_NAME} plist_util ${GMPI_PLUGIN_PROJECT_NAME})
+        if(GMPI_AU3_IOS)
+            add_dependencies(${SUB_PROJECT_NAME} plist_util_host)
 
-        add_custom_command(TARGET ${SUB_PROJECT_NAME}
-            POST_BUILD
-            COMMAND $<TARGET_FILE:plist_util>
-                "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"       # input: GMPI bundle to scan
-                "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>/Contents/Info.plist" # output: Info.plist to overwrite
-                --au3 "${SUB_PROJECT_NAME}" "${AU3_APPEX_BUNDLE_ID}"
-            COMMENT "Overwriting Info.plist in AU3 appex with plist_util"
-            VERBATIM
-        )
+            add_custom_command(TARGET ${SUB_PROJECT_NAME}
+                POST_BUILD
+                COMMAND "${GMPI_AU3_PLIST_UTIL_HOST}" --xml
+                    "${plugin_xml_file}"                                        # input: the plugin's metadata declaration
+                    "$<TARGET_BUNDLE_CONTENT_DIR:${SUB_PROJECT_NAME}>/Info.plist" # output: Info.plist to overwrite
+                    --au3 "${SUB_PROJECT_NAME}" "${AU3_APPEX_BUNDLE_ID}"
+                COMMENT "Overwriting Info.plist in AU3 appex with plist_util (--xml)"
+                VERBATIM
+            )
+        else()
+            add_dependencies(${SUB_PROJECT_NAME} plist_util ${GMPI_PLUGIN_PROJECT_NAME})
+
+            add_custom_command(TARGET ${SUB_PROJECT_NAME}
+                POST_BUILD
+                COMMAND $<TARGET_FILE:plist_util>
+                    "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"          # input: GMPI bundle to scan
+                    "$<TARGET_BUNDLE_CONTENT_DIR:${SUB_PROJECT_NAME}>/Info.plist" # output: Info.plist to overwrite
+                    --au3 "${SUB_PROJECT_NAME}" "${AU3_APPEX_BUNDLE_ID}"
+                COMMENT "Overwriting Info.plist in AU3 appex with plist_util"
+                VERBATIM
+            )
+        endif()
 
         # ---- the containing app ----
         # An .appex cannot exist on its own; this app's one job is carrying it
-        # in PlugIns/, where LaunchServices finds and registers it.
-        add_executable(${AU3_APP_NAME} MACOSX_BUNDLE
-            ${GMPI_ADAPTORS}/wrapper/AU3/mac/HostAppMain.mm
-        )
-        target_link_libraries(${AU3_APP_NAME} PRIVATE ${COCOA_LIBRARY})
+        # in PlugIns/, where the system finds and registers it.
+        #
+        # Frameworks by raw flag, not ${COCOA_LIBRARY}: those cache entries are
+        # filled by the WRAPPERS' find_library calls, and a consumer may legally
+        # add_subdirectory the wrappers after its plugins - on a fresh configure
+        # this app would then link no frameworks at all. The appex above is safe
+        # either way (AU3_Wrapper's own interface carries its frameworks); this
+        # app links no wrapper, so it must not lean on that cache.
+        if(GMPI_AU3_IOS)
+            add_executable(${AU3_APP_NAME} MACOSX_BUNDLE
+                ${GMPI_ADAPTORS}/wrapper/AU3/ios/HostAppMain.mm
+            )
+            target_link_libraries(${AU3_APP_NAME} PRIVATE "-framework UIKit" "-framework Foundation")
+            set(AU3_APP_PLIST "${GMPI_ADAPTORS}/wrapper/AU3/ios/HostApp-Info.plist.in")
+        else()
+            add_executable(${AU3_APP_NAME} MACOSX_BUNDLE
+                ${GMPI_ADAPTORS}/wrapper/AU3/mac/HostAppMain.mm
+            )
+            target_link_libraries(${AU3_APP_NAME} PRIVATE "-framework Cocoa")
+            set(AU3_APP_PLIST "${GMPI_ADAPTORS}/wrapper/AU3/mac/HostApp-Info.plist.in")
+        endif()
+
         set_target_properties(${AU3_APP_NAME} PROPERTIES
-            MACOSX_BUNDLE_INFO_PLIST "${GMPI_ADAPTORS}/wrapper/AU3/mac/HostApp-Info.plist.in"
+            MACOSX_BUNDLE_INFO_PLIST "${AU3_APP_PLIST}"
             MACOSX_BUNDLE_BUNDLE_NAME "${GMPI_PLUGIN_PROJECT_NAME}"
             MACOSX_BUNDLE_GUI_IDENTIFIER "${AU3_APP_BUNDLE_ID}"
             MACOSX_BUNDLE_BUNDLE_VERSION "${plugin_version}"
@@ -941,26 +1042,45 @@ function(gmpi_plugin)
         # An always-run custom target, NOT a POST_BUILD on the app: a change to
         # the appex alone leaves the app up-to-date, and its POST_BUILD would
         # not re-run - deploying a stale extension that looks exactly like
-        # "my change did nothing". Signed inside-out, ad-hoc; the sandbox
-        # entitlement is the one thing the extension cannot load without.
+        # "my change did nothing". Signed inside-out, ad-hoc.
         set(AU3_ASSEMBLE_COMMANDS
             COMMAND ${CMAKE_COMMAND} -E make_directory
-                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>/Contents/PlugIns"
+                "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
-                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>/Contents/PlugIns/${SUB_PROJECT_NAME}.appex"
-            COMMAND codesign --force --sign - --entitlements "${GMPI_ADAPTORS}/wrapper/AU3/appex.entitlements"
-                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>/Contents/PlugIns/${SUB_PROJECT_NAME}.appex"
-            COMMAND codesign --force --sign -
-                "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
+                "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/${SUB_PROJECT_NAME}.appex"
         )
+
+        if(GMPI_AU3_IOS)
+            # No entitlements file: iOS processes are sandboxed by definition,
+            # and com.apple.security.app-sandbox is a macOS key. The ad-hoc
+            # signature satisfies the simulator; a device build re-signs with a
+            # real identity outside this build.
+            list(APPEND AU3_ASSEMBLE_COMMANDS
+                COMMAND codesign --force --sign -
+                    "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/${SUB_PROJECT_NAME}.appex"
+                COMMAND codesign --force --sign -
+                    "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
+            )
+        else()
+            # The sandbox entitlement is the one thing a macOS extension cannot
+            # load without.
+            list(APPEND AU3_ASSEMBLE_COMMANDS
+                COMMAND codesign --force --sign - --entitlements "${GMPI_ADAPTORS}/wrapper/AU3/appex.entitlements"
+                    "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/${SUB_PROJECT_NAME}.appex"
+                COMMAND codesign --force --sign -
+                    "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
+            )
+        endif()
 
         # Install and register for local development, INSIDE the assemble
         # target so it always runs after a fresh appex is in place - the
         # copy_plugin() route the other formats use is a POST_BUILD on their
         # one target, and here that ordering trap is the whole reason assemble
-        # exists.
-        if(SE_LOCAL_BUILD)
+        # exists. macOS only: on iOS "install" means a simulator or device -
+        # `xcrun simctl install booted <app>` after building, and launching it
+        # once registers the extension there.
+        if(SE_LOCAL_BUILD AND NOT GMPI_AU3_IOS)
             list(APPEND AU3_ASSEMBLE_COMMANDS
                 COMMAND ${CMAKE_COMMAND} -E copy_directory
                     "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
