@@ -850,14 +850,20 @@ function(gmpi_plugin)
             # bundle around it after linking.
             set_target_properties(${SUB_PROJECT_NAME} PROPERTIES PREFIX "" SUFFIX ".so")
 
-            set(vst3_bundle "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}.vst3")
+            # The bundle DIRECTORY must match the .so inside it -- a host looks for
+            # "<name>.vst3/Contents/<arch>-linux/<name>.so". $<TARGET_FILE_BASE_NAME>
+            # follows OUTPUT_NAME, which is what names the .so; ${SUB_PROJECT_NAME} is
+            # the TARGET, which does not. They diverge the moment a plugin sets
+            # OUTPUT_NAME, and the result loads on macOS and Windows (whose bundle
+            # names come from OUTPUT_NAME for free) while silently failing here.
+            set(vst3_bundle "${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.vst3")
             set(vst3_bundle_arch "${vst3_bundle}/Contents/${CMAKE_SYSTEM_PROCESSOR}-linux")
 
             add_custom_command(TARGET ${SUB_PROJECT_NAME} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E make_directory "${vst3_bundle_arch}"
                 COMMAND ${CMAKE_COMMAND} -E copy_if_different
                     "$<TARGET_FILE:${SUB_PROJECT_NAME}>" "${vst3_bundle_arch}/"
-                COMMENT "Assembling VST3 bundle ${SUB_PROJECT_NAME}.vst3"
+                COMMENT "Assembling VST3 bundle $<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.vst3"
                 VERBATIM
             )
 
@@ -1163,8 +1169,8 @@ function(gmpi_plugin)
                         POST_BUILD
                         COMMAND ${CMAKE_COMMAND} -E make_directory "${DEST_DIR}"
                         COMMAND ${CMAKE_COMMAND} -E copy_directory
-                            "${CMAKE_CURRENT_BINARY_DIR}/${TARGET_NAME}.vst3"
-                            "${DEST_DIR}/${TARGET_NAME}.vst3"
+                            "${CMAKE_CURRENT_BINARY_DIR}/$<TARGET_FILE_BASE_NAME:${TARGET_NAME}>.vst3"
+                            "${DEST_DIR}/$<TARGET_FILE_BASE_NAME:${TARGET_NAME}>.vst3"
                         COMMENT "Copy to ${DEST_DIR}"
                         VERBATIM
                     )
