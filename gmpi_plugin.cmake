@@ -737,6 +737,14 @@ function(gmpi_plugin)
                     # the Linux VST3 bundle name (TideSynth issue #271): a
                     # DERIVED name sitting beside a generator-expression one.
                     --exe-name "$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>"
+                    # And the bundle identifier, from whatever the target
+                    # declares. A plug-in that sets MACOSX_BUNDLE_GUI_IDENTIFIER
+                    # gets it in its AU plist too, instead of the key being
+                    # omitted entirely and codesign inventing one from a hash.
+                    # Empty when the target sets nothing, and plist_util omits
+                    # the key on empty -- so this is a no-op for every existing
+                    # caller rather than a new default.
+                    --bundle-id "$<TARGET_PROPERTY:${SUB_PROJECT_NAME},MACOSX_BUNDLE_GUI_IDENTIFIER>"
                 COMMENT "Overwriting Info.plist in AU component with plist_util"
                 VERBATIM
             )
