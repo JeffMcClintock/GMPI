@@ -61,23 +61,46 @@ set(GMPI_PLUGIN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 # comment is still indistinguishable from the real thing, because that is also
 # where the real one is written. The cost of being fooled is a wrong name or
 # version in a resource, never a broken build.
+# TWO PASSES, AND THE FIRST ONE IS THE POINT. A <Plugin> tag alone is not
+# enough to make a file usable: plist_util's --xml mode requires a <PluginList>
+# wrapper and exits "ERROR: No <PluginList> element in ..." without one. A MODULE
+# source legitimately declares a bare <Plugin> -- TIDE's modules/TiDEknob.cpp
+# does -- so the old single pass could hand back a file the consumer then
+# rejected, and the chooser's rule being weaker than the consumer's requirement
+# is the whole bug.
+#
+# It went unseen because only the iOS AU3 path feeds this file to plist_util;
+# every other format derives its plist from the built binary instead, so on
+# macOS the mismatch has no consumer and never shows.
+#
+# The <Plugin>-only pass is KEPT as a fallback rather than replaced, because
+# plugin_xml_file also feeds GMPI_RC_SOURCE on Windows, which has no such
+# requirement -- tightening the rule outright could drop a file that has worked
+# there for years.
 function(gmpi_find_plugin_element out_tag out_file)
     cmake_parse_arguments(ARG "" "" "FILES" ${ARGN})
 
-    foreach(candidate IN LISTS ARG_FILES)
-        if(NOT EXISTS "${candidate}" OR IS_DIRECTORY "${candidate}")
-            continue()
-        endif()
+    foreach(require_list IN ITEMS TRUE FALSE)
+        foreach(candidate IN LISTS ARG_FILES)
+            if(NOT EXISTS "${candidate}" OR IS_DIRECTORY "${candidate}")
+                continue()
+            endif()
 
-        file(READ "${candidate}" contents)
-        string(REGEX MATCH "[\r\n][ \t]*(<Plugin[ \t\r\n][^>]*>)" tag "${contents}")
-        set(tag "${CMAKE_MATCH_1}")
+            file(READ "${candidate}" contents)
 
-        if(NOT tag STREQUAL "")
-            set(${out_tag} "${tag}" PARENT_SCOPE)
-            set(${out_file} "${candidate}" PARENT_SCOPE)
-            return()
-        endif()
+            if(require_list AND NOT contents MATCHES "<PluginList>")
+                continue()
+            endif()
+
+            string(REGEX MATCH "[\r\n][ \t]*(<Plugin[ \t\r\n][^>]*>)" tag "${contents}")
+            set(tag "${CMAKE_MATCH_1}")
+
+            if(NOT tag STREQUAL "")
+                set(${out_tag} "${tag}" PARENT_SCOPE)
+                set(${out_file} "${candidate}" PARENT_SCOPE)
+                return()
+            endif()
+        endforeach()
     endforeach()
 
     set(${out_tag} "" PARENT_SCOPE)
@@ -1011,7 +1034,11 @@ function(gmpi_plugin)
     endif()
 
     if(FIND_AU3_INDEX GREATER_EQUAL 0)
-        # The AUv3 app extension: <Plugin>_AU3.appex inside <Plugin>_AU3App.app.
+        # The AUv3 app extension, inside <Plugin>_AU3App.app. The appex is named
+        # after the TARGET FILE, not the target -- so with OUTPUT_NAME set it is
+        # e.g. TIDE-Rack.appex, not TIDE_Rack_AU3.appex. iOS requires that; see
+        # the note on the copy below. (GMPI_Wrappers/wrapper/AU3/README.md still
+        # says <Plugin>_AU3.appex and is now stale.)
         # Two executables and an assembly step, which is why this lives outside
         # the MODULE-per-format loop above. One block serves macOS and iOS;
         # $<TARGET_BUNDLE_CONTENT_DIR> is what absorbs the layouts (.app/Contents
@@ -1091,6 +1118,19 @@ function(gmpi_plugin)
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
         )
 
+        # ISSUE #271's CLASS, ONCE MORE: the copies below used to name the appex
+        # ${SUB_PROJECT_NAME} -- the TARGET name -- while the bundle CMake
+        # actually builds is named by OUTPUT_NAME. For TIDE that is TIDE_Rack_AU3
+        # against TIDE-Rack.appex.
+        #
+        # ON macOS THAT MISMATCH IS COSMETIC. ON iOS IT IS FATAL, and the error
+        # names nothing useful: codesign reports "bundle format unrecognized,
+        # invalid, or unsuitable". An iOS bundle is FLAT, and for a flat bundle
+        # codesign takes the executable name from the BUNDLE'S OWN NAME rather
+        # than from CFBundleExecutable -- so TIDE_Rack_AU3.appex made it look for
+        # an executable called TIDE_Rack_AU3, which does not exist. Measured:
+        # the identical bundle signs rc=0 when renamed TIDE-Rack.appex and
+        # rc=1 as TIDE_Rack_AU3.appex.
         if(GMPI_AU3_IOS)
             add_dependencies(${SUB_PROJECT_NAME} plist_util_host)
 
@@ -1167,7 +1207,7 @@ function(gmpi_plugin)
                 "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns"
             COMMAND ${CMAKE_COMMAND} -E copy_directory
                 "$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>"
-                "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/${SUB_PROJECT_NAME}.appex"
+                "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
         )
 
         if(GMPI_AU3_IOS)
@@ -1177,7 +1217,7 @@ function(gmpi_plugin)
             # real identity outside this build.
             list(APPEND AU3_ASSEMBLE_COMMANDS
                 COMMAND codesign --force --sign -
-                    "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/${SUB_PROJECT_NAME}.appex"
+                    "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
                 COMMAND codesign --force --sign -
                     "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
             )
@@ -1186,7 +1226,7 @@ function(gmpi_plugin)
             # load without.
             list(APPEND AU3_ASSEMBLE_COMMANDS
                 COMMAND codesign --force --sign - --entitlements "${GMPI_ADAPTORS}/wrapper/AU3/appex.entitlements"
-                    "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/${SUB_PROJECT_NAME}.appex"
+                    "$<TARGET_BUNDLE_CONTENT_DIR:${AU3_APP_NAME}>/PlugIns/$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
                 COMMAND codesign --force --sign -
                     "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
             )
@@ -1205,13 +1245,13 @@ function(gmpi_plugin)
                     "$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>"
                     "$ENV{HOME}/Applications/${AU3_APP_NAME}.app"
                 COMMAND pluginkit -a
-                    "$ENV{HOME}/Applications/${AU3_APP_NAME}.app/Contents/PlugIns/${SUB_PROJECT_NAME}.appex"
+                    "$ENV{HOME}/Applications/${AU3_APP_NAME}.app/Contents/PlugIns/$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
             )
         endif()
 
         add_custom_target(${SUB_PROJECT_NAME}_assemble ALL
             ${AU3_ASSEMBLE_COMMANDS}
-            COMMENT "Assembling ${AU3_APP_NAME}.app with ${SUB_PROJECT_NAME}.appex"
+            COMMENT "Assembling ${AU3_APP_NAME}.app with $<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
             VERBATIM
         )
         add_dependencies(${SUB_PROJECT_NAME}_assemble ${SUB_PROJECT_NAME} ${AU3_APP_NAME})
