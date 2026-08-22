@@ -206,6 +206,65 @@ endfunction()
 
 ################################################################
 
+# Give every Objective-C class in this plugin a name unique to this plugin.
+#
+# THE PROBLEM. The Objective-C runtime has ONE FLAT, PROCESS-WIDE CLASS
+# NAMESPACE. Two GMPI plugins loaded into one host that export the same class
+# name do not get one each -- whichever loads first wins and every later one
+# silently receives the first one's implementation. macOS prints "is
+# implemented in both ... This may cause spurious casting failures and
+# mysterious crashes" and carries on. The _01/_03/_04 suffixes already on those
+# names separate SDK VERSIONS; they can never separate two plugins built from
+# the SAME version, which is the case a user hits by installing two GMPI
+# plugins.
+#
+# CALL THIS FROM YOUR TOP-LEVEL CMakeLists.txt, AFTER project() AND BEFORE ANY
+# add_subdirectory(). That is not style advice, it is the only placement that
+# works, and it is why this is a separate call rather than something
+# gmpi_plugin() does for you. Measured in TIDE 2026-08-22: gmpi_ui's .mm sources
+# compile into SEVERAL targets per plugin -- SynthEditLib, AU3_Wrapper,
+# CLAP_Wrapper, AU_Wrapper and more -- and those targets live in DIFFERENT
+# directories, several of which are add_subdirectory()'d BEFORE the one that
+# calls gmpi_plugin(). A definition added from inside gmpi_plugin() would
+# therefore be both too late and in the wrong directory, and would reach almost
+# none of the code that declares these classes.
+#
+# CALLING IT REQUIRES THIS FILE TO BE include()d AT THE TOP LEVEL, AND NOT
+# EVERY PLUGIN DOES THAT. TIDE includes it from SynthEditSem/CMakeLists.txt,
+# which is add_subdirectory()'d after SynthEditLib -- so at the point the call
+# has to happen the function does not exist yet, and the configure fails with
+# "Unknown CMake command". Measured, not predicted: that is exactly what
+# happened when this was first tried. Such a project should either include this
+# file earlier or simply write the definition itself --
+#
+#     add_compile_definitions(GMPI_OBJC_SUFFIX=_MyPlugin)
+#
+# -- which is equally correct, has no include-order requirement at all, and is
+# what the check below accepts as well.
+#
+# The suffix only has to be unique between plugins, so the project name is
+# enough; anything not valid in a C identifier is replaced.
+function(gmpi_objc_class_suffix name)
+    if(NOT APPLE)
+        return()
+    endif()
+
+    if(NOT name)
+        message(FATAL_ERROR "gmpi_objc_class_suffix(<name>) requires a name.")
+    endif()
+
+    string(REGEX REPLACE "[^A-Za-z0-9_]" "_" _gmpi_objc_suffix "${name}")
+
+    # Directory-scoped, and add_compile_definitions() applies to the scope of
+    # the CALLER, which is exactly the top-level scope this must be called from.
+    # It propagates to every add_subdirectory() that follows.
+    add_compile_definitions(GMPI_OBJC_SUFFIX=_${_gmpi_objc_suffix})
+
+    # A global property rather than a cache entry, so it resets on every
+    # configure instead of remembering a call that has since been deleted.
+    set_property(GLOBAL PROPERTY GMPI_OBJC_SUFFIX_SET "${_gmpi_objc_suffix}")
+endfunction()
+
 function(gmpi_plugin)
     set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE USE_STAGING)
     set(oneValueArgs PROJECT_NAME)
@@ -218,6 +277,34 @@ function(gmpi_plugin)
 
     if(NOT GMPI_SDK)
         message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_SDK to be set.")
+    endif()
+
+    # Forgetting the suffix costs nothing at build time and produces a plugin
+    # that collides with every other GMPI plugin the user has installed, with
+    # the only symptom a runtime warning nobody reads. Say so here instead.
+    if(APPLE)
+        get_property(_gmpi_objc_suffix_set GLOBAL PROPERTY GMPI_OBJC_SUFFIX_SET)
+
+        # A project may equally have set the define itself rather than calling
+        # the helper; that is just as correct, so do not nag about it. Directory
+        # COMPILE_DEFINITIONS are inherited by add_subdirectory(), so a suffix
+        # set at the top level is visible here.
+        if(NOT _gmpi_objc_suffix_set)
+            get_directory_property(_gmpi_dir_defs COMPILE_DEFINITIONS)
+            if(_gmpi_dir_defs MATCHES "GMPI_OBJC_SUFFIX")
+                set(_gmpi_objc_suffix_set TRUE)
+            endif()
+        endif()
+
+        if(NOT _gmpi_objc_suffix_set)
+            message(WARNING
+                "gmpi_objc_class_suffix() was never called, so this plugin's "
+                "Objective-C classes keep their SDK-wide names and will collide "
+                "with any other GMPI plugin loaded into the same host. Add "
+                "gmpi_objc_class_suffix(${GMPI_PLUGIN_PROJECT_NAME}) to your "
+                "top-level CMakeLists.txt, after project() and before any "
+                "add_subdirectory().")
+        endif()
     endif()
     if(NOT DEFINED GMPI_UI_SDK AND DEFINED HAS_GUI)
         message(FATAL_ERROR "function(gmpi_plugin) requires GMPI_UI_SDK to be set.")
