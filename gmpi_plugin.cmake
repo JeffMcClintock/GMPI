@@ -1099,9 +1099,23 @@ function(gmpi_plugin)
         endif()
 
         # The identifier must be PREFIXED by the containing app's - that pair
-        # is how the system ties extension to app.
+        # is how the system ties extension to app. iOS ENFORCES IT; macOS does
+        # not, which is why breaking it stayed invisible until the first iOS
+        # install attempt returned "Failed to create app extension placeholder".
+        #
+        # THE DEFAULT BELOW IS ONLY A DEFAULT. A plugin may rename the containing
+        # app - TIDE does, to com.tidesynth.tiderack.au3app - and when it renamed
+        # only the app, the pair silently came apart: the extension kept
+        # com.gmpi.au3.TIDE_Rack.extension and the two then shared no prefix at
+        # all. A rule stated in a comment did not survive one override.
+        #
+        # So the extension's id is now DERIVED from whatever the app target
+        # actually ends up with, as a generator expression, instead of from the
+        # same string a plugin is free to replace. Generator expressions resolve
+        # after every CMakeLists has run, so an override applied later still
+        # carries the extension with it and the pair cannot be half-renamed.
         set(AU3_APP_BUNDLE_ID "com.gmpi.au3.${GMPI_PLUGIN_PROJECT_NAME}")
-        set(AU3_APPEX_BUNDLE_ID "${AU3_APP_BUNDLE_ID}.extension")
+        set(AU3_APPEX_BUNDLE_ID "$<TARGET_PROPERTY:${AU3_APP_NAME},MACOSX_BUNDLE_GUI_IDENTIFIER>.extension")
 
         # CMake's default bundle plist is only a stub to link against; the real
         # one - NSExtension, AudioComponents, the identity fourCCs - is written
@@ -1113,7 +1127,12 @@ function(gmpi_plugin)
         # plugin cannot disagree about who they are.
         set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
             BUNDLE_EXTENSION "appex"
-            MACOSX_BUNDLE_GUI_IDENTIFIER "${AU3_APPEX_BUNDLE_ID}"
+            # NOT AU3_APPEX_BUNDLE_ID: that is a generator expression now, and
+            # CMake's Info.plist substitution does not evaluate one -- it would
+            # write the literal text $<TARGET_PROPERTY:...> into the stub. The
+            # stub is discarded anyway, because plist_util overwrites the whole
+            # file with the real identifier below.
+            MACOSX_BUNDLE_GUI_IDENTIFIER "${AU3_APP_BUNDLE_ID}.extension"
             MACOSX_BUNDLE_BUNDLE_VERSION "${plugin_version}"
             MACOSX_BUNDLE_SHORT_VERSION_STRING "${plugin_version}"
         )
