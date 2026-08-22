@@ -727,6 +727,16 @@ function(gmpi_plugin)
                 COMMAND $<TARGET_FILE:plist_util>
                     "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"      # input: GMPI bundle to scan
                     "${AU_PLIST}"                                           # output: Info.plist to overwrite
+                    # TELL it the executable name instead of letting it guess.
+                    # plist_util defaults CFBundleExecutable to "<stem>_AU",
+                    # which is right only while the plugin leaves OUTPUT_NAME
+                    # unset. When it is set the plist names a binary that is
+                    # not there, and macOS refuses to register the component
+                    # with "didn't find the component" -- a build that
+                    # succeeds and a plug-in no host can load. Same defect as
+                    # the Linux VST3 bundle name (TideSynth issue #271): a
+                    # DERIVED name sitting beside a generator-expression one.
+                    --exe-name "$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>"
                 COMMENT "Overwriting Info.plist in AU component with plist_util"
                 VERBATIM
             )
