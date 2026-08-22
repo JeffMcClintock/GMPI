@@ -1004,7 +1004,15 @@ function(gmpi_plugin)
                 COMMAND "${GMPI_AU3_PLIST_UTIL_HOST}" --xml
                     "${plugin_xml_file}"                                        # input: the plugin's metadata declaration
                     "$<TARGET_BUNDLE_CONTENT_DIR:${SUB_PROJECT_NAME}>/Info.plist" # output: Info.plist to overwrite
-                    --au3 "${SUB_PROJECT_NAME}" "${AU3_APPEX_BUNDLE_ID}"
+                    # TARGET_FILE_BASE_NAME, not the target name: the appex's
+                    # binary is named by OUTPUT_NAME, and CFBundleExecutable has
+                    # to match it or macOS silently declines to load the
+                    # extension. Same defect as the AU2 component (TideSynth
+                    # issue #271's class): a DERIVED name beside a
+                    # generator-expression one. Measured on TIDE Rack 2026-08-22,
+                    # whose appex declared TIDE_Rack_AU3 over a binary called
+                    # TIDE-Rack.
+                    --au3 "$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>" "${AU3_APPEX_BUNDLE_ID}"
                 COMMENT "Overwriting Info.plist in AU3 appex with plist_util (--xml)"
                 VERBATIM
             )
@@ -1016,7 +1024,7 @@ function(gmpi_plugin)
                 COMMAND $<TARGET_FILE:plist_util>
                     "$<TARGET_BUNDLE_DIR:${GMPI_PLUGIN_PROJECT_NAME}>"          # input: GMPI bundle to scan
                     "$<TARGET_BUNDLE_CONTENT_DIR:${SUB_PROJECT_NAME}>/Info.plist" # output: Info.plist to overwrite
-                    --au3 "${SUB_PROJECT_NAME}" "${AU3_APPEX_BUNDLE_ID}"
+                    --au3 "$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>" "${AU3_APPEX_BUNDLE_ID}"
                 COMMENT "Overwriting Info.plist in AU3 appex with plist_util"
                 VERBATIM
             )
