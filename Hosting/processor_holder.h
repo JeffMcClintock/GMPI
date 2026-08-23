@@ -68,7 +68,22 @@ public:
 	}
 };
 
-/*
+/*  DEAD CODE -- COMMENTED OUT, AND IT READS LIKE LIVE CODE.
+
+    The GmpiParameter below, setBlob() included, is NOT COMPILED. The
+    real one comes from controller_holder.h, included at the top of this
+    file, and its setBlob() stores the data correctly.
+
+    This block has now misled two investigations into "the processor
+    discards every blob it is handed", because setBlob() here returns an
+    unconditional true with its store commented out -- which would be a
+    real defect if any of it were built. Measured 2026-08-23: a log line
+    inside this setBlob() never fires, while blobs reach the processor
+    normally (13232 bytes on parameter 1 in TIDE).
+
+    Delete it or revive it; leaving it looking live is the one option
+    that keeps costing people time.
+
 struct GmpiParameter : public QueClient // also host-controls, might need to rename it.
 {
 	const paramInfo* info{};
