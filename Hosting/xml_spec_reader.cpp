@@ -39,6 +39,12 @@ static const std::unordered_map<std::string, gmpi::PinDatatype> pinDatatypeInfo 
 	{"float",		gmpi::PinDatatype::Float32},
 	{"int",			gmpi::PinDatatype::Int32},
 	{"string",		gmpi::PinDatatype::String},
+	// Synonym, to ease porting a module from SDK3. There, "string" is the WIDE
+	// type and "string_utf8" is the narrow one; here PinDatatype::String IS
+	// utf-8, so "string_utf8" simply names it explicitly and means the same
+	// thing. Accepting it means an SDK3 xml carried into a GMPI module does not
+	// silently fail to resolve its narrow-string pins.
+	{"string_utf8",	gmpi::PinDatatype::String},
 	{"blob",		gmpi::PinDatatype::Blob},
 	{"midi",		gmpi::PinDatatype::Midi},
 	{"bool",		gmpi::PinDatatype::Bool},
