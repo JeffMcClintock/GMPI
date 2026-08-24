@@ -1,2 +1,4 @@
-.DS_Store
+# .DS_Store was ALSO tracked, and tracking beats .gitignore -- so this line
+# looked like it was working while the file kept showing as modified whenever
+# Finder touched the folder. Untracked in the same commit as this comment.
 .DS_Store
