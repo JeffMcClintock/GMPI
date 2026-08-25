@@ -326,9 +326,22 @@ void interThreadQue::pushString(int p_length, const unsigned char* p_data)
 	fifo_.pushString(p_length, p_data);
 }
 
+// Take raw bytes out WITHOUT decoding them, for a caller that intends to
+// forward the stream rather than consume it.
+//
+// This used to assert(false) as "never called", and that was true right up
+// until a queue needed CARRYING instead of reading: TIDE's editor serialises
+// its parameter edits into a ui->dsp queue whose DSP lives in another object
+// (and under AUv3 another process), so the bytes are shipped across and fed
+// into the processor's own queue, framing intact - see
+// SynthRuntime_editor::takeUiToDspMessages.
+//
+// Safe only when nothing is ALSO calling pollMessage on the same queue: the
+// two share fifo_ and the partial-message state, so a decoder and a forwarder
+// would each take half a stream. In the case above nothing polls it, by
+// construction - the editor's own runtime never runs a processor.
 void interThreadQue::popString(int p_length, const void* p_data)
 {
-	assert(false); // never called.
 	fifo_.popString(p_length, p_data);
 }
 

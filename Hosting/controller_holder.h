@@ -324,20 +324,6 @@ public:
 		return &param;
 	}
 
-	GmpiParameter* setParameterBlob(int id, std::span<const uint8_t> data)
-	{
-		auto it = parameters.find(id);
-		if (it == parameters.end())
-			return {};
-
-		auto& param = it->second;
-
-		if (!param.setBlob(data))
-			return {};
-
-		return &param;
-	}
-
 	/*
 	GmpiParameter* setParameterRaw(int id, std::span<const std::byte> data)
 	{

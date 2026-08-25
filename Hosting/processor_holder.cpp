@@ -388,13 +388,13 @@ bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my
 		int32_t size{};
 		strm >> size;
 
-		std::vector<uint8_t> bytes(static_cast<size_t>(size));
+		blobScratch.resize(static_cast<size_t>(size)); // NO!!!!! setBlob to take stream directly, or at least a span, so we don't have to allocate a vector on every message.
 		if (size > 0)
-			strm.Read(bytes.data(), static_cast<unsigned int>(size));
+			strm.Read(blobScratch.data(), static_cast<unsigned int>(size));
 
 		if (auto* param = patchManager.getParameter(handle); param)
 		{
-			if (param->setBlob(bytes))
+			if (param->setBlob(blobScratch))
 			{
 				constexpr int sampleOffset{};
 				sendParameterToProcessor(*info, param, sampleOffset);

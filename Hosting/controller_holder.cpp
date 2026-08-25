@@ -4,6 +4,8 @@
 #include <vector>
 #include <unordered_set>
 #include <algorithm>
+#include <cstdio>
+#include <cstring>
 #include "tinyXml2/tinyxml2.h"
 
 extern "C"
@@ -615,10 +617,53 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 
 		int32_t size{};
 		strm >> size;
-		std::vector<std::uint8_t> data(size);
-		strm.Read(data.data(), size);
 
-		if (auto param = patchManager.setParameterBlob(handle, data); param)
+		// Read the payload STRAIGHT INTO the parameter's own storage: one
+		// copy, queue to value, no scratch buffer and no compare.
+		//
+		// NO DEDUP, and that is the whole point of this arm. A blob parameter
+		// arriving here is a STREAM, not a value - TIDE's rack-feedback
+		// channel carries whole `ppc` messages this way, and Scope's display
+		// frames likewise. The gate this replaces (setParameterBlob returning
+		// null when the bytes matched) silently swallowed identical batches,
+		// which is not a lost repaint but LOST MESSAGES. Measured 2026-08-25:
+		// the inner rack's feedback settled into a repeating 12-byte message,
+		// every batch compared equal, every batch was dropped, and the editor
+		// stopped receiving anything at all - module lights frozen, blinking
+		// LED dead. Same rule as the processor-side blob arm; see setPin's
+		// Blob case in processor_holder.cpp, which learned it first.
+		//
+		// Dropping the compare also costs nothing to skip: a compare that can
+		// never gate anything is pure memory bandwidth.
+		auto* param = patchManager.getParameter(handle);
+		std::vector<uint8_t>* value{};
+		if (param)
+		{
+			// A parameter whose variant still holds a number (a spec whose
+			// datatype disagrees with what the DSP sends) gets converted
+			// rather than skipped - setBlob used to do this, and silently
+			// discarding every message instead is far worse than a surprise.
+			if (!std::holds_alternative<std::vector<uint8_t>>(param->value_))
+				param->value_.emplace<std::vector<uint8_t>>();
+
+			value = std::get_if<std::vector<uint8_t>>(&param->value_);
+		}
+
+		if (value)
+		{
+			value->resize(static_cast<size_t>(size));   // keeps high-water capacity
+			if (size > 0)
+				strm.Read(value->data(), static_cast<unsigned int>(size));
+		}
+		else if (size > 0)
+		{
+			// Unknown handle: the framing still requires consuming the
+			// payload, or every later message is read out of alignment.
+			std::vector<uint8_t> discard(static_cast<size_t>(size));
+			strm.Read(discard.data(), static_cast<unsigned int>(size));
+		}
+
+		if (value)
 		{
 			constexpr int32_t voice{ 0 };
 
@@ -648,8 +693,7 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 						case gmpi::PinDatatype::Blob:
 						case gmpi::PinDatatype::String:
 						{
-							const auto& value = std::get<std::vector<uint8_t>>(param->value_); // param->value_;
-							gui->setPin(pin.id, 0, static_cast<int32_t>(value.size()), value.data());
+							gui->setPin(pin.id, 0, static_cast<int32_t>(value->size()), value->data());
 							gui->notifyPin(pin.id, voice);
 						}
 						break;
