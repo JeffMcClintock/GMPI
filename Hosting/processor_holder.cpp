@@ -649,8 +649,16 @@ gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_
 			break;
 			case gmpi::PinDatatype::Blob:
 			{
-				if (param->setBlob({ data, (size_t) size }))
-					pendingControllerQueueClients.AddWaiter(param);
+				// UNCONDITIONAL, unlike the scalar cases above: a blob output
+				// parameter is a STREAM, not a value. Scope captures and
+				// TIDE's rack-feedback channel send each update explicitly
+				// (sendPinUpdate), and a payload that happens to be
+				// byte-identical to the previous one is still a send - with
+				// the change-compare here, a value the DSP wrote back to its
+				// previous state was silently never shipped, and the compare
+				// itself is a memcmp of the whole blob per block for nothing.
+				param->setBlob({ data, (size_t) size });
+				pendingControllerQueueClients.AddWaiter(param);
 			}
 			break;
 			default:
