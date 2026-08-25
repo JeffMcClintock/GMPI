@@ -289,7 +289,7 @@ function(gmpi_objc_class_suffix name)
 endfunction()
 
 function(gmpi_plugin)
-    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE USE_STAGING)
+    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE USE_STAGING NO_LOCAL_VST3_COPY)
     set(oneValueArgs PROJECT_NAME)
     set(multiValueArgs FORMATS_LIST SOURCE_FILES)
     cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -1361,8 +1361,22 @@ function(gmpi_plugin)
         
         if(WIN32)
             if(FIND_VST3_INDEX GREATER_EQUAL 0)
-                copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3
-                            "C:\\Program Files\\Common Files\\VST3" "vst3")
+                # NO_LOCAL_VST3_COPY: for a plugin that needs more beside the
+                # binary than this function knows how to copy -- TIDE stages a
+                # Prefabs/ folder and pin XMLs next to it, and this function's
+                # copy_plugin() copies only the bare .vst3. Dropping a LOOSE
+                # FILE at "Common Files\VST3\<name>.vst3" first and the caller
+                # then wanting a Contents\x86_64-win\... FOLDER of the same
+                # name at the same path is a file/directory collision, not a
+                # merge -- so the caller must own the whole local-install step
+                # instead of layering on top of this one. Every other Windows
+                # VST3 plugin is unaffected: the flag defaults unset in
+                # cmake_parse_arguments, which parses false for every option
+                # not passed.
+                if(NOT GMPI_PLUGIN_NO_LOCAL_VST3_COPY)
+                    copy_plugin(${GMPI_PLUGIN_PROJECT_NAME}_VST3
+                                "C:\\Program Files\\Common Files\\VST3" "vst3")
+                endif()
                 set_target_properties(${GMPI_PLUGIN_PROJECT_NAME}_VST3 PROPERTIES FOLDER "VST3 plugins")
             endif()
 
