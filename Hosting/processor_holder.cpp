@@ -388,7 +388,7 @@ bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my
 		int32_t size{};
 		strm >> size;
 
-		blobScratch.resize(static_cast<size_t>(size));
+		blobScratch.resize(static_cast<size_t>(size)); // NO!!!!! setBlob to take stream directly, or at least a span, so we don't have to allocate a vector on every message.
 		if (size > 0)
 			strm.Read(blobScratch.data(), static_cast<unsigned int>(size));
 

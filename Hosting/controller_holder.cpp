@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_set>
 #include <algorithm>
+#include <cstdio>
 #include <cstring>
 #include "tinyXml2/tinyxml2.h"
 
@@ -617,60 +618,52 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 		int32_t size{};
 		strm >> size;
 
-		// Read the payload STRAIGHT INTO the parameter's own storage,
-		// comparing AS it copies - one pass, no scratch buffer, and the
-		// change detection survives the in-place write. The resize is the
-		// first compare: a different length IS a change, noticed before a
-		// byte moves. While the bytes still match the previous frame, small
-		// chunks bounce through the stack so the old bytes can be checked
-		// before they are overwritten; from the first difference onward -
-		// for an animating display, within the first chunk - the rest reads
-		// straight into place, single copy, no comparing. So a byte-identical
-		// frame costs one compare and no notify; an animating frame costs
-		// one copy plus a 4KB bounce.
+		// Read the payload STRAIGHT INTO the parameter's own storage: one
+		// copy, queue to value, no scratch buffer and no compare.
 		//
-		// Skipping the notify on identical bytes is safe at THIS hop, unlike
-		// the processor-side blob arm: the editor pin is a last-writer-wins
-		// display of the latest value, so an update that changes nothing
-		// carries nothing - dropping it saves an invalidate and a re-render
-		// and loses no information. (The processor arm must ship every
-		// update; see setPin's Blob case for that rule.)
+		// NO DEDUP, and that is the whole point of this arm. A blob parameter
+		// arriving here is a STREAM, not a value - TIDE's rack-feedback
+		// channel carries whole `ppc` messages this way, and Scope's display
+		// frames likewise. The gate this replaces (setParameterBlob returning
+		// null when the bytes matched) silently swallowed identical batches,
+		// which is not a lost repaint but LOST MESSAGES. Measured 2026-08-25:
+		// the inner rack's feedback settled into a repeating 12-byte message,
+		// every batch compared equal, every batch was dropped, and the editor
+		// stopped receiving anything at all - module lights frozen, blinking
+		// LED dead. Same rule as the processor-side blob arm; see setPin's
+		// Blob case in processor_holder.cpp, which learned it first.
+		//
+		// Dropping the compare also costs nothing to skip: a compare that can
+		// never gate anything is pure memory bandwidth.
 		auto* param = patchManager.getParameter(handle);
-		auto* value = param ? std::get_if<std::vector<uint8_t>>(&param->value_) : nullptr;
-		bool changed = false;
+		std::vector<uint8_t>* value{};
+		if (param)
+		{
+			// A parameter whose variant still holds a number (a spec whose
+			// datatype disagrees with what the DSP sends) gets converted
+			// rather than skipped - setBlob used to do this, and silently
+			// discarding every message instead is far worse than a surprise.
+			if (!std::holds_alternative<std::vector<uint8_t>>(param->value_))
+				param->value_.emplace<std::vector<uint8_t>>();
+
+			value = std::get_if<std::vector<uint8_t>>(&param->value_);
+		}
+
 		if (value)
 		{
-			changed = value->size() != static_cast<size_t>(size);
-			value->resize(static_cast<size_t>(size));
-
-			size_t done = 0;
-			while (done < static_cast<size_t>(size))
-			{
-				if (changed)
-				{
-					strm.Read(value->data() + done, static_cast<unsigned int>(static_cast<size_t>(size) - done));
-					break;
-				}
-
-				uint8_t chunk[4096];
-				const auto n = std::min(sizeof(chunk), static_cast<size_t>(size) - done);
-				strm.Read(chunk, static_cast<unsigned int>(n));
-				changed = 0 != memcmp(value->data() + done, chunk, n);
-				memcpy(value->data() + done, chunk, n);
-				done += n;
-			}
+			value->resize(static_cast<size_t>(size));   // keeps high-water capacity
+			if (size > 0)
+				strm.Read(value->data(), static_cast<unsigned int>(size));
 		}
 		else if (size > 0)
 		{
-			// Unknown handle, or a blob message addressed at a scalar
-			// parameter: the framing still requires consuming the payload,
-			// or every later message is read out of alignment. Cold path -
-			// allocating here is fine.
+			// Unknown handle: the framing still requires consuming the
+			// payload, or every later message is read out of alignment.
 			std::vector<uint8_t> discard(static_cast<size_t>(size));
 			strm.Read(discard.data(), static_cast<unsigned int>(size));
 		}
 
-		if (value && changed)
+		if (value)
 		{
 			constexpr int32_t voice{ 0 };
 
