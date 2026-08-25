@@ -247,6 +247,12 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	gmpi::shared_ptr<gmpi::api::IProcessor> processor;
 	EventQue events;
 	PatchManager patchManager;
+
+	// Scratch for onQueMessageReady's blob arm, which runs on the AUDIO thread
+	// when a chunk push arrives. resize() keeps the high-water capacity, so
+	// after the first (unavoidable) growth the arm is allocation-free; the
+	// per-message vector it replaces heap-allocated on every arrival.
+	std::vector<uint8_t> blobScratch;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 	int MidiInputPinIdx = -1;
     std::vector<gmpi::hosting::GmpiParameter*> nativeParams;

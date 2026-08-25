@@ -615,10 +615,11 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 
 		int32_t size{};
 		strm >> size;
-		std::vector<std::uint8_t> data(size);
-		strm.Read(data.data(), size);
+		blobScratch.resize(static_cast<size_t>(size));
+		if (size > 0)
+			strm.Read(blobScratch.data(), static_cast<unsigned int>(size));
 
-		if (auto param = patchManager.setParameterBlob(handle, data); param)
+		if (auto param = patchManager.setParameterBlob(handle, blobScratch); param)
 		{
 			constexpr int32_t voice{ 0 };
 

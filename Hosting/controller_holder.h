@@ -397,6 +397,12 @@ public:
 	ControllerPatchManager patchManager;
 	std::vector<gmpi::hosting::GmpiParameter*> nativeParams;
 
+	// Scratch for onQueMessageReady's blob arm. resize() keeps the high-water
+	// capacity, so the steady 30Hz display-state stream (65KB/frame) allocates
+	// once ever instead of once per message. Single-threaded use: the queue is
+	// only polled from the GUI/timer thread.
+	std::vector<uint8_t> blobScratch;
+
 	std::vector<gmpi::api::IEditor*> m_editors;
 	gmpi::hosting::interThreadQue message_que_dsp_to_ui;
 
