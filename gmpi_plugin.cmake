@@ -1285,7 +1285,18 @@ function(gmpi_plugin)
             add_executable(${AU3_APP_NAME} MACOSX_BUNDLE
                 ${GMPI_ADAPTORS}/wrapper/AU3/ios/HostAppMain.mm
             )
-            target_link_libraries(${AU3_APP_NAME} PRIVATE "-framework UIKit" "-framework Foundation")
+            # AVFoundation + AudioToolbox because the iOS container app HOSTS
+            # the extension it carries (TideSynth M9) rather than merely
+            # shelving it: AVAudioUnit/AVAudioEngine/AVAudioSession, and the
+            # AudioComponentDescription it reads out of its own PlugIns/.
+            #
+            # Raw flags, not the find_library cache entries, for the reason the
+            # comment above already gives - those are filled by the WRAPPERS'
+            # find_library calls, and a consumer may legally add_subdirectory
+            # the wrappers after its plugins.
+            target_link_libraries(${AU3_APP_NAME} PRIVATE
+                "-framework UIKit" "-framework Foundation"
+                "-framework AVFoundation" "-framework AudioToolbox")
             set(AU3_APP_PLIST "${GMPI_ADAPTORS}/wrapper/AU3/ios/HostApp-Info.plist.in")
         else()
             add_executable(${AU3_APP_NAME} MACOSX_BUNDLE
