@@ -446,9 +446,36 @@ function(gmpi_plugin)
         # variables but the target already made.
         set(GMPI_AU3_PLIST_UTIL_HOST "${CMAKE_BINARY_DIR}/plist_util_host")
         if(NOT TARGET plist_util_host)
+            # `-sdk macosx` IS NOT ENOUGH, AND THE BUILD ONLY BREAKS FROM CLEAN.
+            #
+            # Under the Xcode generator this runs inside a script phase, and
+            # Xcode exports IPHONEOS_DEPLOYMENT_TARGET into its environment.
+            # clang reads that variable and concludes the TARGET OS is iOS --
+            # independently of -sdk, which only chooses the sysroot. So the
+            # compile gets the macOS sysroot and an iPhone target, and the link
+            # dies on the first system dylib it touches:
+            #
+            #   clang++: warning: using sysroot for 'MacOSX' but targeting
+            #            'iPhone' [-Wincompatible-sysroot]
+            #   ld: building for 'iOS', but linking in dylib
+            #       (.../MacOSX.sdk/.../CoreFoundation.tbd) built for 'macOS ...'
+            #
+            # WHY NOBODY HAS HIT THIS: the custom command has an OUTPUT, so it
+            # is skipped entirely once the file exists. Every incremental iOS
+            # build passes; only a fresh tree fails. Measured 2026-08-26 on a
+            # from-scratch `-G Xcode -DCMAKE_SYSTEM_NAME=iOS` configure -- the
+            # same command line succeeds with the variable unset and fails with
+            # `IPHONEOS_DEPLOYMENT_TARGET=18.0` in front of it, which is the
+            # whole A/B.
+            #
+            # Unsetting the variable removes the CAUSE. Passing
+            # -mmacos-version-min also links, but it invents a deployment floor
+            # for a throwaway build-host tool and leaves the misleading variable
+            # in place for whatever gets added here next.
             add_custom_command(
                 OUTPUT "${GMPI_AU3_PLIST_UTIL_HOST}"
-                COMMAND xcrun -sdk macosx clang++ -std=c++20
+                COMMAND "${CMAKE_COMMAND}" -E env --unset=IPHONEOS_DEPLOYMENT_TARGET
+                    xcrun -sdk macosx clang++ -std=c++20
                     "${GMPI_ADAPTORS}/wrapper/common/plist_util.cpp"
                     "${GMPI_ADAPTORS}/wrapper/common/tinyXml2/tinyxml2.cpp"
                     "${GMPI_SDK}/Hosting/dynamic_linking.cpp"
@@ -1127,6 +1154,29 @@ function(gmpi_plugin)
         # plugin cannot disagree about who they are.
         set_target_properties(${SUB_PROJECT_NAME} PROPERTIES
             BUNDLE_EXTENSION "appex"
+            # AN .appex IS AN APP EXTENSION, AND XCODE HAS TO BE TOLD SO.
+            #
+            # CMake derives Xcode's productType from the TARGET type, so a
+            # MACOSX_BUNDLE executable becomes com.apple.product-type.application
+            # no matter what BUNDLE_EXTENSION says. Xcode then adds an
+            # application's Validate phase, which refuses the product it was
+            # just handed:
+            #
+            #   Validate .../TIDE-Rack.appex (in target 'TIDE_Rack_AU3')
+            #       builtin-validationUtility ... -shallow-bundle
+            #   error: unknown application extension '.appex: expected '.app'
+            #          or '.ipa'
+            #
+            # Declaring the real product type removes the phase at its source.
+            # `VALIDATE_PRODUCT=NO` does NOT: measured 2026-08-26 by passing it
+            # on the xcodebuild command line -- it is there in the recorded
+            # invocation -- and getting the identical error, because the phase
+            # belongs to the product type rather than to that setting.
+            #
+            # Xcode generator only; the property is ignored elsewhere, and no
+            # other generator adds a Validate phase, which is why this has only
+            # ever bitten iOS.
+            XCODE_PRODUCT_TYPE "com.apple.product-type.app-extension"
             # NOT AU3_APPEX_BUNDLE_ID: that is a generator expression now, and
             # CMake's Info.plist substitution does not evaluate one -- it would
             # write the literal text $<TARGET_PROPERTY:...> into the stub. The
@@ -1153,20 +1203,57 @@ function(gmpi_plugin)
         if(GMPI_AU3_IOS)
             add_dependencies(${SUB_PROJECT_NAME} plist_util_host)
 
+            # THIS REWRITE IS THE ONE THAT MAKES THE APPEX AN EXTENSION AT ALL,
+            # SO IT MUST NOT GO THROUGH ${CMAKE_COMMAND}'S ARGUMENT ESCAPING.
+            #
+            # Same trap as the assembly below: under the Xcode generator
+            # $<TARGET_BUNDLE_CONTENT_DIR:...> carries Xcode's own
+            # EFFECTIVE_PLATFORM_NAME, and CMake writes it into the script phase
+            # with the dollar escaped, so nothing ever expands it. plist_util
+            # was handed
+            #
+            #   .../SynthEditSem/Release\${EFFECTIVE_PLATFORM_NAME}/X.appex/Info.plist
+            #
+            # and the REAL appex kept CMake's stub plist. Measured 2026-08-26 on
+            # the shipped bundle, and the stub is not close to right:
+            #
+            #   CFBundleIdentifier  com.tidesynth.tiderack.au3   (not the
+            #                       app-prefixed .au3app.extension the command
+            #                       line above passes)
+            #   CFBundlePackageType APPL                          (not XPC!)
+            #   NSExtension         ABSENT ENTIRELY
+            #
+            # An extension without NSExtension cannot be installed at all --
+            # `simctl install` fails with "Failed to create app extension
+            # placeholder", naming nothing useful, which is how this hid.
+            #
+            # Written through a generated script for the same reason as the
+            # assembly, and built with string(APPEND) + \n escapes because this
+            # file is CRLF and a multi-line quoted argument would put a carriage
+            # return on the end of every line of a bash script.
+            set(_au3_plist_sh "#!/bin/bash\n")
+            string(APPEND _au3_plist_sh "set -e\n")
+            string(APPEND _au3_plist_sh
+                "\"${GMPI_AU3_PLIST_UTIL_HOST}\" --xml \"${plugin_xml_file}\"")
+            # TARGET_FILE_BASE_NAME, not the target name: the appex's binary is
+            # named by OUTPUT_NAME, and CFBundleExecutable has to match it or
+            # macOS silently declines to load the extension. Same defect as the
+            # AU2 component (TideSynth issue #271's class): a DERIVED name
+            # beside a generator-expression one. Measured on TIDE Rack
+            # 2026-08-22, whose appex declared TIDE_Rack_AU3 over a binary
+            # called TIDE-Rack.
+            string(APPEND _au3_plist_sh
+                " \"$<TARGET_BUNDLE_CONTENT_DIR:${SUB_PROJECT_NAME}>/Info.plist\"")
+            string(APPEND _au3_plist_sh
+                " --au3 \"$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>\" \"${AU3_APPEX_BUNDLE_ID}\"\n")
+
+            set(_au3_plist_script
+                "${CMAKE_CURRENT_BINARY_DIR}/plist-${SUB_PROJECT_NAME}-$<CONFIG>.sh")
+            file(GENERATE OUTPUT "${_au3_plist_script}" CONTENT "${_au3_plist_sh}")
+
             add_custom_command(TARGET ${SUB_PROJECT_NAME}
                 POST_BUILD
-                COMMAND "${GMPI_AU3_PLIST_UTIL_HOST}" --xml
-                    "${plugin_xml_file}"                                        # input: the plugin's metadata declaration
-                    "$<TARGET_BUNDLE_CONTENT_DIR:${SUB_PROJECT_NAME}>/Info.plist" # output: Info.plist to overwrite
-                    # TARGET_FILE_BASE_NAME, not the target name: the appex's
-                    # binary is named by OUTPUT_NAME, and CFBundleExecutable has
-                    # to match it or macOS silently declines to load the
-                    # extension. Same defect as the AU2 component (TideSynth
-                    # issue #271's class): a DERIVED name beside a
-                    # generator-expression one. Measured on TIDE Rack 2026-08-22,
-                    # whose appex declared TIDE_Rack_AU3 over a binary called
-                    # TIDE-Rack.
-                    --au3 "$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>" "${AU3_APPEX_BUNDLE_ID}"
+                COMMAND bash "${_au3_plist_script}"
                 COMMENT "Overwriting Info.plist in AU3 appex with plist_util (--xml)"
                 VERBATIM
             )
@@ -1268,11 +1355,74 @@ function(gmpi_plugin)
             )
         endif()
 
-        add_custom_target(${SUB_PROJECT_NAME}_assemble ALL
-            ${AU3_ASSEMBLE_COMMANDS}
-            COMMENT "Assembling ${AU3_APP_NAME}.app with $<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
-            VERBATIM
-        )
+        if(GMPI_AU3_IOS AND CMAKE_GENERATOR STREQUAL "Xcode")
+            # THE iOS ASSEMBLY GOES THROUGH A GENERATED SHELL SCRIPT, AND
+            # WITHOUT IT THE WHOLE STEP WRITES INTO A DIRECTORY NAMED AFTER AN
+            # UNEXPANDED VARIABLE.
+            #
+            # Under the Xcode generator $<TARGET_BUNDLE_CONTENT_DIR:...> expands
+            # to a path containing Xcode's own EFFECTIVE_PLATFORM_NAME build
+            # setting, which only Xcode resolves -- and CMake writes it into the
+            # script phase with the DOLLAR ESCAPED, so the shell will not expand
+            # it either:
+            #
+            #   codesign --force --sign - ".../Release\${EFFECTIVE_PLATFORM_NAME}/X.app"
+            #
+            # Measured 2026-08-26 on a from-clean iOS configure. make_directory
+            # and copy_directory do not mind an odd path, so they cheerfully
+            # created a LITERAL directory called Release${EFFECTIVE_PLATFORM_NAME}
+            # and assembled the app inside it; only codesign complained, with
+            # "bundle format unrecognized, invalid, or unsuitable", about a path
+            # nobody had noticed was wrong. The real Release-iphonesimulator app
+            # got no PlugIns at all.
+            #
+            # file(GENERATE) writes its CONTENT literally, so the dollar
+            # survives and bash expands EFFECTIVE_PLATFORM_NAME from the
+            # environment Xcode exports to script phases. Built up with
+            # string(APPEND) and \n escapes rather than a multi-line quoted
+            # argument on purpose: this file is CRLF, and a multi-line string
+            # would put a carriage return at the end of every line of a bash
+            # script -- which does not fail loudly, it silently appends \r to
+            # the last argument of each command.
+            #
+            # iOS + Xcode only. The macOS path above works and is left alone.
+            #
+            # Per-CONFIG filename, required: the script embeds the bundle path,
+            # which contains the configuration under a multi-config generator,
+            # so one shared name makes CMake refuse with "Evaluation file to be
+            # written multiple times with different content".
+            set(_au3_sh "#!/bin/bash\n")
+            string(APPEND _au3_sh "set -e\n")
+            string(APPEND _au3_sh "app=\"$<TARGET_BUNDLE_DIR:${AU3_APP_NAME}>\"\n")
+            string(APPEND _au3_sh "appex=\"$<TARGET_BUNDLE_DIR:${SUB_PROJECT_NAME}>\"\n")
+            string(APPEND _au3_sh "dest=\"$app/PlugIns/$<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex\"\n")
+            # rm before cp: copy_directory MERGES, so a resource deleted from
+            # the appex would linger inside the app forever and the two copies
+            # would quietly disagree about what the plugin contains.
+            string(APPEND _au3_sh "rm -rf \"$dest\"\n")
+            string(APPEND _au3_sh "mkdir -p \"$app/PlugIns\"\n")
+            string(APPEND _au3_sh "cp -R \"$appex\" \"$dest\"\n")
+            # Inside-out, and the ORDER matters: signing the app first and the
+            # extension second invalidates the app's own seal over PlugIns/.
+            string(APPEND _au3_sh "codesign --force --sign - \"$dest\"\n")
+            string(APPEND _au3_sh "codesign --force --sign - \"$app\"\n")
+
+            set(_au3_assemble_script
+                "${CMAKE_CURRENT_BINARY_DIR}/assemble-${AU3_APP_NAME}-$<CONFIG>.sh")
+            file(GENERATE OUTPUT "${_au3_assemble_script}" CONTENT "${_au3_sh}")
+
+            add_custom_target(${SUB_PROJECT_NAME}_assemble ALL
+                COMMAND bash "${_au3_assemble_script}"
+                COMMENT "Assembling ${AU3_APP_NAME}.app with $<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
+                VERBATIM
+            )
+        else()
+            add_custom_target(${SUB_PROJECT_NAME}_assemble ALL
+                ${AU3_ASSEMBLE_COMMANDS}
+                COMMENT "Assembling ${AU3_APP_NAME}.app with $<TARGET_FILE_BASE_NAME:${SUB_PROJECT_NAME}>.appex"
+                VERBATIM
+            )
+        endif()
         add_dependencies(${SUB_PROJECT_NAME}_assemble ${SUB_PROJECT_NAME} ${AU3_APP_NAME})
 
         set_target_properties(${SUB_PROJECT_NAME} PROPERTIES FOLDER "AU3 plugins")
