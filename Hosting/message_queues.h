@@ -295,6 +295,22 @@ public:
 		return readyCount;
 	}
 
+	// How many bytes the consumer has popped since a previous snapshot of
+	// the read index. Wrap-safe, and deliberately NOT debug-only:
+	// interThreadQue::ProcessMessage uses the pair to hold every client to
+	// the message length its own header declared, in every build -- a
+	// client that reads short would otherwise leave its unread bytes to be
+	// parsed as the next message's header, desynchronising the stream
+	// permanently (TIDE BACKLOG E64).
+	int readIndex() const
+	{
+		return read_ptr.load(std::memory_order_relaxed);
+	}
+	int consumedSince(int previousReadIndex) const
+	{
+		return (read_ptr.load(std::memory_order_relaxed) - previousReadIndex + m_que_size) % m_que_size;
+	}
+
 	// Read data into annother FIFO.
 	void Siphon(InterThreadQueBase* receiver, int totalSize)
 	{
