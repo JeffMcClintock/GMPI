@@ -530,6 +530,14 @@ void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input
 					recievingHandle, fourcc, consumed, recievingMessageLength);
 			}
 
+			// LOUD in Debug, exactly as before this change. The drain below is
+			// containment for a RELEASE build -- one damaged message instead of
+			// a permanently garbage stream -- not a licence to leave the client
+			// broken. A handler that read short of its own declared length is
+			// the root-cause bug, and silently swallowing it here would only
+			// move the pain somewhere harder to trace.
+			assert(!handled && "queue client read SHORT of its declared message length");
+
 			char temp[64];
 			int todo = remainder;
 			while (todo > 0)
