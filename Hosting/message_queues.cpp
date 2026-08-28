@@ -1,3 +1,4 @@
+#include <cstdio>
 #include "Hosting/message_queues.h"
 
 #include <string>
@@ -378,16 +379,9 @@ MORE_DATA:
 
 			if (fifo_.readyBytes() >= recievingMessageLength)
 			{
-#if defined( _DEBUG )
-				int initialReadPos = fifo_.debugGetReadPtr();
-#endif
 
 				ProcessMessage(client, strm);
 
-#if defined( _DEBUG )
-				int ReadBytes = fifo_.debugGetReadPtr() - initialReadPos;
-				assert((ReadBytes < 0 || ReadBytes == recievingMessageLength) && "Client Read wrong amnt");
-#endif
 			}
 			else
 			{
@@ -481,16 +475,84 @@ void interThreadQue::ProcessMessage(interThreadQueUser* client, my_msg_que_input
 	}
 	else
 	{
-		if (!client->onQueMessageReady(recievingHandle, recievingMessageId, strm))
+		// Hold the client to the length its own header declared -- in EVERY
+		// build, not only when it reports failure.
+		//
+		// onQueMessageReady dispatches on the handle, and the target it finds
+		// owes nothing to this queue: a target that does not recognise the
+		// message id returns without reading (dsp_msg_target::OnUiMsg is a
+		// no-op), and the target can be the WRONG OBJECT entirely when two
+		// handle spaces collide. Measured (TIDE BACKLOG E64): a host-control
+		// parameter and the DSP document's root container both answered
+		// handle 1, so a 1-byte 'ppc' landed on a container that read none
+		// of it.
+		//
+		// Before this, an unconsumed payload was drained only when the client
+		// returned false ('no such target'). A target that EXISTS but reads
+		// short left its unread bytes in the FIFO, where they were parsed as
+		// the next message's header: the stream was misaligned permanently,
+		// every later message was garbage, and only a _DEBUG assert noticed.
+		// A Release build read the garbage silently.
+		const int readBefore = fifo_.readIndex();
+
+		const bool handled = client->onQueMessageReady(recievingHandle, recievingMessageId, strm);
+
+		const int consumed = fifo_.consumedSince(readBefore);
+		const int remainder = recievingMessageLength - consumed;
+
+		if (remainder > 0)
 		{
-			// If client couldn't handle message (e.g. module muted) discard message to free up que.
-			char temp[8];
-			int todo = recievingMessageLength;
+			// Short read, or no target at all: drain to the declared length so
+			// the next header is read from the right place. This replaces the
+			// old discard-on-false loop and also covers the read-short case
+			// that loop could never see.
+			//
+			// Say so, bounded: a short read is a real defect in whoever sent
+			// or mis-received the message -- survivable now, still worth
+			// fixing. Ten lines per process, so a hot sender cannot turn a
+			// diagnostic into an audio-thread logging storm.
+			static int reported = 0;
+			// 'handled' is the discriminator: false is the ORDINARY discard (a
+			// muted module's target is gone, and the sender could not know) --
+			// quiet, exactly as the old loop was. TRUE with a remainder means a
+			// live target mis-read its own message, which is the defect.
+			if (handled && reported++ < 10)
+			{
+				char fourcc[5];
+				for (int i = 0; i < 4; ++i)
+				{
+					const unsigned char c = (unsigned char)((recievingMessageId >> (8 * (3 - i))) & 0xff);
+					fourcc[i] = (c >= 32 && c < 127) ? (char)c : '.';
+				}
+				fourcc[4] = 0;
+				fprintf(stderr,
+					"interThreadQue: handle %d msg %s consumed %d of %d declared byte(s); remainder drained to keep the stream aligned\n",
+					recievingHandle, fourcc, consumed, recievingMessageLength);
+			}
+
+			// LOUD in Debug, exactly as before this change. The drain below is
+			// containment for a RELEASE build -- one damaged message instead of
+			// a permanently garbage stream -- not a licence to leave the client
+			// broken. A handler that read short of its own declared length is
+			// the root-cause bug, and silently swallowing it here would only
+			// move the pain somewhere harder to trace.
+			assert(!handled && "queue client read SHORT of its declared message length");
+
+			char temp[64];
+			int todo = remainder;
 			while (todo > 0)
 			{
-				fifo_.popString(std::min(todo, (int)sizeof(temp)), &temp);
-				todo -= sizeof(temp);
+				const int n = (std::min)(todo, (int)sizeof(temp));
+				fifo_.popString(n, &temp);
+				todo -= n;
 			}
+		}
+		else if (remainder < 0)
+		{
+			// The client read PAST its message. Bytes cannot be un-read, so
+			// the stream cannot be repaired from here; this is a hard bug in
+			// the client and deserves to be loud.
+			assert(false && "queue client read PAST its declared message length");
 		}
 	}
 }
