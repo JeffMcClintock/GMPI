@@ -11,15 +11,6 @@
 */
 
 // macros to save typing the reference counting.
-#if 0
-#define GMPI_QUERYINTERFACE( INTERFACE_IID, CLASS_NAME ) \
-	gmpi::ReturnCode queryInterface(const gmpi::api::Guid* iid, void** returnInterface) override{ \
-	*returnInterface = {}; \
-	if ((*iid) == INTERFACE_IID || (*iid) == gmpi::api::IUnknown::guid ){ \
-	*returnInterface = static_cast<CLASS_NAME*>(this); addRef(); \
-	return gmpi::ReturnCode::Ok;} \
-	return gmpi::ReturnCode::NoSupport;}
-#else
 #define GMPI_QUERYINTERFACE( INTERFACE_CLASS ) \
 	if ((*iid) == INTERFACE_CLASS::guid || (*iid) == gmpi::api::IUnknown::guid){ \
 	*returnInterface = static_cast<INTERFACE_CLASS*>(this); addRef(); \
@@ -42,4 +33,6 @@
 	int32_t release() override {return 1;}
 #endif
 
-#endif
+// help for preventing a source file being discarded by the linker
+#undef SE_DECLARE_INIT_STATIC_FILE
+#define SE_DECLARE_INIT_STATIC_FILE(filename) void se_static_library_init_##filename(){}
