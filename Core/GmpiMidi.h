@@ -655,16 +655,21 @@ protected:
 		int16_t pitch;		// in MIDI semitones. hmm how do they handle microtuning?
 		uint8_t MidiKeyNumber;
 		bool held;
+		uint64_t sequence;	// Note-On order of the current occupant, see forEachExpressionTarget()
 	};
 
 	NoteInfo noteIds[128] = {};
 	int noteIdsRoundRobin = 0;
+	uint64_t noteOnSequence = 0;
 
 public:
 	NoteMapper()
 	{
 		for (size_t i = 0; i < std::size(noteIds); ++i)
+		{
 			noteIds[i].MidiKeyNumber = static_cast<uint8_t>(i);
+			noteIds[i].noteId = -1; // no channel (id >> 7) matches a never-used slot
+		}
 	}
 
 	// Only a held slot owns its noteId. After Note-Off the id is deliberately left in place
@@ -721,6 +726,7 @@ public:
 
 		noteIds[res].held = true;
 		noteIds[res].noteId = noteId;
+		noteIds[res].sequence = ++noteOnSequence;
 		return noteIds[res];
 	}
 
@@ -747,6 +753,32 @@ public:
 				onRelease(info);
 			}
 		}
+	}
+
+	// The notes a Member Channel's per-note expression (pressure, brightness) applies to:
+	// every note still held on the channel, plus the note most recently started on it
+	// (the largest Note-On sequence number) even after its Note-Off, so a release tail
+	// keeps following the controller until the channel is reused for a new note. Older
+	// released notes on the channel are dead and get nothing. Not used for pitch bend,
+	// which the MPE spec stops at Note-Off.
+	template <typename F>
+	void forEachExpressionTarget(int channel, F f)
+	{
+		NoteInfo* latest = nullptr;
+		for (auto& info : noteIds)
+		{
+			if (channel != (info.noteId >> 7))
+				continue;
+
+			if (info.held)
+				f(info);
+
+			if (!latest || info.sequence > latest->sequence)
+				latest = &info;
+		}
+
+		if (latest && !latest->held)
+			f(*latest);
 	}
 };
 
@@ -1668,21 +1700,19 @@ public:
 		{
 			channelPressure[header.channel] = midi2::decodeController(msg).value;
 
-			// find whatever note is playing on this channel. Assumption is only held notes can receive benders etc.
-			// might not hold true for DAW automation which is drawn-on after note-off time
-			for (auto& info : noteIds)
+			// Pressure applies to every note still held on this channel, plus the note most
+			// recently started on it even after its Note-Off: the release tail keeps following
+			// the controller until the channel is reused. See forEachExpressionTarget().
+			forEachExpressionTarget(header.channel, [&](const NoteInfo& info)
 			{
-				if (info.held && header.channel == (info.noteId >> 7))
-				{
-					//					_RPTN(0, "MPE: Pressure %d %f\n", info.MidiKeyNumber, normalised);
-					const auto msgout = midi2::makePolyPressure(
-						info.MidiKeyNumber,
-						channelPressure[header.channel]
-					);
+				//					_RPTN(0, "MPE: Pressure %d %f\n", info.MidiKeyNumber, normalised);
+				const auto msgout = midi2::makePolyPressure(
+					info.MidiKeyNumber,
+					channelPressure[header.channel]
+				);
 
-					sink({ msgout.m }, timestamp);
-				}
-			}
+				sink({ msgout.m }, timestamp);
+			});
 		}
 		break;
 
@@ -1696,22 +1726,20 @@ public:
 
 			channelBrightness[header.channel] = controller.value;
 
-			// find whatever note is playing on this channel. Assumption is only held notes can receive benders etc.
-			// might not hold true for DAW automation which is drawn-on after note-off time
-			for (auto& info : noteIds)
+			// Brightness applies to every note still held on this channel, plus the note most
+			// recently started on it even after its Note-Off: the release tail keeps following
+			// the controller until the channel is reused. See forEachExpressionTarget().
+			forEachExpressionTarget(header.channel, [&](const NoteInfo& info)
 			{
-				if (info.held && header.channel == (info.noteId >> 7))
-				{
-					const auto msgout = midi2::makePolyController(
-						info.MidiKeyNumber,
-						midi2::PolySoundController5, // Brightness
-						channelBrightness[header.channel]
-					);
+				const auto msgout = midi2::makePolyController(
+					info.MidiKeyNumber,
+					midi2::PolySoundController5, // Brightness
+					channelBrightness[header.channel]
+				);
 
-					sink({ msgout.m }, timestamp);
-					//					_RPTN(0, "MPE: Brightness %d %f (%d)\n", info.MidiKeyNumber, channelBrightness[header.channel], msg[2]);
-				}
-			}
+				sink({ msgout.m }, timestamp);
+				//					_RPTN(0, "MPE: Brightness %d %f (%d)\n", info.MidiKeyNumber, channelBrightness[header.channel], msg[2]);
+			});
 		}
 		break;
 		}
