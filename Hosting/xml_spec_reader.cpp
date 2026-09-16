@@ -172,6 +172,11 @@ void RegisterPin(
 
 	pinInfo pind{};
 
+	// blank datatype is allowed and normal. It defaults per plugin sub-type:
+	// audio for DSP pins, float for Editor/Controller pins (which have no audio datatype).
+	// without this it would zero-init to PinDatatype::Enum, which is right for neither.
+	pind.datatype = plugin_sub_type == gmpi::api::PluginSubtype::Audio ? gmpi::PinDatatype::Audio : gmpi::PinDatatype::Float32;
+
 	pind.id = nextPinId;
 	pin->QueryIntAttribute("id", &(pind.id));
 
@@ -346,22 +351,11 @@ void RegisterPin(
 	}
 	else
 	{
-		// if not explicitly specified, take datatype from parameter or host-control.
+		// if not explicitly specified, take datatype from parameter or host-control,
+		// else keep the sub-type default set at the top of this function.
 		if (expectedPinDatatype != -1)
 		{
 			pind.datatype = (gmpi::PinDatatype)expectedPinDatatype;
-		}
-		else
-		{
-			// blank dataype defaults to DT_FSAMPLE, else it's an error.
-			if (dt)
-			{
-				assert(false);
-				//std::wostringstream oss;
-				//oss << L"err. module XML file (" << Filename() << L"): pin " << pin_id << L": unknown datatype. Valid [float, int ,string, blob, midi ,bool ,enum ,double]";
-
-				//Messagebox(oss);
-			}
 		}
 	}
 

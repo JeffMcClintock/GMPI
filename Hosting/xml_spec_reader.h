@@ -122,7 +122,7 @@ struct pinInfo
 	int32_t id;
 	std::string name;
 	gmpi::PinDirection direction;
-	gmpi::PinDatatype datatype;
+	gmpi::PinDatatype datatype = gmpi::PinDatatype::Float32; // NOT Enum, which is the zero value
 	std::string default_value;
 	int32_t parameterId = -1;
 	gmpi::Field parameterFieldType;
