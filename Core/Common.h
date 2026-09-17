@@ -111,6 +111,10 @@ private:
 	{
 		enum { result = static_cast<int>(gmpi::PinDatatype::Int32) };
 	};
+	template<int N> struct PinDataTypeTraits<int64_t, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::Int64) };
+	};
 	template<int N> struct PinDataTypeTraits<bool, N>
 	{
 		enum { result = static_cast<int>(gmpi::PinDatatype::Bool) };
@@ -118,6 +122,10 @@ private:
 	template<int N> struct PinDataTypeTraits<float, N>
 	{
 		enum { result = static_cast<int>(gmpi::PinDatatype::Float32) };
+	};
+	template<int N> struct PinDataTypeTraits<double, N>
+	{
+		enum { result = static_cast<int>(gmpi::PinDatatype::Float64) };
 	};
 	template<int N> struct PinDataTypeTraits<std::string, N>
 	{

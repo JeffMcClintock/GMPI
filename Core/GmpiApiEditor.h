@@ -33,6 +33,8 @@ namespace gmpi
         , Grab						// (mouse down) bool
         , Normalized				// float
         , Stateful				    // bool
+		, Hint						// std::string
+		, Handle					// int32
     };
 
 namespace api
