@@ -132,6 +132,7 @@ struct DECLSPEC_NOVTABLE IController : IParameterObserver
 struct DECLSPEC_NOVTABLE IControllerHost : IUnknown
 {
     virtual ReturnCode setParameter(int32_t parameterIndex, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) = 0;
+    virtual ReturnCode subscribe() = 0; // sign up to parameters add / remove / change
 
     // {CD0F9C61-E546-47E2-A31C-09B3FBC8F5D0}
     inline static const Guid guid =

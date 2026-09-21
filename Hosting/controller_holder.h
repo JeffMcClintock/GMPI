@@ -498,6 +498,7 @@ public:
 
 		return gmpi::ReturnCode::Ok;
 	}
+	ReturnCode subscribe() override { return gmpi::ReturnCode::NoSupport; }; // sign up to parameters add / remove / change
 
 	// interThreadQueUser
 	bool onQueMessageReady(int handle, int msg_id, gmpi::hosting::my_input_stream& p_stream) override;
