@@ -50,6 +50,23 @@ public:
 	{ 0x168be5df, 0x5250, 0x48ec, { 0xb2, 0x85, 0x83, 0xb1, 0xcc, 0x3c, 0xbb, 0x60 } };
 };
 
+namespace detail
+{
+	// which gmpi::PinDatatype transports a given C++ type.
+	template<typename T>
+	struct VariantTypeTraits
+	{
+		static constexpr gmpi::PinDatatype datatype = static_cast<gmpi::PinDatatype>(gmpi::PinTypeTraits<T>::PinDataType);
+	};
+
+	// gmpi::PinTypeTraits has no entry for wide strings (the datatype of a 'text' parameter's value).
+	template<>
+	struct VariantTypeTraits<std::wstring>
+	{
+		static constexpr gmpi::PinDatatype datatype = gmpi::PinDatatype::WideString;
+	};
+}
+
 // helper for receiving a value of any datatype. c.f. gmpi::ReturnString
 struct ReturnVariant : IVariant
 {
@@ -67,7 +84,7 @@ struct ReturnVariant : IVariant
 	template<typename T>
 	bool get(T& returnValue) const
 	{
-		if(datatype != static_cast<gmpi::PinDatatype>(gmpi::PinTypeTraits<T>::PinDataType))
+		if(datatype != detail::VariantTypeTraits<T>::datatype)
 			return false;
 
 		gmpi::valueFromData(bytes, returnValue);
@@ -78,6 +95,169 @@ struct ReturnVariant : IVariant
 	GMPI_REFCOUNT_NO_DELETE;
 };
 
+// helper to read the fields of one parameter. Manages the lifetime of the IParameter,
+// and converts each field from the host's raw bytes to the appropriate C++ type.
+//
+// All text fields are utf-8 std::string. Only the value of a 'text' parameter is a std::wstring.
+//
+// note: Field::Default, Field::RangeLo and Field::RangeHi share the parameter's own datatype,
+// but are not served by SynthEdit yet. Read them with getField<T>() once they are.
+struct ParameterHelper
+{
+	gmpi::shared_ptr<IParameter> param_;
+
+	ParameterHelper() = default;
+
+	ParameterHelper(IParameter* param)
+	{
+		param_ = param; // adds a reference. released by the destructor.
+	}
+
+	bool isNull() const
+	{
+		return param_.isNull();
+	}
+
+	// read any field as a specific C++ type. returns false if the field is not of that datatype.
+	template<typename T>
+	bool getField(gmpi::Field field, T& returnValue, int32_t voice = 0) const
+	{
+		if(param_.isNull())
+			return false;
+
+		ReturnVariant v;
+		if(gmpi::ReturnCode::Ok != param_->getValue(field, voice, &v))
+			return false;
+
+		return v.get(returnValue);
+	}
+
+	// read any field without knowing its datatype up-front.
+	ReturnVariant getFieldRaw(gmpi::Field field, int32_t voice = 0) const
+	{
+		ReturnVariant v;
+
+		if(!param_.isNull())
+			param_->getValue(field, voice, &v);
+
+		return v;
+	}
+
+	// the parameter's unique id (within the patch manager).
+	int32_t getHandle() const
+	{
+		return getOrDefault<int32_t>(gmpi::Field::Handle);
+	}
+
+	// the datatype of the parameter's value.
+	gmpi::PinDatatype getDatatype() const
+	{
+		return getFieldRaw(gmpi::Field::Value).datatype;
+	}
+
+	// the value itself. use getValue<T>() when you know the datatype, else getValueRaw().
+	template<typename T>
+	bool getValue(T& returnValue, int32_t voice = 0) const
+	{
+		return getField(gmpi::Field::Value, returnValue, voice);
+	}
+
+	ReturnVariant getValueRaw(int32_t voice = 0) const
+	{
+		return getFieldRaw(gmpi::Field::Value, voice);
+	}
+
+	// the value scaled 0.0 -> 1.0, as automation sees it.
+	float getNormalized(int32_t voice = 0) const
+	{
+		return getOrDefault<float>(gmpi::Field::Normalized, voice);
+	}
+
+	std::string getShortName() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::ShortName);
+	}
+
+	// slash-separated path, e.g. "Patch Memory/Cutoff".
+	std::string getLongName() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::LongName);
+	}
+
+	// tooltip text.
+	std::string getHint() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::Hint);
+	}
+
+	// comma-separated choices of a 'list' parameter, e.g. "Off,Low,High".
+	std::string getEnumList() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::EnumList);
+	}
+
+	// file filter of a 'filename' parameter, e.g. "wav".
+	std::string getFileExtension() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::FileExtension);
+	}
+
+	// the parameter's context-menu (MIDI learn etc).
+	std::string getMenuItems() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::MenuItems);
+	}
+
+	int32_t getMenuSelection() const
+	{
+		return getOrDefault<int32_t>(gmpi::Field::MenuSelection);
+	}
+
+	// MIDI CC number this parameter is learned to, or -1 for none.
+	int32_t getAutomation() const
+	{
+		return getOrDefault<int32_t>(gmpi::Field::Automation);
+	}
+
+	std::string getAutomationSysex() const
+	{
+		return getOrDefault<std::string>(gmpi::Field::AutomationSysex);
+	}
+
+	// true while the user is dragging the control (mouse down).
+	bool isGrabbed() const
+	{
+		return getOrDefault<bool>(gmpi::Field::Grab);
+	}
+
+	// private parameters are hidden from the host's automation list.
+	bool isPrivate() const
+	{
+		return getOrDefault<bool>(gmpi::Field::Private);
+	}
+
+	// stateful (aka persistant) parameters are saved in the patch.
+	bool isStateful() const
+	{
+		return getOrDefault<bool>(gmpi::Field::Stateful);
+	}
+
+	bool getIgnoreProgramChange() const
+	{
+		return getOrDefault<bool>(gmpi::Field::IgnoreProgramChange);
+	}
+
+private:
+	// read a field, returning a default-constructed value if it's missing or the wrong datatype.
+	template<typename T>
+	T getOrDefault(gmpi::Field field, int32_t voice = 0) const
+	{
+		T returnValue{};
+		getField(field, returnValue, voice);
+		return returnValue;
+	}
+};
+
 // helper class to retrieve pin information.
 struct ParameterInformation : public synthedit::IParameterCallback
 {
@@ -85,6 +265,8 @@ struct ParameterInformation : public synthedit::IParameterCallback
 	{
 		int32_t handle;
 		gmpi::PinDatatype datatype;
+		std::string shortName;
+		std::string longName;	// slash-separated path
 	};
 
 	std::vector<ParameterInfo> parameters;
@@ -100,16 +282,9 @@ struct ParameterInformation : public synthedit::IParameterCallback
 
 	gmpi::ReturnCode onParameter(IParameter* param) override
 	{
-		ReturnVariant v;
+		ParameterHelper p(param);
 
-		int32_t handle{};
-		param->getValue(gmpi::Field::Handle, 0, &v);
-		v.get(handle);
-
-		// a parameter's datatype is that of its value field.
-		param->getValue(gmpi::Field::Value, 0, &v);
-
-		parameters.push_back({ handle, v.datatype });
+		parameters.push_back({ p.getHandle(), p.getDatatype(), p.getShortName(), p.getLongName() });
 		return gmpi::ReturnCode::Ok;
 	}
 
