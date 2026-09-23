@@ -35,6 +35,7 @@ namespace gmpi
         , Stateful				    // bool
 		, Hint						// std::string
 		, Handle					// int32
+		, HostControl				// int32. SynthEdit host-control id, -1 = not a host-control.
     };
 
 namespace api

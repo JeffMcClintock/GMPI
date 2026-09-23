@@ -149,6 +149,14 @@ struct ParameterHelper
 		return getOrDefault<int32_t>(gmpi::Field::Handle);
 	}
 
+	// host-controls (Patch Commands, Polyphony etc) are driven by SynthEdit, not by the user.
+	bool isHostControl() const
+	{
+		int32_t hostControl{ -1 };
+		getField(gmpi::Field::HostControl, hostControl);
+		return hostControl != -1;
+	}
+
 	// the datatype of the parameter's value.
 	gmpi::PinDatatype getDatatype() const
 	{
@@ -267,6 +275,7 @@ struct ParameterInformation : public synthedit::IParameterCallback
 		gmpi::PinDatatype datatype;
 		std::string shortName;
 		std::string longName;	// slash-separated path
+		bool isHostControl;
 	};
 
 	std::vector<ParameterInfo> parameters;
@@ -284,7 +293,7 @@ struct ParameterInformation : public synthedit::IParameterCallback
 	{
 		ParameterHelper p(param);
 
-		parameters.push_back({ p.getHandle(), p.getDatatype(), p.getShortName(), p.getLongName() });
+		parameters.push_back({ p.getHandle(), p.getDatatype(), p.getShortName(), p.getLongName(), p.isHostControl() });
 		return gmpi::ReturnCode::Ok;
 	}
 
