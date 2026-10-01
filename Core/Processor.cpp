@@ -175,7 +175,10 @@ void PinBase::initialize(Processor* plugin, int PinIndex, ProcessorMemberPtr han
 
 	idx_ = PinIndex;
 	plugin_ = plugin;
-	eventHandler_ = handler ? handler : getDefaultEventHandler();
+	if (handler)
+		eventHandler_ = handler;
+	else if (PinDirection::In == getDirection())
+		eventHandler_ = getDefaultEventHandler();
 }
 
 void PinBase::processEvent(const api::Event* e)
