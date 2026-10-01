@@ -1083,9 +1083,13 @@ public:
 				incoming_rpn[header.channel] = NULL_RPN;	// NRPNs are coming, cancel RPNS msgs
 				break;
 
-			case 6:	// RPN_CONTROLLER MSB
+			case 6:	// Data Entry MSB
+			case 38:	// Data Entry LSB
 			{
-				cntrl_update_msb(incoming_rpn_value, static_cast<short>(msg[2]));
+				if (controller.controllerNumber == 6)
+					cntrl_update_msb(incoming_rpn_value, static_cast<short>(msg[2]));
+				else
+					cntrl_update_lsb(incoming_rpn_value, static_cast<short>(msg[2]));
 
 				if (incoming_rpn[header.channel] != NULL_RPN)
 				{
@@ -1096,37 +1100,21 @@ public:
 					);
 					sink({ msgout.m }, timestamp);
 				}
-				else
+				else if (incoming_nrpn[header.channel] != NULL_RPN)
 				{
 					const auto msgout = midi2::makeNrpnRaw(
-						incoming_rpn[header.channel],
-						gmpi::midi_utils::scaleUp(incoming_rpn_value, 14, 32), // 14 bit value converted to 32-bit value.
+						incoming_nrpn[header.channel],
+						gmpi::midi_utils::scaleUp(incoming_rpn_value, 14, 32),
 						header.channel
 					);
 					sink({ msgout.m }, timestamp);
 				}
-			}
-			break;
-
-			case 38:	// RPN_CONTROLLER LSB
-			{
-				cntrl_update_lsb(incoming_rpn_value, static_cast<short>(msg[2]));
-
-				if (incoming_rpn[header.channel] != NULL_RPN)
-				{
-					const auto msgout = midi2::makeRpnRaw(
-						incoming_rpn[header.channel],
-						gmpi::midi_utils::scaleUp(incoming_rpn_value, 14, 32), // 14 bit value converted to 32-bit value.
-						header.channel
-					);
-
-					sink({ msgout.m }, timestamp);
-				}
 				else
 				{
-					const auto msgout = midi2::makeNrpnRaw(
-						incoming_rpn[header.channel],
-						gmpi::midi_utils::scaleUp(incoming_rpn_value, 14, 32), // 14 bit value converted to 32-bit value.
+					// No RPN/NRPN selected, so data entry is a plain CC (keeps MIDI-learn on CC 6/38 working).
+					const auto msgout = midi2::makeController(
+						controller.controllerNumber,
+						controller.value,
 						header.channel
 					);
 					sink({ msgout.m }, timestamp);
