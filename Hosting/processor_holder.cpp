@@ -477,6 +477,10 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 
 		auto& param = (*it).second;
 
+		// As the controller-side reader: a non-stateful value is only valid for the run that set it.
+		if (!param.info->is_stateful)
+			continue;
+
 		parametersInPreset.insert(paramHandle);
 
 		//??			if (info.ignoreProgramChange)
