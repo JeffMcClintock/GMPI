@@ -331,9 +331,9 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 			case gmpi::PinDatatype::Blob:
 			{
 				// The parameter owns the bytes; the event points into that
-				// storage for payloads over the 8 inline bytes. Safe because
-				// queue drain and the next parameter update happen on the same
-				// thread, so the vector cannot move underneath the event.
+				// storage for payloads over the 8 inline bytes. Safe because a
+				// later update to this pin replaces this event (EventQue::push)
+				// before the drain, so a moved vector is never read.
 				const auto& v = std::get<std::vector<uint8_t>>(param->value_);
 				e.size_ = static_cast<int32_t>(v.size());
 				if (v.size() > 8)

@@ -31,10 +31,25 @@ public:
 
 	void push(gmpi::api::Event event)
 	{
-		// insert in sorted order.
-		auto it = std::lower_bound(events.begin(), events.end(), event, [](const gmpi::api::Event& a, const gmpi::api::Event& b)
+		// insert in sorted order, after any events at the same time, so they keep the order they were pushed in.
+		auto it = std::upper_bound(events.begin(), events.end(), event, [](const gmpi::api::Event& a, const gmpi::api::Event& b)
 			{ return a.timeDelta < b.timeDelta;	}
 		);
+
+		// A newer PinSet on the same pin at the same time supersedes the older one, whose blob pointer the new value may have invalidated.
+		if (event.eventType == gmpi::api::EventType::PinSet)
+		{
+			for (auto j = it; j != events.begin() && (j - 1)->timeDelta == event.timeDelta; --j)
+			{
+				auto& older = *(j - 1);
+				if (older.eventType == gmpi::api::EventType::PinSet && older.pinIdx == event.pinIdx)
+				{
+					older = event;
+					return;
+				}
+			}
+		}
+
 		events.insert(it, event);
 	}
 
