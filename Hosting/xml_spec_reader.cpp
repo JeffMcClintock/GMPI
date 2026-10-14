@@ -60,6 +60,7 @@ static const std::unordered_map<std::string, HostControls> hostControlsInfo =
 	{"None",					HostControls::None},
 	{"Time/BPM",				HostControls::TimeBpm},
 	{"Time/BarStart",			HostControls::TimeBarStart},
+	{"Time/BarStartPosition",	HostControls::TimeBarStart}, // SynthEdit's name for it
 	{"Time/Numerator",			HostControls::TimeNumerator},
 	{"Time/Denominator",		HostControls::TimeDenominator},
 	{"Time/TransportPlaying",	HostControls::TimeTransportPlaying},
@@ -511,7 +512,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 
 	for (auto pluginE = pluginList->FirstChildElement("Plugin"); pluginE; pluginE = pluginE->NextSiblingElement())
 	{
-		const std::string id(pluginE->Attribute("id"));
+		const std::string id = QueryStringAttribute(pluginE, "id");
 		if (id.empty())
 		{
 			continue; // error
@@ -523,7 +524,7 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 		info.id = id;
 //		info.pluginPath = pluginPath;
 
-		info.name = pluginE->Attribute("name");
+		info.name = QueryStringAttribute(pluginE, "name");
 		if (info.name.empty())
 		{
 			info.name = info.id;
