@@ -395,6 +395,23 @@ public:
 	// the framed bytes to the processor's ui->dsp queue.
 	std::function<void(GmpiParameter*)> sendNonNativeParameterToProcessor = [](GmpiParameter*) {};
 
+	// A DAW parameter was grabbed or released in a GUI (its Grab field): wrappers bracket the edits in between as one host gesture.
+	std::function<void(GmpiParameter*, bool grabbed)> notifyDawGrab = [](GmpiParameter*, bool) {};
+
+	// Saved state changed in a way the DAW can't see (a GUI edit to a parameter it has no tag for): wrappers mark the host project modified.
+	std::function<void()> notifyDawStateChanged = [] {};
+
+	void setGrab(GmpiParameter* param, bool grabbed)
+	{
+		if (param->isGrabbed == grabbed)
+			return;
+
+		param->isGrabbed = grabbed;
+
+		if (param->info->dawTag > -1)
+			notifyDawGrab(param, grabbed);
+	}
+
 	void init(gmpi::hosting::pluginInfo& info);
 
 	// send initial value of all parameters to GUI
@@ -494,6 +511,10 @@ public:
 		else if (fieldId == gmpi::Field::Normalized && size == sizeof(float))
 		{
 			param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data)));
+		}
+		else if (fieldId == gmpi::Field::Grab && size == sizeof(bool))
+		{
+			setGrab(param, *reinterpret_cast<const bool*>(data));
 		}
 
 		return gmpi::ReturnCode::Ok;

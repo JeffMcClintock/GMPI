@@ -167,6 +167,13 @@ gmpi::ReturnCode gmpi_controller_holder::unRegisterGui(gmpi::api::IUnknown* edit
 		m_editors.erase(it);
 #endif
 
+	// an editor closed mid-drag never sends the release, which would leave the host's gesture open.
+	if (m_editors.empty())
+	{
+		for (auto& [handle, param] : patchManager.parameters)
+			setGrab(&param, false);
+	}
+
 	return gmpi::ReturnCode::Ok;
 }
 
@@ -386,6 +393,13 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 					}
 					break;
 
+					case gmpi::Field::Grab: // mouse-down on the control: no value change
+					{
+						assert(data.size() == sizeof(bool));
+						setGrab(param, *reinterpret_cast<const bool*>(data.data()));
+					}
+					break;
+
 					default:
 						assert(false); // unsupported
 						break;
@@ -470,7 +484,17 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 							}
 
 							// update DAW
-							notifyDaw(param);
+							if (param->info->dawTag > -1)
+							{
+								notifyDaw(param);
+							}
+							else // a parameter the DAW has no tag for (private): it can't carry the value or see the change
+							{
+								sendNonNativeParameterToProcessor(param);
+
+								if (param->info->is_stateful)
+									notifyDawStateChanged();
+							}
 						}
 					}
 
