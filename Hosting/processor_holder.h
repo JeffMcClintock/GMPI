@@ -5,6 +5,7 @@
 gmpi::hosting::gmpi_processor plugin;
 */
 
+#include <atomic>
 #include <span>
 #include <variant>
 #include <unordered_map>
@@ -274,6 +275,11 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 
 	int32_t blockSize = 512;
 	float sampleRate = 44100.0f;
+
+	// Samples of latency the processor last reported via setLatency (any thread, often audio).
+	// Wrappers poll it to learn of a change, then tell their host on its own required thread.
+	std::atomic<int32_t> latency{};
+	int32_t getLatency() const { return latency.load(std::memory_order_relaxed); }
 
     void init(gmpi::hosting::pluginInfo const& info);
 	bool start_processor(gmpi::api::IProcessorHost* host, gmpi::hosting::pluginInfo const& info, int32_t blockSize, float sampleRate);

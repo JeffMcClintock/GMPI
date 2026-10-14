@@ -53,6 +53,7 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
     
 	events.clear();
 	processor = {};
+	latency.store(0, std::memory_order_relaxed); // a new instance that never reports has none
 
 	gmpi::shared_ptr<gmpi::api::IUnknown> factoryBase;
 	auto r = MP_GetFactory(factoryBase.put_void());
@@ -685,8 +686,9 @@ gmpi::ReturnCode gmpi_processor::setPinStreaming(int32_t timestamp, int32_t pinI
 	return gmpi::ReturnCode::Ok;
 }
 
-gmpi::ReturnCode gmpi_processor::setLatency(int32_t latency)
+gmpi::ReturnCode gmpi_processor::setLatency(int32_t samples)
 {
+	latency.store((std::max)(samples, 0), std::memory_order_relaxed);
 	return gmpi::ReturnCode::Ok;
 }
 
