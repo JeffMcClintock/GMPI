@@ -609,8 +609,22 @@ std::string gmpi_processor::getPresetUnsafe()
 //gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data)
 gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data)
 {
+	int32_t midiOutPort = 0;
 	for (auto& pin : info->dspPins)
 	{
+		if (pin.datatype == gmpi::PinDatatype::Midi && pin.direction == gmpi::PinDirection::Out)
+		{
+			if (pinId == pin.id)
+			{
+				if (midiOutputSink && size > 0 && data)
+					midiOutputSink->onMidiOut(midiOutPort, timestamp, { data, static_cast<size_t>(size) });
+
+				return gmpi::ReturnCode::Ok;
+			}
+			++midiOutPort;
+			continue;
+		}
+
 		// only output parameter pins.
 		if (pinId != pin.id || pin.direction != gmpi::PinDirection::Out || pin.parameterId == -1)
 			continue;

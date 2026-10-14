@@ -255,6 +255,15 @@ public:
 	}
 };
 
+// Receives what the processor sends on its MIDI output pins (MidiOutPin::send). Called on the audio
+// thread inside IProcessor::process(), so implementations must not allocate or lock.
+struct IMidiOutputSink
+{
+	// port: the pin's ordinal among the plugin's MIDI output pins (matches the wrapper's event bus/port order).
+	// timestamp: block-relative sample offset. bytes: MIDI 1.0 or MIDI 2.0 UMP (gmpi::midi2::isMidi2Message), valid only during the call.
+	virtual void onMidiOut(int32_t port, int32_t timestamp, std::span<const uint8_t> bytes) = 0;
+};
+
 struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	, public gmpi::api::IProcessorHost
 {
@@ -271,6 +280,7 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 	std::vector<uint8_t> blobScratch;
 	QueuedUsers pendingControllerQueueClients; // parameters waiting to be sent to GUI
 	int MidiInputPinIdx = -1;
+	IMidiOutputSink* midiOutputSink{}; // set by the wrapper; MIDI output is dropped while null.
     std::vector<gmpi::hosting::GmpiParameter*> nativeParams;
 
 	int32_t blockSize = 512;
