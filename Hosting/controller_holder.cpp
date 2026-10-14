@@ -484,17 +484,7 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 							}
 
 							// update DAW
-							if (param->info->dawTag > -1)
-							{
-								notifyDaw(param);
-							}
-							else // a parameter the DAW has no tag for (private): it can't carry the value or see the change
-							{
-								sendNonNativeParameterToProcessor(param);
-
-								if (param->info->is_stateful)
-									notifyDawStateChanged();
-							}
+							onParameterChangedByPlugin(param);
 						}
 					}
 

@@ -398,8 +398,23 @@ public:
 	// A DAW parameter was grabbed or released in a GUI (its Grab field): wrappers bracket the edits in between as one host gesture.
 	std::function<void(GmpiParameter*, bool grabbed)> notifyDawGrab = [](GmpiParameter*, bool) {};
 
-	// Saved state changed in a way the DAW can't see (a GUI edit to a parameter it has no tag for): wrappers mark the host project modified.
+	// Saved state changed in a way the DAW can't see (a plugin change to a parameter it has no tag for): wrappers mark the host project modified.
 	std::function<void()> notifyDawStateChanged = [] {};
+
+	// The plugin (its GUI or controller) changed a parameter: the DAW carries it if it can; otherwise it goes straight to the processor, and a saved one is a state change the DAW can't see.
+	void onParameterChangedByPlugin(GmpiParameter* param)
+	{
+		if (param->info->dawTag > -1)
+		{
+			notifyDaw(param);
+			return;
+		}
+
+		sendNonNativeParameterToProcessor(param);
+
+		if (param->info->is_stateful)
+			notifyDawStateChanged();
+	}
 
 	void setGrab(GmpiParameter* param, bool grabbed)
 	{
@@ -473,11 +488,15 @@ public:
 	// Writes the value into patchManager so subsequent initUi calls deliver
 	// it to the editor. This is what makes a plugin's <Controller/> able to
 	// stash state (e.g. a pointer to its app object) before the editor opens.
+	// A change is the plugin changing its state, so it goes on to the DAW or
+	// processor like a GUI edit (onParameterChangedByPlugin).
 	gmpi::ReturnCode setParameter(int32_t parameterHandle, gmpi::Field fieldId, int32_t voice, int32_t size, const uint8_t* data) override
 	{
 		auto* param = patchManager.getParameter(parameterHandle);
 		if (!param)
 			return gmpi::ReturnCode::Ok;
+
+		bool changed{};
 
 		if (fieldId == gmpi::Field::Value)
 		{
@@ -487,22 +506,22 @@ public:
 				// Unlike scalars, blobs cannot ride the DAW's normalized-value
 				// path (notifyDaw/performEdit speak doubles), so a changed blob
 				// goes to the processor through the wrapper-installed hook
-				// below - each wrapper supplies its own transport (VST3: a
-				// binary IMessage into the processor's ui->dsp queue).
-				if (param->setBlob({ data, static_cast<size_t>(size) }))
-					sendNonNativeParameterToProcessor(param);
+				// sendNonNativeParameterToProcessor - each wrapper supplies its
+				// own transport (VST3: a binary IMessage into the processor's
+				// ui->dsp queue).
+				changed = param->setBlob({ data, static_cast<size_t>(size) });
 				break;
 			case gmpi::PinDatatype::Float32:
 				if (size == sizeof(float))
-					param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data)));
+					changed = param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data)));
 				break;
 			case gmpi::PinDatatype::Int32:
 				if (size == sizeof(int32_t))
-					param->setReal(static_cast<double>(*reinterpret_cast<const int32_t*>(data)));
+					changed = param->setReal(static_cast<double>(*reinterpret_cast<const int32_t*>(data)));
 				break;
 			case gmpi::PinDatatype::Bool:
 				if (size == sizeof(bool))
-					param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data)));
+					changed = param->setReal(static_cast<double>(*reinterpret_cast<const bool*>(data)));
 				break;
 			default:
 				break;
@@ -510,12 +529,15 @@ public:
 		}
 		else if (fieldId == gmpi::Field::Normalized && size == sizeof(float))
 		{
-			param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data)));
+			changed = param->setNormalised(static_cast<double>(*reinterpret_cast<const float*>(data)));
 		}
 		else if (fieldId == gmpi::Field::Grab && size == sizeof(bool))
 		{
 			setGrab(param, *reinterpret_cast<const bool*>(data));
 		}
+
+		if (changed)
+			onParameterChangedByPlugin(param);
 
 		return gmpi::ReturnCode::Ok;
 	}
