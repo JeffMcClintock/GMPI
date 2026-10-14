@@ -276,6 +276,11 @@ void gmpi_processor::setHostControlFromDaw(gmpi::hosting::HostControls hc, doubl
 
     if (auto param = patchManager.setParameterReal(id, value); param)
     {
+        // Audio thread, before process(): deliver at offset 0 like a "ppc2" change. On the first block this
+        // replaces start_processor's seed (same pin, same time), so the DSP never starts on a stale value.
+        if (info)
+            sendParameterToProcessor(*info, param, 0);
+
         pendingControllerQueueClients.AddWaiter(param);
     }
 }
