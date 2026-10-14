@@ -539,6 +539,12 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 		if (auto s = pluginE->Attribute("version"); s && *s)
 			info.version = s;
 
+		// Optional explicit VST3 class IDs (registry-string GUIDs).
+		if (auto s = pluginE->Attribute("vst3ProcessorId"); s)
+			info.vst3ProcessorId = s;
+		if (auto s = pluginE->Attribute("vst3ControllerId"); s)
+			info.vst3ControllerId = s;
+
 		// PARAMETERS
 		if (auto parametersE = pluginE->FirstChildElement("Parameters"); parametersE)
 		{

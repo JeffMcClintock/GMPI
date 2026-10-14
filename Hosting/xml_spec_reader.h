@@ -18,6 +18,9 @@
 // rather than falling back to the version it used to hardcode.
 #define GMPI_HOSTING_PLUGININFO_HAS_VERSION 1
 
+// Announces pluginInfo::vst3ProcessorId/vst3ControllerId, for the same reason.
+#define GMPI_HOSTING_PLUGININFO_HAS_VST3_IDS 1
+
 namespace tinyxml2
 {
 	class XMLElement;
@@ -199,6 +202,13 @@ struct pluginInfo
 	// module registering several plugins - what a host is told is this field,
 	// and the resource is the thing that is stale.
 	std::string version{ defaultPluginVersion };
+
+	// Optional explicit VST3 class IDs, registry-string GUIDs
+	// ("{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX}") from the `vst3ProcessorId` and
+	// `vst3ControllerId` attributes of <Plugin>. Empty when absent, and the VST3
+	// wrapper then derives the IDs from `id` - so renaming would change them.
+	std::string vst3ProcessorId;
+	std::string vst3ControllerId;
 };
 
 void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins);
