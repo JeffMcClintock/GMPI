@@ -401,6 +401,15 @@ public:
 	// Saved state changed in a way the DAW can't see (a plugin change to a parameter it has no tag for): wrappers mark the host project modified.
 	std::function<void()> notifyDawStateChanged = [] {};
 
+	// The plug-in's own <Controller/>, as the IParameterObserver it registers, when the wrapper
+	// created one (Controller_VST3::initialize, Processor_CLAP's constructor). Told of every
+	// parameter the PROCESSOR changed (onQueMessageReady), and - by the wrapper - of every one
+	// the DAW changed, with the encoding notifyControllerOfPreset uses: blobs and strings as
+	// their bytes, scalars as a double. A plug-in whose controller mirrors parameters (a
+	// SynthEdit export's panel) stays current without an editor open. Null is fine.
+	gmpi::api::IParameterObserver* pluginController{};
+	void notifyPluginController(GmpiParameter* param) const;
+
 	// The plugin (its GUI or controller) changed a parameter: the DAW carries it if it can; otherwise it goes straight to the processor, and a saved one is a state change the DAW can't see.
 	void onParameterChangedByPlugin(GmpiParameter* param)
 	{
