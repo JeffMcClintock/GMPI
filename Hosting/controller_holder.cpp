@@ -737,169 +737,77 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 	return false; // failed to consume message.
 }
 
-bool gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
+// Reads a <Preset> document into a parameter store: its stateful parameters, and defaults for
+// the stateful, non-host-connect ones it omits. The inverse of writePresetXml, and for the same
+// reason ONE function: the processor's PatchManager and the controller's ControllerPatchManager
+// each had a reader of their own, "the same loop, copied", and the copies had drifted once
+// already (one learned to dispatch on datatype, the other kept calling std::stod on a blob and
+// aborted the host). Takes the map rather than either holder so neither side has to know the
+// other exists.
+//
+// Returns false, having changed NOTHING, when the text holds no <Preset> element - said out
+// loud rather than returned void, because a caller restoring from a file has no other way to
+// find out its file was not one. (An empty <Preset/> is a preset, resets every stateful
+// parameter, and returns true: that is how a revert-to-defaults is spelled.)
+bool readPresetXml(std::unordered_map<int, GmpiParameter>& parameters, const std::string& xml)
 {
-	std::string name, category;
-
 	tinyxml2::XMLDocument doc;
-	doc.Parse(chunk.c_str());
+	doc.Parse(xml.c_str());
 
-	auto* parentXml = &doc;
-
-	auto presetXml = parentXml->FirstChildElement("Preset");
-
-	// No <Preset> element: garbage, an empty file, or a document of some other
-	// kind. Nothing below has run, so the store is exactly as the caller left
-	// it - said out loud rather than returned void, because a caller restoring
-	// from a file has no other way to find out its file was not one.
+	auto presetXml = doc.FirstChildElement("Preset");
 	if (!presetXml)
 		return false;
 
-	tinyxml2::XMLNode* parametersE{};
-	parametersE = presetXml;
-
-	auto presetXmlElement = presetXml->ToElement();
-
-	// Query plugin's 4-char code. Presence Indicates also that preset format supports MIDI learn.
-	int32_t fourCC = -1;
-	int formatVersion = 0;
-	{
-		const char* hexcode{};
-		if (tinyxml2::XML_SUCCESS == presetXmlElement->QueryStringAttribute("pluginId", &hexcode))
-		{
-			formatVersion = 1;
-			try
-			{
-				fourCC = static_cast<int32_t>(std::stoul(hexcode, nullptr, 16));
-			}
-			catch (...)
-			{
-				// who gives a f*ck
-			}
-		}
-	}
-
-	// !!! TODO: Check 4-char ID correct.
-
-	const char* temp{};
-	if (tinyxml2::XML_SUCCESS == presetXmlElement->QueryStringAttribute("category", &temp))
-	{
-		category = temp;
-	}
-	//presetXmlElement->QueryStringAttribute("name", &name);
-	if (tinyxml2::XML_SUCCESS == presetXmlElement->QueryStringAttribute("name", &temp))
-	{
-		name = temp;
-	}
+	// The plugin's 4-char code (pluginId), name and category are carried but not checked here
+	// (TODO, as it always was); MIDI-learn attributes belong to the SynthEdit engine's own
+	// preset and are not GMPI parameters.
 
 	std::unordered_set<int32_t> parametersInPreset;
 
-	// assuming we are passed "Preset.Parameters" node.
 	for (auto ParamElement = presetXml->FirstChildElement("Param"); ParamElement; ParamElement = ParamElement->NextSiblingElement("Param"))
 	{
 		int paramHandle = -1;
 		ParamElement->QueryIntAttribute("id", &paramHandle);
-
 		assert(paramHandle != -1);
 
-		// ignore unrecognised parameters
-		auto it = patchManager.parameters.find(paramHandle);
-		if (it == patchManager.parameters.end())
-			continue;
+		auto it = parameters.find(paramHandle);
+		if (it == parameters.end())
+			continue; // ignore unrecognised parameters
 
-		auto& param = (*it).second;
+		auto& param = it->second;
 
-		// The reader has to filter exactly as writePresetXml does, or the pair
-		// is not a round trip. The writer skips non-stateful parameters
-		// because they hold values good for one run only - a raw pointer to a
-		// live object being the case that matters - so any <Param> naming one
-		// came from a file written before that rule existed, or from another
-		// tool. Taking it would overwrite a pointer the plug-in's controller
-		// published moments ago during init() with a stale number from disk.
-		//
-		// It is also skipped from the reset-to-default pass below, for the
-		// same reason and with the same effect: whatever is live stays live.
+		// Filter exactly as writePresetXml does, or the pair is not a round trip. A non-stateful
+		// parameter holds a value good for one run only - a raw pointer to a live object being
+		// the case that matters - so a <Param> naming one came from a file written before that
+		// rule existed, or from another tool, and taking it would overwrite what the plug-in's
+		// controller published moments ago during init().
 		if (!param.info->is_stateful)
 			continue;
 
 		parametersInPreset.insert(paramHandle);
 
-		//??			if (info.ignoreProgramChange)
-		//				continue;
-
-		//auto& values = params[paramHandle];
-		/*
-					// possibly need to handle elsewhere
-					if (parameter.ignorePc_ && ignoreProgramChange) // a short time period after plugin loads, ignore-PC parameters will no longer overwrite existing value.
-						continue;
-
-		*/
-		auto v = ParamElement->Attribute("val"); // todo instead of constructing a pointless string, what about just passing the char* to ParseToRaw()?
-
-		if (!v)
-			continue;
-
-		param.setFromXml(v);
-
-		// This block seems messy. Should updating a parameter be a single function call?
-					// (would need to pass 'updateProcessor')
-		{
-			// calls controller_->updateGuis(this, voice)
-//				parameter->setParameterRaw(gmpi::Field::Value, (int32_t)raw.size(), raw.data(), voiceId);
-
-			/* todo elsewhere
-			// updated cached value.
-			parameter->upDateImmediateValue();
-			*/
-		}
-
-		// MIDI learn. part of a preset?????
-		if (formatVersion > 0)
-		{
-			// TODO
-			int32_t midiController = -1;
-			ParamElement->QueryIntAttribute("MIDI", &midiController);
-
-			const char* sysexU{};
-			ParamElement->QueryStringAttribute("MIDI_SYSEX", &sysexU);
-		}
+		if (const auto v = ParamElement->Attribute("val"); v)
+			param.setFromXml(v); // dispatches on the parameter's datatype: the one implementation both ends of the round trip share
 	}
 
-	// set any parameters missing from the preset to their default
-	// except for preset name and category
-	for (auto& [paramHandle, param] : patchManager.parameters)
+	// Parameters the preset omits return to their default - except host controls (tempo, song
+	// position, time signature: the HOST's values, not the patch's) and non-stateful ones (see
+	// above), neither of which a preset may revoke by simply not mentioning it.
+	for (auto& [paramHandle, param] : parameters)
 	{
-		if(HostControls::None != param.info->hostConnect || !param.info->is_stateful)
-			continue; // host connect only
-#if 0
-		if (info.hostControl == HC_PROGRAM_NAME || HC_PROGRAM_CATEGORY == info.hostControl)
+		if (HostControls::None != param.info->hostConnect || !param.info->is_stateful)
 			continue;
-#endif
 
 		if (parametersInPreset.find(paramHandle) == parametersInPreset.end())
-		{
-//			auto& values = params[paramHandle];
-
-//			values.dataType = info.dataType;
-//			for (const auto& v : info.defaultRaw)
-			{
-//				values.rawValues_.push_back(v);
-
-				param.setToDefault();
-			}
-		}
+			param.setToDefault();
 	}
 
-//#ifdef _DEBUG
-//	for (auto& p : params)
-//	{
-//		assert(p.second.rawValues_.size() == 1);
-//	}
-//#endif
-
-//	calcHash();
-
 	return true;
+}
+
+bool gmpi_controller_holder::setPresetXmlFromDaw(const std::string& chunk)
+{
+	return readPresetXml(patchManager.parameters, chunk);
 }
 
 std::string writePresetXml(const std::unordered_map<int, GmpiParameter>& parameters)

@@ -258,6 +258,11 @@ struct GmpiParameter : public QueClient // also host-controls, might need to ren
 // other exists.
 std::string writePresetXml(const std::unordered_map<int, GmpiParameter>& parameters);
 
+// Its inverse, and likewise the ONE reader for both stores (see the definition). Reads a
+// <Preset> document's stateful parameters into the map and resets the stateful, non-host-connect
+// ones it omits; false, with nothing changed, when the text holds no <Preset> element.
+bool readPresetXml(std::unordered_map<int, GmpiParameter>& parameters, const std::string& xml);
+
 class ControllerPatchManager
 {
 public:
