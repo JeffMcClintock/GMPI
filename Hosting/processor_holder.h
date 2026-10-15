@@ -303,6 +303,8 @@ struct gmpi_processor : public gmpi::hosting::interThreadQueUser // _holder ??
 //	gmpi::ReturnCode setPin(int32_t timestamp, int32_t pinId, int32_t size, const uint8_t* data);
 
 	void setPresetUnsafe(std::string& chunk);
+	// Reads a <Preset> into 'store': its stateful parameters, and defaults for those it omits. setPresetUnsafe() is this on the live store.
+	static void readPreset(PatchManager& store, const std::string& chunk);
 	std::string getPresetUnsafe();
 
 	// IAudioPluginHost

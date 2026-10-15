@@ -415,7 +415,7 @@ bool gmpi_processor::onQueMessageReady(int handle, int msg_id, gmpi::hosting::my
 	return false; // failed to consume message.
 }
 
-void gmpi_processor::setPresetUnsafe(std::string& chunk)
+void gmpi_processor::readPreset(PatchManager& store, const std::string& chunk)
 {
 	std::string name, category;
 
@@ -477,8 +477,8 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 		assert(paramHandle != -1);
 
 		// ignore unrecognised parameters
-		auto it = patchManager.parameters.find(paramHandle);
-		if (it == patchManager.parameters.end())
+		auto it = store.parameters.find(paramHandle);
+		if (it == store.parameters.end())
 			continue;
 
 		auto& param = (*it).second;
@@ -552,7 +552,7 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 
 	// set any parameters missing from the preset to their default
 	// except for preset name and category
-	for (auto& [paramHandle, param] : patchManager.parameters)
+	for (auto& [paramHandle, param] : store.parameters)
 	{
 		// The same guard the controller's reset pass applies
 		// (gmpi_controller_holder::setPresetXmlFromDaw), copied here because
@@ -592,6 +592,11 @@ void gmpi_processor::setPresetUnsafe(std::string& chunk)
 			}
 		}
 	}
+}
+
+void gmpi_processor::setPresetUnsafe(std::string& chunk)
+{
+	readPreset(patchManager, chunk);
 }
 
 std::string gmpi_processor::getPresetUnsafe()
