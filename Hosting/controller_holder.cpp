@@ -511,6 +511,7 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 
 		if (auto param = patchManager.setParameterReal(handle, val); param)
 		{
+			notifyPluginController(param);
 #if 0 // not used currently
 			// parameter watchers
 			for (auto& pin : info->guiPins)
@@ -680,6 +681,8 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
 		if (value)
 		{
 			constexpr int32_t voice{ 0 };
+
+			notifyPluginController(param);
 
 			// editors too.
 			for (auto* gui : m_editors)
@@ -1032,6 +1035,24 @@ std::string writePresetXml(const std::unordered_map<int, GmpiParameter>& paramet
 std::string gmpi_controller_holder::getPresetXml() const
 {
 	return writePresetXml(patchManager.parameters);
+}
+
+void gmpi_controller_holder::notifyPluginController(GmpiParameter* param) const
+{
+	if (!pluginController || !param || !param->info)
+		return;
+
+	constexpr int32_t voice{};
+
+	if (const auto* bytes = std::get_if<std::vector<uint8_t>>(&param->value_); bytes)
+	{
+		pluginController->setParameter(param->info->id, gmpi::Field::Value, voice, static_cast<int32_t>(bytes->size()), bytes->data());
+	}
+	else
+	{
+		const double value = param->valueReal();
+		pluginController->setParameter(param->info->id, gmpi::Field::Value, voice, static_cast<int32_t>(sizeof(value)), reinterpret_cast<const uint8_t*>(&value));
+	}
 }
 
 void gmpi_controller_holder::notifyControllerOfPreset(gmpi::api::IParameterObserver* pluginController) const
