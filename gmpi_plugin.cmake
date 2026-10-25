@@ -806,7 +806,50 @@ function(gmpi_plugin)
         endif()
 
         gmpi_target(PROJECT_NAME ${SUB_PROJECT_NAME})
-        
+
+        # Linux: export ONLY the format's entry points; everything else is local.
+        #
+        # Not tidiness. A shared object built with default visibility exports
+        # every symbol it defines, and GCC gives the static locals of inline
+        # functions (every Meyers singleton in a header -
+        # gmpi::hosting::factory::getInstance()::instance among them) the binding
+        # STB_GNU_UNIQUE, which glibc makes ONE instance per PROCESS, ignoring
+        # RTLD_LOCAL. So when a host loaded two of these plugins, the second one's
+        # factory WAS the first one's: it reported the first plugin's VST3 class
+        # IDs and name, and a DAW saw two plugins with the same ID. Each plugin on
+        # its own was fine, which is why only a host with two loaded ever showed
+        # it. Windows DLLs and macOS two-level namespaces do not share symbols
+        # this way.
+        #
+        # A version script rather than -fvisibility=hidden, because it also covers
+        # static libraries the plugin links (SynthEditLib, compiled with default
+        # visibility) and needs no change to any source file. The GMPI list is
+        # what SynthEdit looks up in a .gmpi module (Module_Info3.cpp); a symbol
+        # missing from it is simply not found, and both timer pumps are optional.
+        # They are matched by a pattern because a module need not define them, and
+        # lld (unlike GNU ld) rejects a version script naming an undefined symbol.
+        if(UNIX AND NOT APPLE AND NOT kind STREQUAL "STANDALONE")
+            set(linux_exports "")
+            if(kind STREQUAL "VST3")
+                set(linux_exports GetPluginFactory ModuleEntry ModuleExit InitDll ExitDll)
+            elseif(kind STREQUAL "CLAP")
+                set(linux_exports clap_entry)
+            elseif(kind STREQUAL "GMPI")
+                set(linux_exports MP_GetFactory "*_pump_timers") # gmpi_pump_timers, se_sdk3_pump_timers
+            endif()
+
+            if(linux_exports)
+                list(JOIN linux_exports "; " linux_exports_joined)
+                set(linux_version_script "${CMAKE_CURRENT_BINARY_DIR}/${SUB_PROJECT_NAME}.exports.map")
+                # CONFIGURE rewrites the file only when its content changes, so an
+                # unchanged list does not relink every plugin on each configure.
+                file(CONFIGURE OUTPUT "${linux_version_script}"
+                    CONTENT "{\n  global: ${linux_exports_joined};\n  local: *;\n};\n")
+                target_link_options(${SUB_PROJECT_NAME} PRIVATE "LINKER:--version-script=${linux_version_script}")
+                set_property(TARGET ${SUB_PROJECT_NAME} APPEND PROPERTY LINK_DEPENDS "${linux_version_script}")
+            endif()
+        endif()
+
         #set(TARGET_EXTENSION "${kind}")
         string(TOLOWER "${kind}" TARGET_EXTENSION)
 
