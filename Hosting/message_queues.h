@@ -197,7 +197,8 @@ public:
 			source += contiguous;
 		}
 
-		memcpy(dest, source, todo);
+		if (todo > 0) // a zero-length push may pass a null p_data
+			memcpy(dest, source, todo);
 
 		m_uncommited_write_ptr = (m_uncommited_write_ptr + todo) % m_que_size;
 
