@@ -114,13 +114,13 @@ public:
 	bool isFull()
 	{
 		// snapshot with acceptance of that this comparison operation is not atomic
-		return read_ptr.load(std::memory_order_relaxed) == (m_uncommited_write_ptr % m_que_size) + 1;
+		return read_ptr.load(std::memory_order_acquire) == (m_uncommited_write_ptr % m_que_size) + 1;
 	}
 
 	bool isEmpty() override
 	{
 		// snapshot with acceptance of that this comparison operation is not atomic
-		return read_ptr.load(std::memory_order_relaxed) == m_committed_write_ptr.load(std::memory_order_relaxed);
+		return read_ptr.load(std::memory_order_relaxed) == m_committed_write_ptr.load(std::memory_order_acquire);
 	}
 
 	// Empty and reset the FIFO.
@@ -262,7 +262,7 @@ public:
 
 	int freeSpace() override
 	{
-		auto freeSpace = read_ptr.load(std::memory_order_relaxed) - m_uncommited_write_ptr;
+		auto freeSpace = read_ptr.load(std::memory_order_acquire) - m_uncommited_write_ptr;
 
 		// decide if wraped and adjust (using local variable, not volatiles).
 		if (freeSpace <= 0)
@@ -284,7 +284,7 @@ public:
 	int readyBytes() override
 	{
 		// access volatiles only once.
-		int readyCount = m_committed_write_ptr.load(std::memory_order_relaxed) - read_ptr.load(std::memory_order_relaxed);
+		int readyCount = m_committed_write_ptr.load(std::memory_order_acquire) - read_ptr.load(std::memory_order_relaxed);
 
 		// decide if wraped and adjust (using local variable, not volatiles).
 		if (readyCount < 0)
@@ -319,7 +319,7 @@ public:
 
 		auto current_head = read_ptr.load(std::memory_order_relaxed);
 		const int remain = totalSize - receiver->readyBytes();
-		const int writepos = m_committed_write_ptr.load(std::memory_order_relaxed);	// copy it before comparing it.
+		const int writepos = m_committed_write_ptr.load(std::memory_order_acquire);	// copy it before comparing it.
 
 		int contiguous;
 		if (writepos >= current_head)
@@ -339,7 +339,7 @@ public:
 	// for VST3
 	int siphon2(void** dest) const
 	{
-		const int writepos = m_committed_write_ptr.load(std::memory_order_relaxed);	// copy it before comparing it.
+		const int writepos = m_committed_write_ptr.load(std::memory_order_acquire);	// copy it before comparing it.
 
 		int contiguous;
 		if (writepos >= read_ptr)
