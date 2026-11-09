@@ -21,6 +21,9 @@
 // Announces pluginInfo::vst3ProcessorId/vst3ControllerId, for the same reason.
 #define GMPI_HOSTING_PLUGININFO_HAS_VST3_IDS 1
 
+// Announces pluginInfo::category/clapId.
+#define GMPI_HOSTING_PLUGININFO_HAS_CLAP_FIELDS 1
+
 namespace tinyxml2
 {
 	class XMLElement;
@@ -209,6 +212,12 @@ struct pluginInfo
 	// wrapper then derives the IDs from `id` - so renaming would change them.
 	std::string vst3ProcessorId;
 	std::string vst3ControllerId;
+
+	// Optional `category` attribute ("Instrument", "Fx"...). Empty when absent.
+	std::string category;
+
+	// Optional `clapId` attribute; the CLAP wrapper uses `id` when empty.
+	std::string clapId;
 };
 
 void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins);

@@ -553,6 +553,11 @@ void readpluginXml(const char* xml, std::vector<pluginInfo>& plugins)
 		if (auto s = pluginE->Attribute("vst3ControllerId"); s)
 			info.vst3ControllerId = s;
 
+		if (auto s = pluginE->Attribute("category"); s)
+			info.category = s;
+		if (auto s = pluginE->Attribute("clapId"); s)
+			info.clapId = s;
+
 		// PARAMETERS
 		if (auto parametersE = pluginE->FirstChildElement("Parameters"); parametersE)
 		{

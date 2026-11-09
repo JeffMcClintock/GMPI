@@ -289,7 +289,7 @@ function(gmpi_objc_class_suffix name)
 endfunction()
 
 function(gmpi_plugin)
-    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE USE_STAGING NO_LOCAL_VST3_COPY)
+    set(options HAS_DSP HAS_GUI HAS_XML IS_OFFICIAL_MODULE USE_STAGING NO_LOCAL_VST3_COPY NO_LOCAL_COPY)
     set(oneValueArgs PROJECT_NAME)
     set(multiValueArgs FORMATS_LIST SOURCE_FILES)
     cmake_parse_arguments(GMPI_PLUGIN "${options}" "${oneValueArgs}" "${multiValueArgs}" ${ARGN})
@@ -1520,6 +1520,11 @@ function(gmpi_plugin)
 
     if(SE_LOCAL_BUILD)
         function(copy_plugin TARGET_NAME DEST_DIR EXTENSION)
+            # NO_LOCAL_COPY: a template, not a plugin -- never install it where hosts scan.
+            if(GMPI_PLUGIN_NO_LOCAL_COPY)
+                return()
+            endif()
+
             if(WIN32)
                 add_custom_command(TARGET ${TARGET_NAME}
                     POST_BUILD
@@ -1652,7 +1657,7 @@ function(gmpi_plugin)
                 # as a resource; on Linux it is a file beside the binary, so
                 # installing the binary alone leaves a module the scanner cannot
                 # read its metadata from.
-                if(GMPI_PLUGIN_HAS_XML)
+                if(GMPI_PLUGIN_HAS_XML AND NOT GMPI_PLUGIN_NO_LOCAL_COPY)
                     add_custom_command(TARGET ${GMPI_PLUGIN_PROJECT_NAME} POST_BUILD
                         COMMAND ${CMAKE_COMMAND} -E copy_if_different
                             "$<TARGET_FILE:${GMPI_PLUGIN_PROJECT_NAME}>.xml"
