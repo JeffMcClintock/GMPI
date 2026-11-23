@@ -516,6 +516,7 @@ public:
 		{
 			switch (param->info->datatype)
 			{
+			case gmpi::PinDatatype::String: // held as bytes, like a blob
 			case gmpi::PinDatatype::Blob:
 				// Unlike scalars, blobs cannot ride the DAW's normalized-value
 				// path (notifyDaw/performEdit speak doubles), so a changed blob
@@ -528,6 +529,10 @@ public:
 			case gmpi::PinDatatype::Float32:
 				if (size == sizeof(float))
 					changed = param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data)));
+				break;
+			case gmpi::PinDatatype::Float64:
+				if (size == sizeof(double))
+					changed = param->setReal(*reinterpret_cast<const double*>(data));
 				break;
 			case gmpi::PinDatatype::Int32:
 				if (size == sizeof(int32_t))

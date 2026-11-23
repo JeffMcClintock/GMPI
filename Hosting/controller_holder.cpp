@@ -74,6 +74,13 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 				}
 				break;
 
+				case gmpi::PinDatatype::Float64:
+				{
+					const double value = param->valueReal();
+					editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+				}
+				break;
+
 				case gmpi::PinDatatype::Int32:
 				{
 					const int32_t value = static_cast<int32_t>(std::round(param->valueReal()));
@@ -127,6 +134,14 @@ void gmpi_controller_holder::initUi(gmpi::api::IUnknown* unknownEditor)
 				editor->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
 			}
 			break;
+
+			case gmpi::PinDatatype::Float64:
+				editor->setPin(pin.id, 0, sizeof(def), reinterpret_cast<const uint8_t*>(&def));
+				break;
+
+			case gmpi::PinDatatype::String:
+				editor->setPin(pin.id, 0, static_cast<int32_t>(pin.default_value.size()), reinterpret_cast<const uint8_t*>(pin.default_value.data()));
+				break;
 
 			case gmpi::PinDatatype::Enum:
 			case gmpi::PinDatatype::Int32:
@@ -271,6 +286,14 @@ void gmpi_controller_holder::notifyGui(GmpiParameter* param)
 				}
 				break;
 
+				case gmpi::PinDatatype::Float64:
+				{
+					const double value = param->valueReal();
+					gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+					gui->notifyPin(pin.id, voice);
+				}
+				break;
+
 				case gmpi::PinDatatype::Int32:
 				{
 					const int32_t value = static_cast<int32_t>(std::round(param->valueReal()));
@@ -372,6 +395,18 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 							}
 							break;
 
+							case gmpi::PinDatatype::Float64:
+							{
+								assert(data.size() == sizeof(double));
+								changed = param->setReal(*reinterpret_cast<const double*>(data.data()));
+							}
+							break;
+
+							case gmpi::PinDatatype::String:
+							case gmpi::PinDatatype::Blob:
+								changed = param->setBlob({ reinterpret_cast<const uint8_t*>(data.data()), data.size() });
+								break;
+
 							case gmpi::PinDatatype::Int32:
 							{
 								assert(data.size() == sizeof(int32_t));
@@ -449,6 +484,19 @@ void gmpi_controller_holder::setPinFromUi(int32_t pinId, int32_t voice, std::spa
 														//							gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&value));
 													}
 													break;
+
+													case gmpi::PinDatatype::Float64:
+													{
+														const double value = param->valueReal();
+														gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+													}
+													break;
+
+													case gmpi::PinDatatype::String:
+													case gmpi::PinDatatype::Blob:
+														if (const auto* value = std::get_if<std::vector<uint8_t>>(&param->value_); value)
+															gui->setPin(pin.id, 0, static_cast<int32_t>(value->size()), value->data());
+														break;
 
 													case gmpi::PinDatatype::Int32:
 													{
@@ -587,6 +635,14 @@ bool gmpi_controller_holder::onQueMessageReady(int handle, int msg_id, gmpi::hos
                             gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
                             gui->notifyPin(pin.id, voice);
                             //                            gui->setParameter(param->id, pin.parameterFieldType, 0, sizeof(float), reinterpret_cast<const uint8_t*>(&value));
+                        }
+                        break;
+
+                        case gmpi::PinDatatype::Float64:
+                        {
+                            const double value = param->valueReal();
+                            gui->setPin(pin.id, 0, sizeof(value), reinterpret_cast<const uint8_t*>(&value));
+                            gui->notifyPin(pin.id, voice);
                         }
                         break;
 

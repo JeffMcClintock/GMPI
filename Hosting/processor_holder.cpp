@@ -150,6 +150,10 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 				}
 				break;
 
+				case gmpi::PinDatatype::Float64:
+					copyValueToEvent(e, def);
+					break;
+
 				case gmpi::PinDatatype::Int32:
 				case gmpi::PinDatatype::Enum:
 				{
@@ -201,6 +205,10 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 					}
 					break;
 
+					case gmpi::PinDatatype::Float64:
+						copyValueToEvent(e, param->valueReal());
+						break;
+
 					case gmpi::PinDatatype::Int32:
 					{
 						copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal())));
@@ -213,6 +221,7 @@ bool gmpi_processor::start_processor(gmpi::api::IProcessorHost* host, gmpi::host
 					}
 					break;
 
+					case gmpi::PinDatatype::String: // same bytes as a blob
 					case gmpi::PinDatatype::Blob:
 					{
 						// Seed the pin with the parameter's CURRENT bytes, not a
@@ -322,6 +331,10 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 				}
 				break;
 
+				case gmpi::PinDatatype::Float64:
+					copyValueToEvent(e, param->valueReal());
+					break;
+
 				case gmpi::PinDatatype::Int32:
 				{
 					copyValueToEvent(e, static_cast<int32_t>(std::round(param->valueReal())));
@@ -334,6 +347,7 @@ void gmpi_processor::sendParameterToProcessor(gmpi::hosting::pluginInfo const& i
 			}
 			break;
 
+			case gmpi::PinDatatype::String: // same bytes as a blob
 			case gmpi::PinDatatype::Blob:
 			{
 				// The parameter owns the bytes; the event points into that
@@ -490,6 +504,18 @@ gmpi::ReturnCode gmpi_processor::setPin(int32_t timestamp, int32_t pinId, int32_
 			case gmpi::PinDatatype::Float32:
 			{
 				if (param->setReal(static_cast<double>(*reinterpret_cast<const float*>(data))))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::Float64:
+			{
+				if (param->setReal(*reinterpret_cast<const double*>(data)))
+					pendingControllerQueueClients.AddWaiter(param);
+			}
+			break;
+			case gmpi::PinDatatype::String: // a value, so sent only when it changes
+			{
+				if (param->setBlob({ data, (size_t) size }))
 					pendingControllerQueueClients.AddWaiter(param);
 			}
 			break;
